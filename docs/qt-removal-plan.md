@@ -7,7 +7,6 @@
 - [5. Phased plan](#5-phased-plan)
 - [6. Tech stack](#6-tech-stack)
 - [7. Risks](#7-risks)
-- [8. Open questions](#8-open-questions)
 
 ## 1. Goals
 
@@ -79,33 +78,54 @@ Keeping geometry in C++ means headless rendering and every UI share a single sou
 
 ## 4. Target architecture
 
-Each host embeds the same React bundle. The one exception is the Maestro overlay, which is select-only and has no chrome. The hosts differ only in how they hold the C++ core and talk to it.
+Each consumer embeds the same React bundle, and React talks to `sketcher_core`. The one exception is the Maestro overlay, which is select-only, has no chrome, and calls the core directly.
 
 ```
-┌────────────────┐ ┌──────────────────────────────────────┐ ┌─────────────────┐
-│ Web page       │ │ Qt hosts (Maestro, PyQt panels)      │ │ Standalone app  │
-│                │ │  SketcherWidget       SketcherView   │ │ (no Qt)         │
-│ browser        │ │  QWebEngineView       native QWidget │ │ webview/webview │
-│ └ React UI     │ │  └ React UI           QPainter,      │ │ └ React UI      │
-│                │ │                       overlay only   │ │                 │
-├────────────────┤ ├──────────────────────────────────────┤ ├─────────────────┤
-│ embind         │ │ QWebChannel           direct calls   │ │ bind / eval     │
-└───────┬────────┘ └──────────────────┬───────────────────┘ └────────┬────────┘
-        └─────────────────────────────┼──────────────────────────────┘
-                     JSON commands in / JSON events out
-┌─────────────────────────────────────▼────────────────────────────────────────┐
-│ sketcher_core (new, no Qt)                                                   │
-│   model/   MolModel, edit commands, undo stack, selection, observer events   │
-│   depict/  display list, FontMetrics (Arimo), headless SVG                   │
-│   rdkit/   sketcher chemistry helpers                                        │
-└─────────────────────────────────────┬────────────────────────────────────────┘
-┌─────────────────────────────────────▼────────────────────────────────────────┐
-│ rdkit_extensions (unchanged): HELM, FASTA, SMILES, MOL, monomer DB           │
-└─────────────────────────────────────┬────────────────────────────────────────┘
-                                RDKit (C++)
+┌────────────────┐ ┌────────────────┐ ┌─────────────────────────────────────────┐
+│ Web page       │ │ Standalone app │ │ Maestro · PyQt panels                   │
+│                │ │ (no Qt)        │ │ via the sketcher Qt shim                │
+└───────┬────────┘ └───────┬────────┘ └────────┬───────────────────────┬────────┘
+┌───────▼────────┐ ┌───────▼────────┐ ┌────────▼─────────┐ ┌───────────▼────────┐
+│ browser        │ │ system webview │ │ SketcherWidget   │ │ SketcherView       │
+│                │ │ webview/webview│ │ QWebEngineView   │ │ (Maestro overlay)  │
+└───────┬────────┘ └───────┬────────┘ └────────┬─────────┘ │ native QWidget,    │
+┌───────▼──────────────────▼───────────────────▼─────────┐ │ QPainter painter,  │
+│ React UI (TypeScript), one bundle for all webviews     │ │ select-only,       │
+│   Canvas2D painter · tools · chrome (bars, dialogs)    │ │ no React           │
+│   protocol client (same code on every host)            │ │                    │
+└───────┬──────────────────┬───────────────────┬─────────┘ └───────────┬────────┘
+┌───────▼────────┐ ┌───────▼────────┐ ┌────────▼─────────┐             │
+│ embind         │ │ bind / eval    │ │ QWebChannel      │             │
+└───────┬────────┘ └───────┬────────┘ └────────┬─────────┘             │
+        └──────────────────┼───────────────────┘                       │
+              JSON commands in / events out                  direct C++ calls
+┌──────────────────────────▼───────────────────────────────────────────▼────────┐
+│ sketcher_core (new, no Qt)                                                    │
+│   protocol/ command dispatcher (same code on every host)                      │
+│   model/    MolModel, edit commands, undo stack, selection, events            │
+│   depict/   display list, FontMetrics (Arimo), headless SVG                   │
+│   rdkit/    sketcher chemistry helpers                                        │
+└──────────────────────────────────────┬────────────────────────────────────────┘
+┌──────────────────────────────────────▼────────────────────────────────────────┐
+│ rdkit_extensions (unchanged): HELM, FASTA, SMILES, MOL, monomer DB            │
+└──────────────────────────────────────┬────────────────────────────────────────┘
+                                  RDKit (C++)
 ```
 
-There are three libraries. `rdkit_extensions` stays as it is. `sketcher_core` has no Qt and is linked by every host. `sketcher` becomes a thin Qt shim containing `SketcherWidget` and `SketcherView`.
+**Libraries:** there are three.
+
+- `rdkit_extensions` stays as it is.
+- `sketcher_core` has no Qt and is linked by every host.
+- `sketcher` becomes a thin Qt shim containing `SketcherWidget` and `SketcherView`.
+
+**Protocol:** there is one protocol, with one implementation on each side.
+
+- **C++ side:** a command dispatcher in `sketcher_core`.
+- **TS side:** a protocol client in React, written against a small `Transport` interface (send a command, subscribe to events).
+- **Per host:** each transport adapter is a few dozen lines on each side.
+  - embind is synchronous; `bind`/`eval` and QWebChannel are asynchronous.
+  - The client treats every call as async, so React code is the same on every host.
+- **Qt hosts' synchronous calls:** calls such as `getRDKitMolecule()` go straight from the shim to the core, not through React.
 
 **Split of responsibilities:**
 
@@ -174,16 +194,73 @@ A time-boxed prototype on a branch. Nothing merges; the output is a written go/n
 
 ### Phase 5 — React app (web first)
 
-Build the new frontend in the repo at full feature parity with the Qt app; it ships on the web as "v2 web" only once nothing is missing. The UI refresh design (chrome and depiction styling) is reviewed before the tool and dialog work starts. Every feature PR ports its matching Playwright scenarios.
+Build the new frontend in the repo at full feature parity with the Qt app. It replaces the Qt WASM build as "v2 web" only once nothing is missing. The UI refresh design (chrome and depiction styling) is reviewed before the feature PRs start.
 
-| PR   | Change                                                                                                                           |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Scaffolding: Vite + React + TS, Vitest, a CI build, loading the WASM core and a Canvas2D painter.                                |
-| 2    | Playwright harness: the page-object wrappers are re-pointed at the React DOM, and screenshot baselines are set for the new look. |
-| 3…n  | Tools, one PR per group: select/lasso/move, draw atoms and bonds, erase, rotate, charge, atom and bond types, and so on.         |
-| 3…n  | Dialogs, one PR each: atom properties, bond properties, save image, import text, settings, and so on.                            |
-| 3…n  | Monomer palette, HELM input, and the remaining features.                                                                         |
-| last | Deploy v2 web in place of the Qt WASM build.                                                                                     |
+**Rules for every feature PR:**
+
+- It ports the matching Playwright scenarios.
+- It adds Vitest coverage for any new components.
+- It's reachable in the dev build only, so the Qt WASM build stays the shipped one.
+
+#### 5a. Foundations (in order)
+
+| PR  | Change                                                                                                                                                                                                                                | Ports               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| 1   | Scaffolding: a Vite + React + TS app in the repo, with linting, Vitest and a CI build that produces a self-contained bundle. It includes the protocol client with its `Transport` interface and the embind transport.                 |                     |
+| 2   | Canvas view: the Canvas2D display-list painter, pan/zoom/fit, hit-testing against the display-list hit shapes, and hover highlighting.                                                                                                |                     |
+| 3   | UI state store (Zustand) replacing `SketcherModel`'s UI state: active tool and its sub-options, display settings, and persisted preferences. Undo/redo is wired to the core stack.                                                    | `undo_redo`         |
+| 4   | Playwright harness: the page-object wrappers are re-pointed at the React DOM (`data-testid`) and canvas coordinates, with screenshot baselines for the new look.                                                                      | `wrapper_contracts` |
+| 5   | Embedding JS API: keep today's public WASM functions so web embedders don't change. These are import/export text, export image, clear, is-empty, has-monomers, allow-monomeric, and loading, inserting and resetting custom monomers. | `wasm_api`          |
+| 6   | App shell: top bar and side bar layout, theme tokens from the refresh design, and the atomistic/monomeric mode switch.                                                                                                                | `toolbar`           |
+
+#### 5b. Atomistic tools (any order once 5a lands)
+
+| PR  | Change                                                                                                  | Ports                                                            |
+| --- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 7   | Select tool: rectangle, lasso and fragment modes, the select-options widget and the selection popup.    | `tst_select_mode_*`                                              |
+| 8   | Move/rotate tool.                                                                                       | `tst_move_mode`, `tst_move_select_parity`                        |
+| 9   | Erase tool.                                                                                             | `tst_erase_mode`                                                 |
+| 10  | Draw atom: element buttons, periodic table, atom-query popup and the set-atom widget.                   | `drawing`, `context_set_element_probe`, `context_wildcard_probe` |
+| 11  | Draw bond: bond-order, stereo and query-bond popups, plus chain drawing.                                | `drawing`, `tst_query_bond_crash`                                |
+| 12  | Ring tool and custom fragments.                                                                         | `tst_tools`                                                      |
+| 13  | Charge and explicit-H tools.                                                                            | `tst_tools_parity`, `tst_editing_parity`                         |
+| 14  | Enumeration tools: new and existing R-groups, attachment points, atom mapping, reaction arrow and plus. | `tst_enumeration_details`, `context_rgroup_probe`                |
+
+#### 5c. Monomeric tools (any order once 5a lands)
+
+| PR  | Change                                                                                                                                  | Ports              |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 15  | Monomer palette: amino acid and nucleic acid palettes, nucleotide and custom-nucleotide popups, drawing monomers and monomer fragments. | `monomer_mutation` |
+| 16  | Monomeric connections: covalent/disulfide and H-bond tools.                                                                             |                    |
+| 17  | Custom monomer tool and dialog, and loading a monomer database.                                                                         |                    |
+
+#### 5d. Menus, context menus and clipboard (any order once 5a lands)
+
+| PR  | Change                                                                                                                         | Ports                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| 18  | Import menu: import from file, paste in text, replace current content.                                                         | `tst_import_menu`, `import`                                                         |
+| 19  | Export menu: export to file, save image.                                                                                       | `tst_export_menu`                                                                   |
+| 20  | More-actions menu: Modify All (flip, aromatize, kekulize, add/remove explicit H), Expand Selection, add custom fragment.       | `tst_more_actions_menu`                                                             |
+| 21  | View and help menus: valence errors, heteroatom colors, stereo labels, implicit H, preferences, help, getting started, about.  | `tst_configure_view_menu`, `tst_help_menu`                                          |
+| 22  | Context menus: atom, bond, selection, background, bracket subgroup, attachment point and monomer.                              | `tst_bond_context_menu`, `context_modify_atoms_probe`, `context_modify_bonds_probe` |
+| 23  | Clipboard and shortcuts: cut, copy, paste, Copy As (formats and image), and the keyboard shortcuts, including the hidden ones. | `tst_copy_all_as_image`, `context_copy_probe`, `tst_hidden_shortcuts`               |
+
+#### 5e. Dialogs (any order once 5a lands)
+
+| PR  | Change                                     | Ports                                                    |
+| --- | ------------------------------------------ | -------------------------------------------------------- |
+| 24  | Edit atom properties.                      | `tst_edit_atom_properties`, `edit_atom_properties_probe` |
+| 25  | Bracket subgroup.                          | `tst_bracket_subgroup`                                   |
+| 26  | File import/export and save-image dialogs. |                                                          |
+| 27  | Rendering settings and preferences.        |                                                          |
+| 28  | Welcome, about and message boxes.          |                                                          |
+
+#### 5f. Ship
+
+| PR  | Change                                                                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 29  | Parity audit: check every Qt action, tool and dialog against the React app, close any gaps, and port the remaining Playwright files. |
+| 30  | Replace the Qt WASM build with v2 web.                                                                                               |
 
 **Done when:** every tool, dialog and menu action in the Qt app exists in v2 web, and the full ported Playwright suite passes.
 
@@ -249,7 +326,3 @@ One PR per area:
   - _Mitigation:_ the Qt app keeps shipping until the React app reaches parity, so no partial release is ever needed. The ported Playwright suite tracks how much is left.
 - **System webviews render differently on each platform** (affects the standalone app).
   - _Mitigation:_ the bundled font, Playwright runs on all three engines, and CEF as the fallback.
-
-## 8. Open questions
-
-1. **QtWebEngine in Maestro.** Is it acceptable to ship (size, licensing, platforms)? Who owns un-skipping it in the package-factory Qt recipe? The answer decides the Phase 4 gate.
