@@ -84,10 +84,9 @@ BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
 {
     // An inline monomer keeps this test independent of the external monomer
     // database while still producing a bead wider than the default size.
-    const std::string inline_monomer =
-        "[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]";
-    const std::string helm = "PEPTIDE1{" + inline_monomer + "." +
-                             inline_monomer + "}$$$$V2.0";
+    const std::string inline_monomer = "[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]";
+    const std::string helm =
+        "PEPTIDE1{" + inline_monomer + "." + inline_monomer + "}$$$$V2.0";
     auto scene = TestScene::getScene();
     import_mol_text(scene->m_mol_model, helm);
 
@@ -95,8 +94,7 @@ BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
     const auto& conformer = mol->getConformer();
     const auto first_bond_length =
         (conformer.getAtomPos(0) - conformer.getAtomPos(1)).length();
-    BOOST_TEST(first_bond_length >
-               2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
+    BOOST_TEST(first_bond_length > 2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)
