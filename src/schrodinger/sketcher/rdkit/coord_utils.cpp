@@ -39,7 +39,7 @@ bool coordinates_are_all_zero(const RDKit::Conformer& conf)
 
 } // namespace
 
-void update_2d_coordinates(RDKit::ROMol& mol)
+bool update_2d_coordinates(RDKit::ROMol& mol)
 {
 
     ::RDKit::Conformer* conf_to_keep_3d = nullptr;
@@ -52,7 +52,9 @@ void update_2d_coordinates(RDKit::ROMol& mol)
 
     auto conf_2d = std::find_if_not(mol.beginConformers(), mol.endConformers(),
                                     std::mem_fn(&RDKit::Conformer::is3D));
-    if (conf_2d == mol.endConformers() || coordinates_are_all_zero(**conf_2d)) {
+    bool generate_coords =
+        conf_2d == mol.endConformers() || coordinates_are_all_zero(**conf_2d);
+    if (generate_coords) {
         // remove all (3d) conformers and generate new 2d coordinates
         mol.clearConformers();
         rdkit_extensions::compute2DCoords(mol);
@@ -67,6 +69,7 @@ void update_2d_coordinates(RDKit::ROMol& mol)
     if (conf_to_keep_3d != nullptr) {
         mol.addConformer(conf_to_keep_3d, true);
     }
+    return generate_coords;
 }
 
 double get_most_common_bond_length(const RDKit::ROMol& mol)

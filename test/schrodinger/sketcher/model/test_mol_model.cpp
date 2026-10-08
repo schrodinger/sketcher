@@ -22,6 +22,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/test/data/test_case.hpp>
 
+#include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
@@ -2206,6 +2207,78 @@ BOOST_AUTO_TEST_CASE(test_flipBondStereo)
     for (unsigned int i = 0; i < flipped_dirs.size(); ++i) {
         BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == flipped_dirs.at(i));
     }
+}
+
+/**
+ * SKETCH-2872: wedges set directly on an input ROMol (i.e. via bond directions,
+ * without any molblock CFG properties) should be honored, both when the mol is
+ * added directly and when it is round-tripped through copy/paste
+ */
+BOOST_AUTO_TEST_CASE(test_addMol_preserves_input_wedging)
+{
+    auto input_mol = rdkit_extensions::to_rdkit(R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.000000 0.000000 0.000000 0
+M  V30 2 C 1.299038 0.750000 0.000000 0
+M  V30 3 C 2.598076 -0.000000 0.000000 0
+M  V30 4 C 3.897114 0.750000 0.000000 0
+M  V30 5 O 2.598076 -1.500000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4 CFG=1
+M  V30 4 1 3 5
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(1 3)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+$$$$)");
+
+    // Move the wedge from the default C-C bond to the C-O bond
+    for (auto bond : input_mol->bonds()) {
+        bond->setBondDir(RDKit::Bond::BondDir::NONE);
+        bond->clearProp(RDKit::common_properties::_MolFileBondCfg);
+    }
+    auto co_bond = input_mol->getBondWithIdx(3);
+    RDKit::Chirality::wedgeBond(co_bond, co_bond->getBeginAtomIdx(),
+                                &input_mol->getConformer());
+    std::vector<RDKit::Bond::BondDir> expected_dirs;
+    for (auto bond : input_mol->bonds()) {
+        expected_dirs.push_back(bond->getBondDir());
+    }
+    BOOST_REQUIRE(expected_dirs[2] == RDKit::Bond::BondDir::NONE);
+    BOOST_REQUIRE(expected_dirs[3] != RDKit::Bond::BondDir::NONE);
+
+    auto check_dirs = [&expected_dirs](const RDKit::ROMol& mol) {
+        BOOST_REQUIRE(mol.getNumBonds() == expected_dirs.size());
+        for (unsigned int i = 0; i < expected_dirs.size(); ++i) {
+            BOOST_TEST(mol.getBondWithIdx(i)->getBondDir() ==
+                       expected_dirs.at(i));
+        }
+    };
+
+    // Directly added ROMol (i.e. SketcherWidget::addRDKitMolecule)
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    model.addMol(*input_mol);
+    check_dirs(*model.getMol());
+
+    // Intra-sketcher copy/paste, which round-trips through a pickle
+    auto pickle = rdkit_extensions::to_string(*model.getMol(),
+                                              Format::RDMOL_BINARY_BASE64);
+    QUndoStack paste_undo_stack;
+    TestMolModel paste_model(&paste_undo_stack);
+    paste_model.addMol(
+        *rdkit_extensions::to_rdkit(pickle, Format::RDMOL_BINARY_BASE64));
+    check_dirs(*paste_model.getMol());
 }
 
 BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))

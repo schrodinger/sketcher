@@ -6,7 +6,10 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/constants.h"
+#include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 
 namespace schrodinger
 {
@@ -14,6 +17,7 @@ namespace sketcher
 {
 
 namespace bdata = boost::unit_test::data;
+namespace tt = boost::test_tools;
 
 std::string LIST_QUERY = R"(
      RDKit          2D
@@ -102,6 +106,66 @@ BOOST_AUTO_TEST_CASE(test_prepare_mol_list_query)
     // the second atom is a list query, check that it's a dummy atom
     BOOST_TEST(mol->getAtomWithIdx(1)->getAtomicNum() ==
                rdkit_extensions::DUMMY_ATOMIC_NUMBER);
+}
+
+static std::vector<RDKit::Bond::BondDir> get_bond_dirs(const RDKit::ROMol& mol)
+{
+    std::vector<RDKit::Bond::BondDir> dirs;
+    for (auto bond : mol.bonds()) {
+        dirs.push_back(bond->getBondDir());
+    }
+    return dirs;
+}
+
+/**
+ * SKETCH-2872: prepare_mol should keep wedges already present on an input mol
+ * with coordinates, and only wedge chiral centers that lack one
+ */
+BOOST_AUTO_TEST_CASE(test_prepare_mol_keeps_input_wedges)
+{
+    const std::string smiles = "C[C@H](O)C[C@H](N)C";
+    std::unique_ptr<RDKit::RWMol> mol(RDKit::SmilesToMol(smiles));
+    RDDepict::compute2DCoords(*mol);
+
+    // Default wedging for these coordinates
+    RDKit::RWMol default_mol(*mol);
+    prepare_mol(default_mol);
+    auto default_dirs = get_bond_dirs(default_mol);
+
+    // Manually wedge a bond on atom 1 that isn't wedged by default (bonds 1
+    // and 2 both begin at atom 1), and leave atom 4 unwedged
+    unsigned int wedged_idx =
+        default_dirs[1] == RDKit::Bond::BondDir::NONE ? 1 : 2;
+    BOOST_REQUIRE(default_dirs[wedged_idx] == RDKit::Bond::BondDir::NONE);
+    RDKit::Chirality::wedgeBond(mol->getBondWithIdx(wedged_idx), 1,
+                                &mol->getConformer());
+    auto wedged_dir = mol->getBondWithIdx(wedged_idx)->getBondDir();
+    BOOST_REQUIRE(wedged_dir != RDKit::Bond::BondDir::NONE);
+
+    prepare_mol(*mol);
+    for (auto bond : mol->bonds()) {
+        auto idx = bond->getIdx();
+        if (idx == wedged_idx) {
+            // the manual wedge is kept
+            BOOST_TEST(bond->getBondDir() == wedged_dir);
+        } else if (bond->getBeginAtomIdx() == 1 || bond->getEndAtomIdx() == 1) {
+            // atom 1 doesn't get a second wedge
+            BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+        } else {
+            // atom 4 is wedged as normal
+            BOOST_TEST(bond->getBondDir() == default_dirs[idx]);
+        }
+    }
+
+    // If coordinates have to be generated, the input wedges are meaningless and
+    // should be recalculated from scratch
+    RDKit::RWMol no_coords_mol(*mol);
+    no_coords_mol.clearConformers();
+    std::unique_ptr<RDKit::RWMol> expected_mol(RDKit::SmilesToMol(smiles));
+    prepare_mol(no_coords_mol);
+    prepare_mol(*expected_mol);
+    BOOST_TEST(get_bond_dirs(no_coords_mol) == get_bond_dirs(*expected_mol),
+               tt::per_element());
 }
 
 } // namespace sketcher
