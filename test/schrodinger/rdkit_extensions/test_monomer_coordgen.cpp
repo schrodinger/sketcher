@@ -2,10 +2,12 @@
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include <vector>
+#include <memory>
 #include <string>
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -542,6 +544,54 @@ BOOST_DATA_TEST_CASE(
                                      << helm
                                      << "\nExpected coords: " << expected_str
                                      << "\nComputed coords: " << actual_str);
+}
+
+using reordered_polymer_data_t =
+    std::pair<std::string, std::vector<unsigned int>>;
+BOOST_TEST_DONT_PRINT_LOG_VALUE(reordered_polymer_data_t)
+
+/**
+ * Layout must depend on residue order, regardless of atom insertion order.
+ * Include an offset polymer to exercise turn placement with original atom IDs
+ * that differ from the indices in the extracted polymer.
+ */
+BOOST_DATA_TEST_CASE(
+    TestLayoutIndependentOfAtomOrder_SKETCH_2874,
+    bdata::make(std::vector<reordered_polymer_data_t>{
+        {"PEPTIDE1{C.G.A.A.T.C}$PEPTIDE1,PEPTIDE1,1:R3-6:R3$$$V2.0",
+         {0, 1, 2, 5, 4, 3}},
+        {"PEPTIDE1{G}|PEPTIDE2{C.G.A.A.T.C}$PEPTIDE2,PEPTIDE2,1:R3-6:R3$$$V2.0",
+         {0, 1, 2, 3, 6, 5, 4}},
+        {"PEPTIDE1{K.W.L.N.A.L.L.H.H.G.L}$$$$V2.0",
+         {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}},
+        {"RNA1{R(A)P.R(C)P.R(G)}$$$$V2.0", {7, 6, 5, 4, 3, 2, 1, 0}}}),
+    test_data)
+{
+    const auto original = helm_to_rdkit(test_data.first);
+    compute_monomer_mol_coords(*original);
+    const auto& atom_order = test_data.second;
+    std::unique_ptr<RDKit::ROMol> reordered(
+        RDKit::MolOps::renumberAtoms(*original, atom_order));
+    reordered->updateProps(*original);
+
+    for (unsigned int cleanup = 0; cleanup < 2; ++cleanup) {
+        compute_monomer_mol_coords(*reordered);
+        BOOST_REQUIRE_EQUAL(reordered->getNumConformers(), 1);
+        const auto& actual_conf = reordered->getConformer();
+        const auto& expected_conf = original->getConformer();
+        for (unsigned int idx = 0; idx < reordered->getNumAtoms(); ++idx) {
+            const auto actual =
+                actual_conf.getAtomPos(idx) - actual_conf.getAtomPos(0);
+            const auto expected = expected_conf.getAtomPos(atom_order[idx]) -
+                                  expected_conf.getAtomPos(atom_order[0]);
+            BOOST_CHECK_SMALL(actual.x - expected.x, 1e-6);
+            BOOST_CHECK_SMALL(actual.y - expected.y, 1e-6);
+            BOOST_CHECK_EQUAL(schrodinger::rdkit_extensions::get_residue_number(
+                                  reordered->getAtomWithIdx(idx)),
+                              schrodinger::rdkit_extensions::get_residue_number(
+                                  original->getAtomWithIdx(atom_order[idx])));
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)

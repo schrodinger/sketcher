@@ -943,8 +943,8 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
         current_pos.x += step_x;
         current_pos.y += step_y;
 
-        conformer.setAtomPos(monomer_idx, current_pos);
-        placed_monomers_idcs.insert(monomer_idx);
+        place_monomer_at(conformer, polymer.getAtomWithIdx(monomer_idx),
+                         current_pos, placed_monomers_idcs);
     }
 
     // Calculate position for next segment: one more rotation and step
@@ -1894,7 +1894,26 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
 
     std::vector<RDKit::ROMOL_SPTR> polymers;
     for (auto polymer_id : get_polymer_ids(monomer_mol)) {
-        auto polymer = extract_helm_polymers(monomer_mol, {polymer_id});
+        RDKit::ROMOL_SPTR polymer =
+            extract_helm_polymers(monomer_mol, {polymer_id});
+        const auto chain = get_polymer(*polymer, polymer_id);
+        if (!std::is_sorted(chain.atoms.begin(), chain.atoms.end())) {
+            // Snaking/coiling layout uses local atom indices as sequence
+            // positions. Sort the layout copy by residue number, retaining
+            // ORIGINAL_INDEX so coordinates map back to the unchanged model.
+            // get_polymer excludes repetition dummies; leave their slots intact
+            // and include them in the permutation so no atoms are dropped.
+            std::vector<unsigned int> atom_order;
+            auto next_monomer = chain.atoms.begin();
+            for (const auto* atom : polymer->atoms()) {
+                atom_order.push_back(is_dummy_atom(atom) ? atom->getIdx()
+                                                         : *next_monomer++);
+            }
+            RDKit::ROMOL_SPTR ordered_polymer(
+                RDKit::MolOps::renumberAtoms(*polymer, atom_order));
+            ordered_polymer->updateProps(*polymer);
+            polymer = std::move(ordered_polymer);
+        }
         polymer->setProp(POLYMER_ID, polymer_id);
         polymer->addConformer(new RDKit::Conformer(polymer->getNumAtoms()));
         polymers.push_back(polymer);
