@@ -1253,7 +1253,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QToolButton" name="custom_monomer_btn">
+      <widget class="schrodinger::sketcher::ToolButtonWithPopup" name="custom_monomer_btn">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
