@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(custom_monomer_menu_long_press)
         auto* dialog = widget.findChild<CustomMonomerDialog*>();
         BOOST_REQUIRE(dialog != nullptr);
         BOOST_TEST(dialog->isVisible());
-        BOOST_TEST(dialog->windowTitle() == "Sketch Custom Peptide Monomer");
+        BOOST_TEST(dialog->windowTitle() == "Define Custom Peptide Residue");
         BOOST_TEST(!menu->isVisible());
         dialog->reject();
     }

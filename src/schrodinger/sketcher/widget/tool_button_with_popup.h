@@ -63,6 +63,13 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     void showPopupIndicatorOnHover(bool show);
 
     /**
+     * Center the icon and text together when text is beside the icon.
+     * The background and popup indicator still use the full button rectangle.
+     * Off by default.
+     */
+    void setCenterContents(bool center);
+
+    /**
      * Apply additional style sheet parameters to the default style used for
      * this widget.
      *
@@ -136,6 +143,7 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     float m_popup_delay = 250;
     bool m_show_popup_indicator = true;
     bool m_show_popup_indicator_on_hover = false;
+    bool m_center_contents = false;
 };
 
 } // namespace sketcher

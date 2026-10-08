@@ -49,8 +49,15 @@ class SKETCHER_API CustomMonomerDialog : public ResizableModalDialog
     Q_OBJECT
 
   public:
+    /**
+     * @param chain_type The chain type of the monomer to be defined. This only
+     * affects the dialog title.
+     * @param existing_monomer Whether we are defining a new custom monomer or
+     * editing an existing monomer. This only affects the dialog title.
+     * @param parent The Qt parent of this dialog
+     */
     CustomMonomerDialog(const rdkit_extensions::ChainType chain_type,
-                        QWidget* parent = nullptr);
+                        const bool existing_monomer, QWidget* parent = nullptr);
     ~CustomMonomerDialog();
 
     /**

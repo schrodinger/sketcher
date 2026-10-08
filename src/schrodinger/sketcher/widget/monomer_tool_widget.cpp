@@ -30,6 +30,17 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+
+// Text for the "+ Custom" button menu
+static const QString SMILES_monomer_CHEM_text = "Draw Structure...";
+static const QString SMILES_monomer_peptide_text = "Sketch Residue...";
+// TODO: change this as part of SKETCH-2796
+static const QString SMILES_monomer_nucleic_acid_text = "Sketch Base...";
+
+} // namespace
+
 MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     AbstractDrawToolWidget(parent)
 {
@@ -52,6 +63,7 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     ui->unk_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
     ui->na_n_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
     ui->custom_monomer_btn->setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
+    ui->custom_monomer_btn->setCenterContents(true);
 
     using ButtonAminoAcidBimapType =
         boost::bimap<QAbstractButton*, AminoAcidTool>;
@@ -108,10 +120,13 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     m_custom_monomer_action = new QAction(this);
     custom_monomer_menu->addAction(m_custom_monomer_action);
     custom_monomer_menu->addSeparator();
-    auto* custom_chem_monomer_action = new QAction("Sketch CHEM...", this);
+    auto* custom_chem_monomer_action =
+        new QAction(SMILES_monomer_CHEM_text, this);
     custom_monomer_menu->addAction(custom_chem_monomer_action);
     // Avoid QToolButton's synchronous menu event loop in WASM builds.
     ui->custom_monomer_btn->setPopupWidget(custom_monomer_menu);
+    ui->custom_monomer_btn->showPopupIndicator(false);
+    ui->custom_monomer_btn->showPopupIndicatorOnHover(true);
     connect(ui->custom_monomer_btn, &QToolButton::clicked, this,
             [this]() { m_custom_monomer_action->trigger(); });
     connect(m_custom_monomer_action, &QAction::triggered, this,
@@ -378,6 +393,7 @@ void MonomerToolWidget::updateCheckedButton()
                                   ui->monomeric_connection_group);
     const bool custom_monomer_selected = draw_tool == DrawTool::CUSTOM_MONOMER;
     ui->custom_monomer_btn->setChecked(custom_monomer_selected);
+    ui->custom_monomer_btn->showPopupIndicator(custom_monomer_selected);
     setCustomMonomerActionChainType(
         ui->amino_or_nucleic_group->checkedButton() == ui->amino_monomer_btn
             ? rdkit_extensions::ChainType::PEPTIDE
@@ -482,8 +498,8 @@ void MonomerToolWidget::setCustomMonomerActionChainType(
     m_custom_monomer_chain_type = chain_type;
     m_custom_monomer_action->setText(
         chain_type == rdkit_extensions::ChainType::PEPTIDE
-            ? "Sketch peptide..."
-            : "Sketch nucleic acid...");
+            ? SMILES_monomer_peptide_text
+            : SMILES_monomer_nucleic_acid_text);
 }
 
 /**
@@ -548,7 +564,7 @@ void MonomerToolWidget::sketchCustomMonomer(
     const bool custom_monomer_selected = draw_tool == DrawTool::CUSTOM_MONOMER;
     ui->custom_monomer_btn->setChecked(custom_monomer_selected);
 
-    auto* dialog = new CustomMonomerDialog(chain_type, this);
+    auto* dialog = new CustomMonomerDialog(chain_type, false, this);
     connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
             &MonomerToolWidget::onCustomMonomerDialogAccepted);
     dialog->show();
