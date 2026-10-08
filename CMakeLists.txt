@@ -338,6 +338,7 @@ if(EMSCRIPTEN)
       -sEXPORT_NAME=schrodinger_sketcher_entry
       -sMODULARIZE=1
       -sEXPORTED_RUNTIME_METHODS=[callMain,FS,JSEvents,specialHTMLTargets,stringToUTF8,stringToUTF16,UTF16ToString,lengthBytesUTF8,getExceptionMessage]
+      -sASYNCIFY
       -lembind
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0
