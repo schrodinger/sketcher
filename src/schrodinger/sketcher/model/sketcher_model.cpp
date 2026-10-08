@@ -7,6 +7,7 @@
 #include <QPointF>
 #include <rdkit/GraphMol/Atom.h>
 
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/amino_acid_item.h"
@@ -18,7 +19,19 @@
 #include "schrodinger/sketcher/molviewer/nucleic_acid_sugar_item.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
+/**
+ * A custom monomer is described by a SMILES string an the monomer type
+ */
+using CustomMonomer =
+    std::pair<QString, schrodinger::rdkit_extensions::ChainType>;
+
+/**
+ * A nucleotide is described by the residue names of the sugar, base, and
+ * phosphate
+ */
 using MonomericNucleotide = std::tuple<QString, QString, QString>;
+
+Q_DECLARE_METATYPE(CustomMonomer);
 Q_DECLARE_METATYPE(MonomericNucleotide);
 Q_DECLARE_METATYPE(schrodinger::sketcher::NucleicAcidMutation);
 
@@ -75,6 +88,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::RNA_NUCLEOBASE,
         ModelKey::DNA_NUCLEOBASE,
         ModelKey::CUSTOM_NUCLEOTIDE,
+        ModelKey::CUSTOM_MONOMER,
         ModelKey::INTERFACE_TYPE,
         ModelKey::TOOL_SET,
         ModelKey::MOLECULE_TYPE,
@@ -155,6 +169,11 @@ MonomerToolType SketcherModel::getMonomerToolType() const
 AminoAcidTool SketcherModel::getAminoAcidTool() const
 {
     return m_model_map.at(ModelKey::AMINO_ACID_TOOL).value<AminoAcidTool>();
+}
+
+CustomMonomer SketcherModel::getCustomMonomer() const
+{
+    return m_model_map.at(ModelKey::CUSTOM_MONOMER).value<CustomMonomer>();
 }
 
 NucleicAcidTool SketcherModel::getNucleicAcidTool() const
@@ -265,6 +284,9 @@ void SketcherModel::reset()
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::CUSTOM_NUCLEOTIDE,
          QVariant::fromValue(MonomericNucleotide("R", "N", "P"))},
+        {ModelKey::CUSTOM_MONOMER,
+         QVariant::fromValue(
+             CustomMonomer{"", rdkit_extensions::ChainType::PEPTIDE})},
         {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
         {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},

@@ -78,6 +78,17 @@ SketcherSideBar::SketcherSideBar(QWidget* parent) : SketcherView(parent)
 
 SketcherSideBar::~SketcherSideBar() = default;
 
+void SketcherSideBar::setInterfaceToggleVisible(const bool visible)
+{
+    ui->atomistic_or_monomeric_widget->setVisible(visible);
+}
+
+int SketcherSideBar::getInterfaceToggleHeight() const
+{
+    ui->atomistic_or_monomeric_widget->ensurePolished();
+    return ui->atomistic_or_monomeric_widget->sizeHint().height();
+}
+
 void SketcherSideBar::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);
@@ -150,7 +161,8 @@ void SketcherSideBar::updateCheckState()
     };
     static const std::unordered_set<DrawTool> MONOMERIC_TOOLS = {
         DrawTool::MONOMER,
-        // TODO: add monomeric connector tool in SKETCH-2483
+        DrawTool::CUSTOM_MONOMER,
+        DrawTool::MONOMERIC_CONNECTION,
     };
     QWidget* page;
     std::optional<DrawTool> new_draw_tool = std::nullopt;

@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 #include <QApplication>
 #include <QClipboard>
@@ -21,8 +22,12 @@
 #include <emscripten.h>
 #endif
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
+#include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
@@ -42,6 +47,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/monomer_analog.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -55,6 +61,7 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/molviewer/removing_bound_monomeric_connection.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -65,17 +72,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * Index-keyed counterpart to MonomerMutation: the same `(atoms,
- * helm_symbol)` pair, but with atom identity captured by index so it
- * survives a `MolModel::mutateMonomers` call (which may invalidate
- * raw `RDKit::Atom*` pointers via its snapshot mechanism).
- */
-struct IndexedMonomerMutation {
-    std::vector<unsigned int> atom_indices;
-    std::string helm_symbol;
-};
 
 /**
  * Capture atom identity by index before a sequence of
@@ -127,6 +123,23 @@ static MonomerType nucleic_acid_tool_to_monomer_type(NucleicAcidTool tool)
         default:
             Q_UNREACHABLE_RETURN(MonomerType::NA_BASE);
     }
+}
+
+/**
+ * @return a SMILES string representing the content of the specified monomer.
+ * For non-SMILES monomers, this is taken from the monomer database. If the
+ * monomer is not found in the database, std:nullopt is returned.
+ */
+static std::optional<std::string>
+get_monomer_smiles(const RDKit::Atom* const atom)
+{
+    const auto monomer_label = atom->getProp<std::string>(ATOM_LABEL);
+    bool is_smiles = false;
+    if (atom->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+        return monomer_label;
+    }
+    return rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
+        monomer_label, rdkit_extensions::getChainType(*atom));
 }
 
 /**
@@ -861,6 +874,103 @@ void SketcherWidget::showEditAtomPropertiesDialog(
     dialog->show();
 }
 
+/**
+ * After the user accepts the edits in the CustomMonomerDialog, figure out
+ * which connections, if any, we should remove from the edited monomer.
+ * Connections will be removed if the user deleted their associated attachment
+ * point.
+ * @param accepted_smiles A SMILES string representing the edited monomer
+ * @param required_attachment_points Any attachment points that were involved in
+ * connections prior to editing
+ * @param required_connections Information about the monomer's connections prior
+ * to editing
+ * @param mol The molecule containing the edited monomer
+ * @param atom_index The index of the edited monomer
+ * @return A pair of
+ *   - any primary connections to remove
+ *   - any secondary connections to remove
+ */
+static std::pair<std::unordered_set<const RDKit::Bond*>,
+                 std::unordered_set<const RDKit::Bond*>>
+get_connections_to_remove_after_monomer_edit(
+    const std::string& accepted_smiles,
+    const std::vector<int>& required_attachment_points,
+    const std::vector<RequiredConnection>& required_connections,
+    const RDKit::ROMol* mol, unsigned int atom_index)
+{
+    // figure out if the user erased any bound attachment points,
+    // since we'll need to erase the associated connections if they
+    // did (the dialog already warned the user about this)
+    const auto edited_monomer =
+        rdkit_extensions::to_rdkit(accepted_smiles, Format::EXTENDED_SMILES);
+    const auto missing_attachment_points =
+        get_missing_required_attachment_points(*edited_monomer,
+                                               required_attachment_points);
+    const std::unordered_set<int> missing_attachment_point_set(
+        missing_attachment_points.begin(), missing_attachment_points.end());
+
+    std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::Bond*> secondary_connections;
+    for (const auto& connection : required_connections) {
+        if (!missing_attachment_point_set.contains(
+                connection.attachment_point)) {
+            continue;
+        }
+        const auto* bond = mol->getBondBetweenAtoms(
+            atom_index, connection.bound_monomer_index);
+        if (connection.is_secondary_connection) {
+            secondary_connections.insert(bond);
+        } else {
+            bonds.insert(bond);
+        }
+    }
+    return {std::move(bonds), std::move(secondary_connections)};
+}
+
+void SketcherWidget::showEditMonomerStructureDialog(
+    const RDKit::Atom* const atom)
+{
+    if (atom == nullptr) {
+        return;
+    }
+    const auto smiles = get_monomer_smiles(atom);
+
+    const auto chain_type = rdkit_extensions::getChainType(*atom);
+    const auto monomer_type = get_monomer_type(atom);
+    const auto atom_index = atom->getIdx();
+
+    auto [required_attachment_points, required_connections] =
+        get_required_attachment_points(atom);
+    auto* dialog = new CustomMonomerDialog(chain_type, this);
+    dialog->setRequiredAttachmentPoints(required_attachment_points);
+    if (smiles) {
+        dialog->addSMILES(normalize_smiles_attachment_points(*smiles));
+    }
+    // note that we ignore the chain type emitted with customMonomerAccepted
+    // since it's guaranteed to be the same as chain_type
+    connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
+            [this, atom_index, monomer_type, required_attachment_points,
+             required_connections](const std::string& accepted_smiles,
+                                   const auto&) {
+                const auto [bonds, secondary_connections] =
+                    get_connections_to_remove_after_monomer_edit(
+                        accepted_smiles, required_attachment_points,
+                        required_connections, m_mol_model->getMol(),
+                        atom_index);
+
+                // erase any required connections and mutate the monomer in a
+                // single undo step
+                auto undo_raii =
+                    m_mol_model->createUndoMacro("Edit monomer structure");
+                m_mol_model->remove({}, bonds, secondary_connections, {}, {});
+                const auto* monomer =
+                    m_mol_model->getMol()->getAtomWithIdx(atom_index);
+                m_mol_model->mutateMonomers({monomer}, accepted_smiles,
+                                            monomer_type, /*is_smiles=*/true);
+            });
+    dialog->show();
+}
+
 void SketcherWidget::updateWatermarkVisibilityAndPos()
 {
     bool is_empty = m_sketcher_model->sceneIsEmpty();
@@ -1007,33 +1117,64 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
     connect(&menu, &MonomerContextMenu::deleteRequested, this,
             [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
 
-    connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
-            [this](auto mutations, const QString& description) {
-                if (mutations.empty()) {
-                    return;
-                }
-                auto indexed = capture_atom_indices(std::move(mutations));
+    connect(&menu, &MonomerContextMenu::editStructureRequested, this,
+            &SketcherWidget::showEditMonomerStructureDialog);
 
-                auto undo_raii = m_mol_model->createUndoMacro(
-                    description.isEmpty() ? QStringLiteral("Mutate Monomers")
-                                          : description);
-                for (auto& [idxs, sym] : indexed) {
-                    if (idxs.empty()) {
-                        continue;
-                    }
-                    std::unordered_set<const RDKit::Atom*> resolved;
-                    resolved.reserve(idxs.size());
-                    const auto* mol = m_mol_model->getMol();
-                    for (auto i : idxs) {
-                        resolved.insert(mol->getAtomWithIdx(i));
-                    }
-                    // Menu emits uniform-type batches; first-atom sample
-                    // gives the right type.
-                    const auto target_type =
-                        get_monomer_type(*resolved.begin());
-                    m_mol_model->mutateMonomers(resolved, sym, target_type);
-                }
-            });
+    connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
+            &SketcherWidget::mutateMonomersFromContextMenu);
+}
+
+void SketcherWidget::mutateMonomersFromContextMenu(
+    std::vector<MonomerMutation> mutations, QString description)
+{
+    if (mutations.empty()) {
+        return;
+    }
+    auto indexed = capture_atom_indices(std::move(mutations));
+    auto changes = get_monomer_mutation_connection_changes(
+        *m_mol_model->getMol(), indexed);
+
+    auto apply_mutations = [this, indexed = std::move(indexed), changes,
+                            description]() {
+        auto undo_raii = m_mol_model->createUndoMacro(
+            description.isEmpty() ? QStringLiteral("Mutate Monomers")
+                                  : description);
+        const auto* mol = m_mol_model->getMol();
+        std::unordered_set<const RDKit::Bond*> bonds;
+        std::unordered_set<const RDKit::Bond*> secondary;
+        for (auto index : changes.bond_indices) {
+            bonds.insert(mol->getBondWithIdx(index));
+        }
+        for (auto index : changes.secondary_connection_indices) {
+            secondary.insert(mol->getBondWithIdx(index));
+        }
+        if (!bonds.empty() || !secondary.empty()) {
+            m_mol_model->remove({}, bonds, secondary, {}, {});
+        }
+        for (const auto& [idxs, sym] : indexed) {
+            if (idxs.empty()) {
+                continue;
+            }
+            std::unordered_set<const RDKit::Atom*> resolved;
+            resolved.reserve(idxs.size());
+            const auto* current_mol = m_mol_model->getMol();
+            for (auto i : idxs) {
+                resolved.insert(current_mol->getAtomWithIdx(i));
+            }
+            // Menu emits uniform-type batches; first-atom sample gives
+            // the right type.
+            const auto target_type = get_monomer_type(*resolved.begin());
+            m_mol_model->mutateMonomers(resolved, sym, target_type);
+        }
+    };
+    if (changes.missing_attachment_points.empty()) {
+        apply_mutations();
+        return;
+    }
+    auto* warning = show_bound_connection_warning(
+        changes.missing_attachment_points, this, changes.affected_monomers > 1);
+    connect(warning, &MessageBoxDialog::accepted, this,
+            std::move(apply_mutations));
 }
 
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
@@ -1304,6 +1445,21 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
     m_ui->line->setVisible(visible);
 }
 
+void SketcherWidget::setInterfaceToggleVisible(const bool visible)
+{
+    m_ui->side_bar_wdg->setInterfaceToggleVisible(visible);
+}
+
+void SketcherWidget::addWidgetBelowView(QWidget* widget)
+{
+    m_ui->verticalLayout->addWidget(widget);
+}
+
+const SketcherSideBar* SketcherWidget::getSideBar() const
+{
+    return m_ui->side_bar_wdg;
+}
+
 /**
  * Determine whether we should interpret a keyboard shortcut as an amino acid or
  * a nucleic acid. If there a selection of only amino acids or only nucleic
@@ -1333,11 +1489,10 @@ determine_monomeric_keyboard_shortcut_type(const SketcherModel* const model,
 
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
-    QWidget::keyPressEvent(event);
-
     if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // keyboard shortcuts are disabled when select-only mode is active to
         // prevent the user from switching tools
+        QWidget::keyPressEvent(event);
         return;
     }
 
@@ -1351,14 +1506,22 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
     bool handled = handleCommonKeyboardShortcuts(event, cursor_pos, targets);
     if (!handled) {
         if (m_sketcher_model->getToolSet() == ToolSet::ATOMISTIC) {
-            handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
         } else if (determine_monomeric_keyboard_shortcut_type(m_sketcher_model,
                                                               targets) ==
                    MonomerToolType::AMINO_ACID) {
-            handleAminoAcidKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleAminoAcidKeyboardShortcuts(event, cursor_pos, targets);
         } else {
-            handleNucleicAcidKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleNucleicAcidKeyboardShortcuts(event, cursor_pos, targets);
         }
+    }
+    if (handled) {
+        event->accept();
+    } else {
+        QWidget::keyPressEvent(event);
     }
 }
 
@@ -1413,7 +1576,7 @@ bool SketcherWidget::handleCommonKeyboardShortcuts(
     }
 }
 
-void SketcherWidget::handleAtomisticKeyboardShortcuts(
+bool SketcherWidget::handleAtomisticKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     std::pair<ModelKey, QVariant> kv_pair;
@@ -1436,7 +1599,7 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
             has_targets = has_target_atoms;
             updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                            targets);
-            return;
+            return true;
         }
         case Qt::Key_0:
         case Qt::Key_1:
@@ -1455,20 +1618,20 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
             has_targets = has_target_bonds;
             updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                            targets);
-            return;
+            return true;
         }
 
         case Qt::Key_D: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(2);
             m_mol_model->mutateAtoms(targets.atoms, to_atom);
-            return;
+            return true;
         }
         case Qt::Key_T: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(3);
             m_mol_model->mutateAtoms(targets.atoms, to_atom);
-            return;
+            return true;
         }
         /* case Qt::Key_Escape:
             // TODO: SKETCH-1184 SKETCH-2045
@@ -1492,13 +1655,14 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
                      QVariant::fromValue(AtomTool::ELEMENT)}};
                 updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                                targets);
+                return true;
             }
-            return;
+            return false;
         }
     }
 }
 
-void SketcherWidget::handleAminoAcidKeyboardShortcuts(
+bool SketcherWidget::handleAminoAcidKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     static const std::unordered_map<Qt::Key, AminoAcidTool> KEY_TO_AMINO_ACID{
@@ -1538,10 +1702,12 @@ void SketcherWidget::handleAminoAcidKeyboardShortcuts(
              QVariant::fromValue(MonomerToolType::AMINO_ACID)},
             {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(amino_acid_tool)}};
         updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs, targets);
+        return true;
     }
+    return false;
 }
 
-void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
+bool SketcherWidget::handleNucleicAcidKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     // behavior for the keyboard keys that represent nucleobases, depending on
@@ -1664,7 +1830,9 @@ void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
     if (kv_pair.has_value()) {
         updateModelForKeyboardShortcut(has_targets, *kv_pair, kv_pairs,
                                        targets);
+        return true;
     }
+    return false;
 }
 
 void SketcherWidget::onBackgroundColorChanged(const QColor& color)
@@ -1739,6 +1907,25 @@ void SketcherWidget::applyModelValuePingToTargets(
         case ModelKey::AMINO_ACID_SYMBOL: {
             auto symbol = value.toString().toStdString();
             m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
+            break;
+        }
+        case ModelKey::CUSTOM_MONOMER: {
+            auto [smiles, chain_type] =
+                value.value<std::pair<QString, rdkit_extensions::ChainType>>();
+            MonomerType monomer_type;
+            switch (chain_type) {
+                case rdkit_extensions::ChainType::PEPTIDE:
+                    monomer_type = MonomerType::PEPTIDE;
+                    break;
+                case rdkit_extensions::ChainType::RNA:
+                    // TODO: create a NA_CUSTOM type and use that here
+                    monomer_type = MonomerType::NA_BASE;
+                    break;
+                default:
+                    monomer_type = MonomerType::CHEM;
+            }
+            m_mol_model->mutateMonomers(atoms, smiles.toStdString(),
+                                        monomer_type, /*is_smiles =*/true);
             break;
         }
         case ModelKey::NUCLEIC_ACID_SYMBOL: {
