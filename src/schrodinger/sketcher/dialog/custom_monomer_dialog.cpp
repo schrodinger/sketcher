@@ -6,7 +6,6 @@
 
 #include <QDialogButtonBox>
 #include <QPushButton>
-#include <QStringList>
 
 #include <stdexcept>
 
@@ -18,6 +17,7 @@
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
+#include "schrodinger/sketcher/molviewer/removing_bound_monomeric_connection.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/ui/ui_custom_monomer_dialog.h"
@@ -51,29 +51,6 @@ static std::vector<int> get_duplicate_r_groups(const RDKit::ROMol& mol)
         }
     }
     return duplicate_r_groups;
-}
-
-/**
- * @return formatted text listing all R-groups in the given list of R-groups
- */
-static QString format_r_group_list(const std::vector<int>& r_group_numbers)
-{
-    if (r_group_numbers.empty()) {
-        return {};
-    }
-
-    QStringList r_groups;
-    for (const auto r_group_num : r_group_numbers) {
-        r_groups.append("R" + QString::number(r_group_num));
-    }
-
-    if (r_groups.size() == 1) {
-        return r_groups.front();
-    }
-
-    const auto last_r_group = r_groups.takeLast();
-    const auto separator = r_groups.size() == 1 ? " " : ", ";
-    return r_groups.join(", ") + separator + "and " + last_r_group;
 }
 
 static QString chain_type_display_name(const ChainType chain_type)
@@ -149,23 +126,6 @@ void CustomMonomerDialog::updateOkButton()
     ui->button_box->button(QDialogButtonBox::Ok)->setEnabled(valid);
 }
 
-/**
- * @return the test of the warning to use when the user has deleted the
- * specified required attachment points (i.e. attachment points that have a
- * bound connection)
- */
-static QString
-get_warning_text(const std::vector<int>& missing_attachment_points)
-{
-    const bool plural = missing_attachment_points.size() != 1;
-    const auto attachment_points =
-        format_r_group_list(missing_attachment_points);
-    return attachment_points + (plural ? " have" : " has") +
-           " been removed from this monomer but " + (plural ? "are" : "is") +
-           " currently bound. Continuing will remove " +
-           (plural ? "these connections." : "this connection.");
-}
-
 void CustomMonomerDialog::accept()
 {
     const auto mol = ui->sketcher_widget->getRDKitMolecule();
@@ -187,9 +147,8 @@ void CustomMonomerDialog::accept()
                                                m_required_attachment_points);
     const auto smiles = ui->sketcher_widget->getString(Format::EXTENDED_SMILES);
     if (!missing_attachment_points.empty()) {
-        auto warning_text = get_warning_text(missing_attachment_points);
-        auto* warning_dialog = show_warning_dialog("Remove Bound Connections?",
-                                                   warning_text, this);
+        auto* warning_dialog =
+            show_bound_connection_warning(missing_attachment_points, this);
         connect(warning_dialog, &MessageBoxDialog::accepted, this,
                 [this, smiles]() {
                     emit customMonomerAccepted(smiles, m_chain_type);
