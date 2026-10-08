@@ -1,0 +1,309 @@
+diff --git a/Code/GraphMol/Depictor/DepictUtils.cpp b/Code/GraphMol/Depictor/DepictUtils.cpp
+index 68415ac7b..d75af2fdc 100644
+--- a/Code/GraphMol/Depictor/DepictUtils.cpp
++++ b/Code/GraphMol/Depictor/DepictUtils.cpp
+@@ -14,6 +14,8 @@
+ #include <RDGeneral/Invariant.h>
+ #include <GraphMol/Chirality.h>
+ #include <algorithm>
++#include <functional>
++#include <utility>
+ #include <boost/dynamic_bitset.hpp>
+ 
+ namespace {
+@@ -165,28 +167,33 @@ RDKit::INT_VECT setNbrOrder(unsigned int aid, const RDKit::INT_VECT &nbrs,
+ 
+ int pickFirstRingToEmbed(const RDKit::ROMol &mol,
+                          const RDKit::VECT_INT_VECT &fusedRings) {
+-  // ok this is what we will do here
+-  // we will pick the ring with the smallest number of substituents
++  // Start with the ring with the fewest substituents, then the largest ring.
++  // For ties, prefer the ring with higher-ranked atom environments. Equal
++  // rank signatures still retain ring discovery order.
+   int res = -1;
+   unsigned int maxSize = 0;
++  std::vector<std::uint64_t> bestRanks;
+   int subs, minsubs = static_cast<int>(1e8);
+   int cnt = 0;
+   for (const auto &fusedRing : fusedRings) {
+     subs = 0;
++    std::vector<std::uint64_t> ranks;
++    ranks.reserve(fusedRing.size());
+     for (auto rii : fusedRing) {
+-      if (mol.getAtomWithIdx(rii)->getDegree() > 2) {
++      const auto atom = mol.getAtomWithIdx(rii);
++      if (atom->getDegree() > 2) {
+         ++subs;
+       }
++      ranks.push_back(getAtomDepictRank(atom));
+     }
+-    if (subs < minsubs) {
++    std::sort(ranks.begin(), ranks.end(), std::greater<>{});
++    if (subs < minsubs || (subs == minsubs && (fusedRing.size() > maxSize ||
++                                               (fusedRing.size() == maxSize &&
++                                                ranks > bestRanks)))) {
+       res = cnt;
+       minsubs = subs;
+       maxSize = fusedRing.size();
+-    } else if (subs == minsubs) {
+-      if (fusedRing.size() > maxSize) {
+-        res = cnt;
+-        maxSize = fusedRing.size();
+-      }
++      bestRanks = std::move(ranks);
+     }
+     cnt++;
+   }
+@@ -577,7 +584,7 @@ INT_PAIR_VECT findBondsPairsToPermuteDeg4(const RDGeom::Point2D &center,
+ template <class T>
+ T rankAtomsByRank(const RDKit::ROMol &mol, const T &commAtms, bool ascending) {
+   const auto natms = commAtms.size();
+-  INT_PAIR_VECT rankAid;
++  std::vector<std::pair<std::uint64_t, unsigned int>> rankAid;
+   rankAid.reserve(natms);
+   for (const auto aid : commAtms) {
+     unsigned int rank = aid;
+@@ -594,10 +601,13 @@ T rankAtomsByRank(const RDKit::ROMol &mol, const T &commAtms, bool ascending) {
+         // _CIPRank-driven behavior
+         rank = mol.getNumAtoms() - rank;
+       }
+-      rank += mol.getNumAtoms() * getAtomDepictRank(at);
++      rankAid.emplace_back(static_cast<std::uint64_t>(rank) +
++                               static_cast<std::uint64_t>(mol.getNumAtoms()) *
++                                   getAtomDepictRank(at),
++                           aid);
++    } else {
++      rankAid.emplace_back(rank, aid);
+     }
+-
+-    rankAid.emplace_back(rank, aid);
+   }
+   if (ascending) {
+     std::stable_sort(rankAid.begin(), rankAid.end(),
+diff --git a/Code/GraphMol/Depictor/DepictUtils.h b/Code/GraphMol/Depictor/DepictUtils.h
+index 659ff30d0..15879974e 100644
+--- a/Code/GraphMol/Depictor/DepictUtils.h
++++ b/Code/GraphMol/Depictor/DepictUtils.h
+@@ -13,6 +13,7 @@
+ 
+ // REVIEW: remove extra headers here
+ #include <RDGeneral/types.h>
++#include <RDGeneral/hash/hash.hpp>
+ #include <GraphMol/RDKitBase.h>
+ #include <GraphMol/RWMol.h>
+ #include <GraphMol/ROMol.h>
+@@ -20,7 +21,10 @@
+ #include <Geometry/Transform2D.h>
+ #include <Geometry/Transform3D.h>
+ #include <Geometry/point.h>
++#include <algorithm>
++#include <cstdint>
+ #include <queue>
++#include <vector>
+ 
+ namespace RDDepict {
+ 
+@@ -342,7 +346,7 @@ RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getAllRotatableBonds(
+   \return true if the atom is a spiro center
+ */
+ RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
+-                                          const RDKit::ROMol *mol);
++                                         const RDKit::ROMol *mol);
+ 
+ //! \brief find spiro centers on the shortest path between two atoms
+ /*!
+@@ -352,8 +356,9 @@ RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
+ 
+   \return a set of the indices of spiro centers
+ */
+-RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getSpiroCenters(
+-    const RDKit::ROMol &mol, unsigned int aid1, unsigned int aid2);
++RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getSpiroCenters(const RDKit::ROMol &mol,
++                                                      unsigned int aid1,
++                                                      unsigned int aid2);
+ 
+ //! Get the ids of the atoms and bonds that are connected to aid
+ RDKIT_DEPICTOR_EXPORT void getNbrAtomAndBondIds(unsigned int aid,
+@@ -389,14 +394,36 @@ RDKIT_DEPICTOR_EXPORT INT_PAIR_VECT findBondsPairsToPermuteDeg4(
+     const RDGeom::Point2D &center, const RDKit::INT_VECT &nbrBids,
+     const VECT_C_POINT &nbrLocs);
+ 
+-//! returns the rank of the atom for determining draw order
+-inline int getAtomDepictRank(const RDKit::Atom *at) {
++/*!
++  \brief Returns a rank used to determine atom draw order.
++
++  Rank by atomic number (hydrogen last), then degree, then a hash of the
++  sorted neighbor environment. The starting-atom and attachment-ordering
++  callers use the atom index to break remaining ties.
++
++  \param at  the atom of interest
++
++  \return a 64-bit integer representing the atom's rank
++*/
++inline std::uint64_t getAtomDepictRank(const RDKit::Atom *at) {
+   const int maxAtNum = 1000;
+   const int maxDeg = 100;
+   int anum = at->getAtomicNum();
+   anum = anum == 1 ? maxAtNum : anum;  // favor non-hydrogen atoms
+   int deg = at->getDegree();
+-  return maxDeg * anum + deg;
++  std::vector<std::pair<unsigned int, unsigned int>> neighbors;
++  neighbors.reserve(deg);
++  for (const auto nbr : at->getOwningMol().atomNeighbors(at)) {
++    neighbors.emplace_back(nbr->getAtomicNum(), nbr->getDegree());
++  }
++  std::sort(neighbors.begin(), neighbors.end());
++  // Hash the sorted local environment so atom order does not affect this
++  // tie breaker. Keep element and degree as the primary ordering criteria.
++  const auto neighborHash =
++      gboost::hash_range(neighbors.begin(), neighbors.end());
++  constexpr std::uint64_t hashBits = 16;
++  return ((static_cast<std::uint64_t>(maxDeg * anum + deg) << hashBits) |
++          (neighborHash & ((1u << hashBits) - 1)));
+ }
+ 
+ RDKIT_DEPICTOR_EXPORT bool hasTerminalRGroupOrQueryHydrogen(
+diff --git a/Code/GraphMol/Depictor/RDDepictor.cpp b/Code/GraphMol/Depictor/RDDepictor.cpp
+index 95dee7f9d..b47da6623 100644
+--- a/Code/GraphMol/Depictor/RDDepictor.cpp
++++ b/Code/GraphMol/Depictor/RDDepictor.cpp
+@@ -33,6 +33,7 @@
+ #include "DepictUtils.h"
+ #include <boost/dynamic_bitset.hpp>
+ #include <algorithm>
++#include <limits>
+ 
+ namespace RDDepict {
+ 
+@@ -45,7 +46,7 @@ constexpr auto SQRT3_2 = 0.866025;
+ 
+ std::vector<const RDKit::Atom *> getRankedAtomNeighbors(
+     const RDKit::ROMol &mol, const RDKit::Atom *atom,
+-    const std::vector<int> &atomRanks) {
++    const std::vector<std::uint64_t> &atomRanks) {
+   std::vector<const RDKit::Atom *> nbrs;
+   for (auto nbr : mol.atomNeighbors(atom)) {
+     nbrs.push_back(nbr);
+@@ -59,7 +60,7 @@ std::vector<const RDKit::Atom *> getRankedAtomNeighbors(
+ 
+ void embedSquarePlanar(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+                        std::list<EmbeddedFrag> &efrags,
+-                       const std::vector<int> &atomRanks) {
++                       const std::vector<std::uint64_t> &atomRanks) {
+   static const RDGeom::Point2D idealPoints[] = {
+       RDGeom::Point2D(ISQRT2 * BOND_LEN, ISQRT2 * BOND_LEN),
+       RDGeom::Point2D(ISQRT2 * BOND_LEN, -ISQRT2 * BOND_LEN),
+@@ -97,7 +98,7 @@ void embedSquarePlanar(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+ 
+ void embedTBP(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+               std::list<EmbeddedFrag> &efrags,
+-              const std::vector<int> &atomRanks) {
++              const std::vector<std::uint64_t> &atomRanks) {
+   static const RDGeom::Point2D idealPoints[] = {
+       RDGeom::Point2D(0, BOND_LEN),                        // axial
+       RDGeom::Point2D(0, -BOND_LEN),                       // axial
+@@ -135,7 +136,7 @@ void embedTBP(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+ 
+ void embedOctahedral(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+                      std::list<EmbeddedFrag> &efrags,
+-                     const std::vector<int> &atomRanks) {
++                     const std::vector<std::uint64_t> &atomRanks) {
+   static const RDGeom::Point2D idealPoints[] = {
+       RDGeom::Point2D(0, BOND_LEN),                         // axial
+       RDGeom::Point2D(0, -BOND_LEN),                        // axial
+@@ -212,7 +213,7 @@ void embedOctahedral(const RDKit::ROMol &mol, const RDKit::Atom *atom,
+ 
+ void embedNontetrahedralStereo(const RDKit::ROMol &mol,
+                                std::list<EmbeddedFrag> &efrags,
+-                               const std::vector<int> &atomRanks) {
++                               const std::vector<std::uint64_t> &atomRanks) {
+   boost::dynamic_bitset<> consider(mol.getNumAtoms());
+   for (const auto atm : mol.atoms()) {
+     if (RDKit::Chirality::hasNonTetrahedralStereo(atm)) {
+@@ -412,7 +413,7 @@ void computeInitialCoords(RDKit::ROMol &mol,
+                           const RDGeom::INT_POINT2D_MAP *coordMap,
+                           std::list<EmbeddedFrag> &efrags,
+                           bool useRingTemplates) {
+-  std::vector<int> atomRanks;
++  std::vector<std::uint64_t> atomRanks;
+   atomRanks.resize(mol.getNumAtoms());
+   for (auto i = 0u; i < mol.getNumAtoms(); ++i) {
+     atomRanks[i] = getAtomDepictRank(mol.getAtomWithIdx(i));
+@@ -466,7 +467,7 @@ void computeInitialCoords(RDKit::ROMol &mol,
+     if (mri == efrags.end()) {
+       // we are out of embedded fragments, if there are any
+       // non embedded atoms use them to start a fragment
+-      auto mrank = RDKit::MAX_INT;
++      auto mrank = std::numeric_limits<std::uint64_t>::max();
+       auto mnri = nratms.end();
+       for (auto nri = nratms.begin(); nri != nratms.end(); ++nri) {
+         auto rank = atomRanks.at(*nri);
+diff --git a/Code/GraphMol/Depictor/catch_tests.cpp b/Code/GraphMol/Depictor/catch_tests.cpp
+index 2f1538a86..d767d65a9 100644
+--- a/Code/GraphMol/Depictor/catch_tests.cpp
++++ b/Code/GraphMol/Depictor/catch_tests.cpp
+@@ -13,6 +13,7 @@
+ #include <GraphMol/MolAlign/AlignMolecules.h>
+ #include <GraphMol/RDKitBase.h>
+ #include <GraphMol/Chirality.h>
++#include <GraphMol/MolOps.h>
+ #include "RDDepictor.h"
+ #include "DepictUtils.h"
+ #include <GraphMol/SmilesParse/SmilesParse.h>
+@@ -24,6 +25,48 @@
+ 
+ using namespace RDKit;
+ 
++TEST_CASE("neighbor-aware ranking keeps bridged atoms distinct across orders") {
++  SmilesParserParams smilesParams;
++  smilesParams.removeHs = false;
++  std::unique_ptr<RWMol> base(
++      SmilesToMol("C1([H])([H])[C@@]2([H])O[C@]1([H])N2[H]", smilesParams));
++  REQUIRE(base);
++  REQUIRE(base->getNumAtoms() == 10);
++
++  // These carbons have the same element and degree, but different neighbors.
++  const auto carbonRank = RDDepict::getAtomDepictRank(base->getAtomWithIdx(0));
++  const auto bridgeheadRank =
++      RDDepict::getAtomDepictRank(base->getAtomWithIdx(3));
++  CHECK(carbonRank != bridgeheadRank);
++
++  const std::vector<std::vector<unsigned int>> orders = {
++      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
++      {5, 0, 1, 8, 6, 7, 4, 2, 9, 3},
++      {5, 9, 3, 1, 2, 7, 4, 6, 0, 8}};
++  for (const auto &order : orders) {
++    CAPTURE(order);
++    std::unique_ptr<ROMol> mol(MolOps::renumberAtoms(*base, order));
++    const auto newIndex = [&order](unsigned int original) {
++      return static_cast<unsigned int>(std::distance(
++          order.begin(), std::find(order.begin(), order.end(), original)));
++    };
++    CHECK(RDDepict::getAtomDepictRank(mol->getAtomWithIdx(newIndex(0))) ==
++          carbonRank);
++    CHECK(RDDepict::getAtomDepictRank(mol->getAtomWithIdx(newIndex(3))) ==
++          bridgeheadRank);
++
++    RDDepict::Compute2DCoordParameters params;
++    params.forceRDKit = true;
++    RDDepict::compute2DCoords(*mol, params);
++    const auto &conf = mol->getConformer();
++    // The ring carbon and N nearly coincide in the old layout for two of
++    // these orders; the neighbor-aware seed-ring choice separates them.
++    CHECK(
++        (conf.getAtomPos(newIndex(0)) - conf.getAtomPos(newIndex(8))).length() >
++        0.25);
++  }
++}
++
+ TEST_CASE(
+     "github #4504: overlapping coordinates with 1,1-disubstituted "
+     "cyclobutanes") {
+@@ -2670,4 +2713,4 @@ TEST_CASE("complex spiro structure from MOL file - reasonable bond lengths") {
+       CHECK(dist > 0.35);
+     }
+   }
+-}
+\ No newline at end of file
++}

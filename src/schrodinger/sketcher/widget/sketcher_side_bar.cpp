@@ -78,6 +78,17 @@ SketcherSideBar::SketcherSideBar(QWidget* parent) : SketcherView(parent)
 
 SketcherSideBar::~SketcherSideBar() = default;
 
+void SketcherSideBar::setInterfaceToggleVisible(const bool visible)
+{
+    ui->atomistic_or_monomeric_widget->setVisible(visible);
+}
+
+int SketcherSideBar::getInterfaceToggleHeight() const
+{
+    ui->atomistic_or_monomeric_widget->ensurePolished();
+    return ui->atomistic_or_monomeric_widget->sizeHint().height();
+}
+
 void SketcherSideBar::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);

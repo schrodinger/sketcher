@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QString>
+#include <QTextEdit>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
@@ -145,6 +146,40 @@ static void set_nucleic_acid_tool(TestSketcherWidget& sk, NucleicAcidTool tool)
          {ModelKey::NUCLEIC_ACID_SYMBOL,
           QVariant::fromValue(NucleicAcidMutation{tool, ""})}});
     QCoreApplication::processEvents();
+}
+
+/**
+ * Only handled shortcuts should stop key propagation to parent widgets.
+ */
+BOOST_AUTO_TEST_CASE(test_keyboard_shortcut_acceptance)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    for (const auto tool_set : {ToolSet::ATOMISTIC, ToolSet::MONOMERIC}) {
+        sk.m_sketcher_model->setValue(ModelKey::TOOL_SET, tool_set);
+        for (const auto monomer_type :
+             {MonomerToolType::AMINO_ACID, MonomerToolType::NUCLEIC_ACID}) {
+            sk.m_sketcher_model->setValue(ModelKey::MONOMER_TOOL_TYPE,
+                                          monomer_type);
+            QKeyEvent handled(QEvent::KeyPress, Qt::Key_C, Qt::NoModifier, "c");
+            QCoreApplication::sendEvent(&sk, &handled);
+            BOOST_TEST(handled.isAccepted());
+
+            QKeyEvent unhandled(QEvent::KeyPress, Qt::Key_F12, Qt::NoModifier);
+            QCoreApplication::sendEvent(&sk, &unhandled);
+            BOOST_TEST(!unhandled.isAccepted());
+
+            QKeyEvent common(QEvent::KeyPress, Qt::Key_Delete, Qt::NoModifier);
+            QCoreApplication::sendEvent(&sk, &common);
+            BOOST_TEST(common.isAccepted());
+        }
+    }
+
+    SketcherWidget select_only;
+    select_only.activateSelectOnlyMode();
+    QKeyEvent disabled(QEvent::KeyPress, Qt::Key_C, Qt::NoModifier, "c");
+    QCoreApplication::sendEvent(&select_only, &disabled);
+    BOOST_TEST(!disabled.isAccepted());
 }
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
@@ -1179,6 +1214,141 @@ BOOST_AUTO_TEST_CASE(test_mutateMonomerRequested_signal_mutates_peptide)
 
     const auto* mol_after = sk.m_mol_model->getMol();
     BOOST_TEST(get_monomer_res_name(mol_after->getAtomWithIdx(0)) == "C");
+}
+
+/**
+ * Mutate Residue must ask before replacing a cysteine whose R3 is bound.
+ * Cancel preserves the structure; accepting removes the connection and mutates
+ * the residue in one undo step.
+ */
+BOOST_AUTO_TEST_CASE(test_mutate_residue_warns_before_removing_connection)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+    BOOST_REQUIRE(sk.m_mol_model->getMol()->getNumAtoms() == 2u);
+    BOOST_REQUIRE(sk.m_mol_model->getMol()->getNumBonds() == 1u);
+    const auto undo_index = sk.m_undo_stack->index();
+    const auto* atom = sk.m_mol_model->getMol()->getAtomWithIdx(0);
+    auto* menu = sk.m_monomer_context_menu;
+    menu->setContextItems({atom}, {}, {}, {}, {}, atom);
+
+    QAction* mutate = nullptr;
+    for (auto* action : menu->actions()) {
+        if (action->text() == "Mutate Residue") {
+            mutate = action;
+            break;
+        }
+    }
+    BOOST_REQUIRE(mutate != nullptr);
+    QAction* alanine = nullptr;
+    for (auto* action : mutate->menu()->actions()) {
+        if (action->text() == "Alanine (A)") {
+            alanine = action;
+            break;
+        }
+    }
+    BOOST_REQUIRE(alanine != nullptr);
+    QAction* leaf = alanine->menu()->actions().front();
+    BOOST_TEST(leaf->text() == "A");
+
+    leaf->trigger();
+    auto find_warning = [&sk]() -> MessageBoxDialog* {
+        for (auto* dialog : sk.findChildren<MessageBoxDialog*>()) {
+            if (dialog->windowTitle() == "Remove Bound Connections?") {
+                return dialog;
+            }
+        }
+        return nullptr;
+    };
+    auto* warning = find_warning();
+    BOOST_REQUIRE(warning != nullptr);
+    auto* text = warning->findChild<QTextEdit*>("text_edit");
+    BOOST_REQUIRE(text != nullptr);
+    BOOST_TEST(text->toPlainText() ==
+               "R3 has been removed from this monomer but is currently bound. "
+               "Continuing will remove this connection.");
+    auto* buttons = warning->findChild<QDialogButtonBox*>("button_box");
+    BOOST_REQUIRE(buttons != nullptr);
+    buttons->button(QDialogButtonBox::Cancel)->click();
+    BOOST_TEST(sk.m_mol_model->getMol()->getNumBonds() == 1u);
+    BOOST_TEST(get_monomer_res_name(
+                   sk.m_mol_model->getMol()->getAtomWithIdx(0)) == "C");
+    BOOST_TEST(sk.m_undo_stack->index() == undo_index);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+
+    leaf->trigger();
+    warning = find_warning();
+    BOOST_REQUIRE(warning != nullptr);
+    buttons = warning->findChild<QDialogButtonBox*>("button_box");
+    BOOST_REQUIRE(buttons != nullptr);
+    buttons->button(QDialogButtonBox::Ok)->click();
+    const auto* mutated = sk.m_mol_model->getMol();
+    BOOST_TEST(mutated->getNumBonds() == 0u);
+    BOOST_TEST(get_monomer_res_name(mutated->getAtomWithIdx(0)) == "A");
+    BOOST_TEST(sk.m_undo_stack->index() == undo_index + 1);
+
+    sk.m_undo_stack->undo();
+    const auto* restored = sk.m_mol_model->getMol();
+    BOOST_TEST(restored->getNumBonds() == 1u);
+    BOOST_TEST(get_monomer_res_name(restored->getAtomWithIdx(0)) == "C");
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+}
+
+/** A replacement with the same bound attachment point keeps its connection. */
+BOOST_AUTO_TEST_CASE(test_mutate_residue_preserves_compatible_connection)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+    const auto* atom = sk.m_mol_model->getMol()->getAtomWithIdx(0);
+
+    emit sk.m_monomer_context_menu->mutateMonomerRequested({{{atom}, "K"}},
+                                                           QString());
+
+    const auto* mutated = sk.m_mol_model->getMol();
+    BOOST_TEST(mutated->getNumBonds() == 1u);
+    BOOST_TEST(get_monomer_res_name(mutated->getAtomWithIdx(0)) == "K");
+    for (auto* dialog : sk.findChildren<MessageBoxDialog*>()) {
+        BOOST_TEST(dialog->windowTitle() != "Remove Bound Connections?");
+    }
+}
+
+/** A batch mutation warns once and removes a shared connection once. */
+BOOST_AUTO_TEST_CASE(test_mutate_residue_batch_warns_for_bound_points)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+    const auto* mol = sk.m_mol_model->getMol();
+    const auto undo_index = sk.m_undo_stack->index();
+    emit sk.m_monomer_context_menu->mutateMonomerRequested(
+        {{{mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)}, "A"}}, QString());
+
+    MessageBoxDialog* warning = nullptr;
+    for (auto* dialog : sk.findChildren<MessageBoxDialog*>()) {
+        if (dialog->windowTitle() == "Remove Bound Connections?") {
+            warning = dialog;
+        }
+    }
+    BOOST_REQUIRE(warning != nullptr);
+    auto* text = warning->findChild<QTextEdit*>("text_edit");
+    BOOST_REQUIRE(text != nullptr);
+    BOOST_TEST(text->toPlainText().contains("selected replacement monomers"));
+    BOOST_TEST(sk.m_mol_model->getMol()->getNumBonds() == 1u);
+    auto* buttons = warning->findChild<QDialogButtonBox*>("button_box");
+    BOOST_REQUIRE(buttons != nullptr);
+    buttons->button(QDialogButtonBox::Ok)->click();
+
+    mol = sk.m_mol_model->getMol();
+    BOOST_TEST(mol->getNumBonds() == 0u);
+    BOOST_TEST(get_monomer_res_name(mol->getAtomWithIdx(0)) == "A");
+    BOOST_TEST(get_monomer_res_name(mol->getAtomWithIdx(1)) == "A");
+    BOOST_TEST(sk.m_undo_stack->index() == undo_index + 1);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 }
 
 /**

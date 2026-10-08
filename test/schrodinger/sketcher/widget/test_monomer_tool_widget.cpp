@@ -4,16 +4,20 @@
 #include <QAbstractButton>
 #include <QGridLayout>
 #include <QGraphicsSceneMouseEvent>
+#include <QMenu>
 #include <QPointer>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSignalSpy>
+#include <QTest>
+#include <QTimer>
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
+#include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/widget/amino_acid_symbol_popup.h"
 #include "schrodinger/sketcher/widget/modular_tool_button.h"
 #include "schrodinger/sketcher/widget/monomer_tool_widget.h"
@@ -87,6 +91,55 @@ BOOST_AUTO_TEST_CASE(monomer_popup_scrolling)
                 BOOST_TEST(!popup->isVisible());
             }
         }
+    }
+}
+
+/**
+ * A long press opens the custom monomer menu asynchronously, without also
+ * opening a drawing dialog or changing the button's check state.
+ */
+BOOST_AUTO_TEST_CASE(custom_monomer_menu_long_press)
+{
+    auto scene = TestScene::getScene();
+    for (bool checked : {false, true}) {
+        MonomerToolWidget widget;
+        widget.setModel(scene->m_sketcher_model);
+        widget.show();
+        auto* button =
+            widget.findChild<ToolButtonWithPopup*>("custom_monomer_btn");
+        BOOST_REQUIRE(button != nullptr);
+        auto* menu = qobject_cast<QMenu*>(button->getPopupWidget());
+        BOOST_REQUIRE(menu != nullptr);
+        // Installing this as a built-in menu would reintroduce QMenu::exec().
+        BOOST_TEST(button->menu() == nullptr);
+        button->setChecked(checked);
+        button->setPopupDelay(10);
+        QSignalSpy clicked(button, &QToolButton::clicked);
+
+        // Ensure a regression to a blocking menu cannot hang this test.
+        QTimer::singleShot(500, menu, &QMenu::hide);
+        QTest::mousePress(button, Qt::LeftButton);
+        BOOST_REQUIRE(
+            QTest::qWaitFor([menu]() { return menu->isVisible(); }, 200));
+        BOOST_TEST(button->isChecked() == checked);
+        BOOST_TEST(clicked.count() == 0);
+        BOOST_TEST(widget.findChild<CustomMonomerDialog*>() == nullptr);
+
+        QTest::mouseRelease(button, Qt::LeftButton);
+        BOOST_TEST(menu->isVisible());
+        BOOST_TEST(clicked.count() == 0);
+        BOOST_TEST(widget.findChild<CustomMonomerDialog*>() == nullptr);
+        menu->hide();
+
+        // Short clicks must still open the default drawing dialog, including
+        // when the custom monomer tool is already selected.
+        QTest::mouseClick(button, Qt::LeftButton);
+        auto* dialog = widget.findChild<CustomMonomerDialog*>();
+        BOOST_REQUIRE(dialog != nullptr);
+        BOOST_TEST(dialog->isVisible());
+        BOOST_TEST(dialog->windowTitle() == "Sketch Custom Peptide Monomer");
+        BOOST_TEST(!menu->isVisible());
+        dialog->reject();
     }
 }
 
