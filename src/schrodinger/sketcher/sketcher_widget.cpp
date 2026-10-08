@@ -1440,6 +1440,21 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
     m_ui->line->setVisible(visible);
 }
 
+void SketcherWidget::setInterfaceToggleVisible(const bool visible)
+{
+    m_ui->side_bar_wdg->setInterfaceToggleVisible(visible);
+}
+
+void SketcherWidget::addWidgetBelowView(QWidget* widget)
+{
+    m_ui->verticalLayout->addWidget(widget);
+}
+
+const SketcherSideBar* SketcherWidget::getSideBar() const
+{
+    return m_ui->side_bar_wdg;
+}
+
 /**
  * Determine whether we should interpret a keyboard shortcut as an amino acid or
  * a nucleic acid. If there a selection of only amino acids or only nucleic
@@ -1469,11 +1484,10 @@ determine_monomeric_keyboard_shortcut_type(const SketcherModel* const model,
 
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
-    QWidget::keyPressEvent(event);
-
     if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // keyboard shortcuts are disabled when select-only mode is active to
         // prevent the user from switching tools
+        QWidget::keyPressEvent(event);
         return;
     }
 
@@ -1487,14 +1501,22 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
     bool handled = handleCommonKeyboardShortcuts(event, cursor_pos, targets);
     if (!handled) {
         if (m_sketcher_model->getToolSet() == ToolSet::ATOMISTIC) {
-            handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
         } else if (determine_monomeric_keyboard_shortcut_type(m_sketcher_model,
                                                               targets) ==
                    MonomerToolType::AMINO_ACID) {
-            handleAminoAcidKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleAminoAcidKeyboardShortcuts(event, cursor_pos, targets);
         } else {
-            handleNucleicAcidKeyboardShortcuts(event, cursor_pos, targets);
+            handled =
+                handleNucleicAcidKeyboardShortcuts(event, cursor_pos, targets);
         }
+    }
+    if (handled) {
+        event->accept();
+    } else {
+        QWidget::keyPressEvent(event);
     }
 }
 
@@ -1549,7 +1571,7 @@ bool SketcherWidget::handleCommonKeyboardShortcuts(
     }
 }
 
-void SketcherWidget::handleAtomisticKeyboardShortcuts(
+bool SketcherWidget::handleAtomisticKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     std::pair<ModelKey, QVariant> kv_pair;
@@ -1572,7 +1594,7 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
             has_targets = has_target_atoms;
             updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                            targets);
-            return;
+            return true;
         }
         case Qt::Key_0:
         case Qt::Key_1:
@@ -1591,20 +1613,20 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
             has_targets = has_target_bonds;
             updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                            targets);
-            return;
+            return true;
         }
 
         case Qt::Key_D: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(2);
             m_mol_model->mutateAtoms(targets.atoms, to_atom);
-            return;
+            return true;
         }
         case Qt::Key_T: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(3);
             m_mol_model->mutateAtoms(targets.atoms, to_atom);
-            return;
+            return true;
         }
         /* case Qt::Key_Escape:
             // TODO: SKETCH-1184 SKETCH-2045
@@ -1628,13 +1650,14 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
                      QVariant::fromValue(AtomTool::ELEMENT)}};
                 updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
                                                targets);
+                return true;
             }
-            return;
+            return false;
         }
     }
 }
 
-void SketcherWidget::handleAminoAcidKeyboardShortcuts(
+bool SketcherWidget::handleAminoAcidKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     static const std::unordered_map<Qt::Key, AminoAcidTool> KEY_TO_AMINO_ACID{
@@ -1674,10 +1697,12 @@ void SketcherWidget::handleAminoAcidKeyboardShortcuts(
              QVariant::fromValue(MonomerToolType::AMINO_ACID)},
             {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(amino_acid_tool)}};
         updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs, targets);
+        return true;
     }
+    return false;
 }
 
-void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
+bool SketcherWidget::handleNucleicAcidKeyboardShortcuts(
     QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
 {
     // behavior for the keyboard keys that represent nucleobases, depending on
@@ -1800,7 +1825,9 @@ void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
     if (kv_pair.has_value()) {
         updateModelForKeyboardShortcut(has_targets, *kv_pair, kv_pairs,
                                        targets);
+        return true;
     }
+    return false;
 }
 
 void SketcherWidget::onBackgroundColorChanged(const QColor& color)

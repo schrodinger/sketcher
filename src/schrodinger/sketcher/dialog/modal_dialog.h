@@ -55,6 +55,7 @@ class SKETCHER_API ModalDialog : public QDialog
     };
 
     QVBoxLayout* m_dlg_layout = nullptr;
+    CustomTitleBar* m_title_bar = nullptr;
 
   private:
     // NOTE: modal dialogs that use `exec()` are problematic in the
@@ -67,8 +68,6 @@ class SKETCHER_API ModalDialog : public QDialog
      * (WASM) Update the custom title bar's title when the window title changes
      */
     void onWindowTitleChanged(const QString& newTitle);
-
-    CustomTitleBar* m_title_bar = nullptr;
 };
 
 /**
