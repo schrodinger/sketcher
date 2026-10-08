@@ -147,6 +147,40 @@ static void set_nucleic_acid_tool(TestSketcherWidget& sk, NucleicAcidTool tool)
     QCoreApplication::processEvents();
 }
 
+/**
+ * Only handled shortcuts should stop key propagation to parent widgets.
+ */
+BOOST_AUTO_TEST_CASE(test_keyboard_shortcut_acceptance)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    for (const auto tool_set : {ToolSet::ATOMISTIC, ToolSet::MONOMERIC}) {
+        sk.m_sketcher_model->setValue(ModelKey::TOOL_SET, tool_set);
+        for (const auto monomer_type :
+             {MonomerToolType::AMINO_ACID, MonomerToolType::NUCLEIC_ACID}) {
+            sk.m_sketcher_model->setValue(ModelKey::MONOMER_TOOL_TYPE,
+                                          monomer_type);
+            QKeyEvent handled(QEvent::KeyPress, Qt::Key_C, Qt::NoModifier, "c");
+            QCoreApplication::sendEvent(&sk, &handled);
+            BOOST_TEST(handled.isAccepted());
+
+            QKeyEvent unhandled(QEvent::KeyPress, Qt::Key_F12, Qt::NoModifier);
+            QCoreApplication::sendEvent(&sk, &unhandled);
+            BOOST_TEST(!unhandled.isAccepted());
+
+            QKeyEvent common(QEvent::KeyPress, Qt::Key_Delete, Qt::NoModifier);
+            QCoreApplication::sendEvent(&sk, &common);
+            BOOST_TEST(common.isAccepted());
+        }
+    }
+
+    SketcherWidget select_only;
+    select_only.activateSelectOnlyMode();
+    QKeyEvent disabled(QEvent::KeyPress, Qt::Key_C, Qt::NoModifier, "c");
+    QCoreApplication::sendEvent(&select_only, &disabled);
+    BOOST_TEST(!disabled.isAccepted());
+}
+
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
