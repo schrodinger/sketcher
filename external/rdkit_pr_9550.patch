@@ -1,0 +1,190 @@
+diff --git a/Code/GraphMol/Atom.h b/Code/GraphMol/Atom.h
+index 4e65c4ba2..0031ae707 100644
+--- a/Code/GraphMol/Atom.h
++++ b/Code/GraphMol/Atom.h
+@@ -89,7 +89,7 @@ class RDKIT_GRAPHMOL_EXPORT Atom : public RDProps {
+   typedef Queries::Query<int, Atom const *, true> QUERYATOM_QUERY;
+ 
+   //! store hybridization
+-  typedef enum {
++  enum HybridizationType : std::uint8_t {
+     UNSPECIFIED = 0,  //!< hybridization that hasn't been specified
+     S,
+     SP,
+@@ -99,10 +99,10 @@ class RDKIT_GRAPHMOL_EXPORT Atom : public RDProps {
+     SP3D,
+     SP3D2,
+     OTHER  //!< unrecognized hybridization
+-  } HybridizationType;
++  };
+ 
+   //! store type of chirality
+-  typedef enum {
++  enum ChiralType : std::uint8_t {
+     CHI_UNSPECIFIED = 0,  //!< chirality that hasn't been specified
+     CHI_TETRAHEDRAL_CW,   //!< tetrahedral: clockwise rotation (SMILES \@\@)
+     CHI_TETRAHEDRAL_CCW,  //!< tetrahedral: counter-clockwise rotation (SMILES
+@@ -113,7 +113,7 @@ class RDKIT_GRAPHMOL_EXPORT Atom : public RDProps {
+     CHI_SQUAREPLANAR,     //!< square planar, use permutation flag
+     CHI_TRIGONALBIPYRAMIDAL,  //!< trigonal bipyramidal, use permutation flag
+     CHI_OCTAHEDRAL            //!< octahedral, use permutation flag
+-  } ChiralType;
++  };
+ 
+   enum class ValenceType : std::uint8_t {
+     IMPLICIT = 0,
+diff --git a/Code/GraphMol/Bond.h b/Code/GraphMol/Bond.h
+index 4e0ed0f54..798ffef0e 100644
+--- a/Code/GraphMol/Bond.h
++++ b/Code/GraphMol/Bond.h
+@@ -52,7 +52,7 @@ class RDKIT_GRAPHMOL_EXPORT Bond : public RDProps {
+   typedef Queries::Query<int, Bond const *, true> QUERYBOND_QUERY;
+ 
+   //! the type of Bond
+-  typedef enum {
++  enum BondType : std::uint8_t {
+     UNSPECIFIED = 0,
+     SINGLE,
+     DOUBLE,
+@@ -76,10 +76,10 @@ class RDKIT_GRAPHMOL_EXPORT Bond : public RDProps {
+     OTHER,
+     ZERO  //!< Zero-order bond (from
+     // http://pubs.acs.org/doi/abs/10.1021/ci200488k)
+-  } BondType;
++  };
+ 
+   //! the bond's direction (for chirality)
+-  typedef enum {
++  enum BondDir : std::uint8_t {
+     NONE = 0,    //!< no special style
+     BEGINWEDGE,  //!< wedged: narrow at begin
+     BEGINDASH,   //!< dashed: narrow at begin
+@@ -88,12 +88,12 @@ class RDKIT_GRAPHMOL_EXPORT Bond : public RDProps {
+     ENDUPRIGHT,    //!<  ditto
+     EITHERDOUBLE,  //!< a "crossed" double bond
+     UNKNOWN,       //!< intentionally unspecified stereochemistry
+-  } BondDir;
++  };
+ 
+   //! the nature of the bond's stereochem (for cis/trans)
+-  typedef enum {     // stereochemistry of double bonds
+-    STEREONONE = 0,  // no special style
+-    STEREOANY,       // intentionally unspecified
++  enum BondStereo : std::uint8_t {  // stereochemistry of double bonds
++    STEREONONE = 0,                 // no special style
++    STEREOANY,                      // intentionally unspecified
+     // -- Put any true specifications about this point so
+     // that we can do comparisons like if(bond->getStereo()>Bond::STEREOANY)
+     STEREOZ,         // Z double bond
+@@ -102,7 +102,7 @@ class RDKIT_GRAPHMOL_EXPORT Bond : public RDProps {
+     STEREOTRANS,     // trans double bond
+     STEREOATROPCW,   //  atropisomer clockwise rotation
+     STEREOATROPCCW,  //  atropisomer counter clockwise rotation
+-  } BondStereo;
++  };
+ 
+   Bond();
+   //! construct with a particular BondType
+diff --git a/Code/GraphMol/MolDraw2D/DrawMol.cpp b/Code/GraphMol/MolDraw2D/DrawMol.cpp
+index 28ee22d3b..ec98e111c 100755
+--- a/Code/GraphMol/MolDraw2D/DrawMol.cpp
++++ b/Code/GraphMol/MolDraw2D/DrawMol.cpp
+@@ -377,8 +377,8 @@ void DrawMol::extractAttachments() {
+       }
+       if (at1->getAtomicNum() == 0 && at1->getDegree() == 1) {
+         Point2D &at1_cds = atCds_[at1->getIdx()];
+-        const auto &iter_pair = drawMol_->getAtomNeighbors(at1);
+-        const Atom *at2 = (*drawMol_)[*iter_pair.first];
++        auto nbrIter = drawMol_->atomNeighbors(at1);
++        const Atom *at2 = *nbrIter.begin();
+         Point2D &at2_cds = atCds_[at2->getIdx()];
+         Point2D perp = calcPerpendicular(at1_cds, at2_cds);
+         Point2D p1 =
+@@ -2884,12 +2884,12 @@ double DrawMol::getNoteStartAngle(const Atom *atom) const {
+   }
+   const Point2D &at_cds = atCds_[atom->getIdx()];
+   std::vector<Point2D> bond_vecs;
+-  for (auto nbr : make_iterator_range(drawMol_->getAtomNeighbors(atom))) {
++  for (auto nbr : drawMol_->atomNeighbors(atom)) {
+     // If the nbr has the same coords as atom, bond_vec comes out as NaN, NaN
+     // (issue 6559), so use a short arbitrary vector instead.
+     Point2D bond_vec;
+     try {
+-      bond_vec = at_cds.directionVector(atCds_[nbr]);
++      bond_vec = at_cds.directionVector(atCds_[nbr->getIdx()]);
+     } catch (const std::runtime_error &e) {
+       bond_vec.x = 0.7071;
+       bond_vec.y = 0.7071;
+@@ -3617,8 +3617,8 @@ void DrawMol::doubleBondTerminal(Atom *at1, Atom *at2, double offset,
+     Point2D l2 = l2s.directionVector(l2f);
+     l2f = l2s + l2 * 2.0 * bl;
+     Point2D ip;
+-    for (auto nbr : make_iterator_range(drawMol_->getAtomNeighbors(at2))) {
+-      auto nbr_cds = atCds_[nbr];
++    for (auto nbr : drawMol_->atomNeighbors(at2)) {
++      auto nbr_cds = atCds_[nbr->getIdx()];
+       if (doLinesIntersect(l1s, l1f, at2_cds, nbr_cds, &ip)) {
+         l1f = ip;
+       }
+@@ -4029,10 +4029,8 @@ DrawColour DrawMol::getColour(int atom_idx) const {
+       const auto *atomPtr = drawMol_->getAtomWithIdx(atom_idx);
+       int numBonds = 0, numHighBonds = 0;
+       std::unique_ptr<DrawColour> highCol;
+-      for (const auto &nbri :
+-           boost::make_iterator_range(drawMol_->getAtomBonds(atomPtr))) {
++      for (const auto nbr : drawMol_->atomBonds(atomPtr)) {
+         ++numBonds;
+-        const auto &nbr = (*drawMol_)[nbri];
+         if (std::find(highlightBonds_.begin(), highlightBonds_.end(),
+                       nbr->getIdx()) != highlightBonds_.end() ||
+             highlightBondMap_.find(nbr->getIdx()) != highlightBondMap_.end()) {
+@@ -4088,26 +4086,30 @@ void centerMolForDrawing(RWMol &mol, int confId) {
+ 
+ // ****************************************************************************
+ bool isLinearAtom(const Atom &atom, const std::vector<Point2D> &atCds) {
+-  if (atom.getDegree() == 2) {
+-    Point2D bond_vecs[2];
+-    Bond::BondType bts[2];
+-    Point2D const &at1_cds = atCds[atom.getIdx()];
+-    ROMol const &mol = atom.getOwningMol();
+-    int i = 0;
+-    for (auto nbr : make_iterator_range(mol.getAtomNeighbors(&atom))) {
+-      try {
+-        Point2D bond_vec = at1_cds.directionVector(atCds[nbr]);
+-        bond_vecs[i] = bond_vec;
+-        bts[i] = mol.getBondBetweenAtoms(atom.getIdx(), nbr)->getBondType();
+-      } catch (std::runtime_error &e) {
+-        // A zero-length vector throws and can be ignored.
+-        continue;
+-      }
+-      ++i;
+-    }
+-    return (bts[0] == bts[1] && bond_vecs[0].dotProduct(bond_vecs[1]) < -0.95);
++  if (atom.getDegree() != 2) {
++    return false;
+   }
+-  return false;
++  Point2D bond_vecs[2];
++  Bond::BondType bts[2] = {Bond::BondType::UNSPECIFIED,
++                           Bond::BondType::UNSPECIFIED};
++  Point2D const &at1_cds = atCds[atom.getIdx()];
++  ROMol const &mol = atom.getOwningMol();
++  int i = 0;
++  for (const auto nbr : mol.atomNeighbors(&atom)) {
++    const auto nbri = nbr->getIdx();
++    try {
++      Point2D bond_vec = at1_cds.directionVector(atCds[nbri]);
++      bond_vecs[i] = bond_vec;
++    } catch (const std::runtime_error &) {
++      // A zero-length vector throws and can be ignored.
++      // but we still need to get the bond type and increment
++      // the counter
++    }
++    bts[i] =
++        mol.getBondBetweenAtoms(atom.getIdx(), nbr->getIdx())->getBondType();
++    ++i;
++  }
++  return (bts[0] == bts[1] && bond_vecs[0].dotProduct(bond_vecs[1]) < -0.95);
+ }
+ 
+ // ****************************************************************************

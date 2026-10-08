@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <QApplication>
+#include <QMenu>
 #include <QPoint>
 #include <QScreen>
 #include <QStyleOptionToolButton>
@@ -100,6 +101,14 @@ void ToolButtonWithPopup::showPopup()
         return;
     }
 
+    if (auto* menu = qobject_cast<QMenu*>(m_popup_wdg)) {
+        // A menu offers actions rather than selecting this button's tool.
+        // Suppress the pending click so a long press only opens the menu.
+        setDown(false);
+        menu->popup(mapToGlobal(QPoint(0, height())));
+        return;
+    }
+
     // The coordinates at the top left of this button
     auto button_pos = mapToGlobal(QPoint());
     auto button_x = button_pos.x();
@@ -168,6 +177,7 @@ void ToolButtonWithPopup::onPressed()
 void ToolButtonWithPopup::onClicked(bool checked)
 {
     if (m_was_checked_on_press && m_popup_wdg != nullptr &&
+        qobject_cast<QMenu*>(m_popup_wdg) == nullptr &&
         !m_popup_wdg->isVisibleTo(this)) {
         // If the button was checked when the user clicked it, show popup
         showPopup();
