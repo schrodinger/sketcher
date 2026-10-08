@@ -207,5 +207,40 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
     BOOST_CHECK_EQUAL(redo_spy.count(), 1);
 }
 
+/**
+ * Make sure that the More Actions menu's shortcuts work through Qt's shortcut
+ * system without the menu ever being opened. The WASM Playwright tests rely on
+ * this, since they press Ctrl+A, Ctrl+Z, etc. without opening the menu.
+ */
+BOOST_AUTO_TEST_CASE(test_menu_shortcuts_with_closed_menu)
+{
+    TestSketcherWidget sk;
+    TestSketcherTopBar top_bar(sk.m_sketcher_model);
+    import_mol_text(sk.m_mol_model, "CC");
+    top_bar.updateWidgetsEnabled();
+    top_bar.show();
+    top_bar.activateWindow();
+    BOOST_REQUIRE(QTest::qWaitForWindowActive(&top_bar));
+
+    QSignalSpy select_all_spy{&top_bar, &SketcherTopBar::selectAllRequested};
+    QTest::keyClick(&top_bar, Qt::Key_A, Qt::ControlModifier);
+    BOOST_TEST(select_all_spy.count() == 1);
+}
+
+/**
+ * Make sure the "Load Monomer Database..." action can be hidden and shown
+ */
+BOOST_AUTO_TEST_CASE(test_set_load_monomer_database_visible)
+{
+    TestSketcherWidget sk;
+    TestSketcherTopBar top_bar(sk.m_sketcher_model);
+    auto action = top_bar.getImportMenu()->m_load_monomer_database_act;
+    BOOST_TEST(action->isVisible());
+    top_bar.setLoadMonomerDatabaseVisible(false);
+    BOOST_TEST(!action->isVisible());
+    top_bar.setLoadMonomerDatabaseVisible(true);
+    BOOST_TEST(action->isVisible());
+}
+
 } // namespace sketcher
 } // namespace schrodinger
