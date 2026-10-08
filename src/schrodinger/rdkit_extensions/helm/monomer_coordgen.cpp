@@ -53,10 +53,6 @@ using schrodinger::rdkit_extensions::Direction;
 // empty space gap between a monomer and the one following it in the chain. This
 // will be the length of the visibile bond line connecting the two.
 constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
-// when a monomer size is not specified or its value is lower than this, this
-// value is used as the minimum size
-constexpr double MONOMER_MINIMUM_SIZE = 0.80;
-
 // total distance from the center of one monomer to the center of the following
 // in the chain
 constexpr double MONOMER_BOND_LENGTH =
@@ -3066,6 +3062,23 @@ compute_linear_displacements(const RDKit::ROMol& mol,
             displacements[atom_idx] = ring_disp;
         }
     }
+
+    // Branch monomers (for example, nucleotide bases) must follow their
+    // backbone anchor as a rigid unit. Their label sizes still contribute to
+    // the displacement of surrounding monomers, but must not stretch the
+    // branch bond itself.
+    for (const auto* atom : mol.atoms()) {
+        if (!atom->getProp<bool>(BRANCH_MONOMER)) {
+            continue;
+        }
+        for (const auto* neighbor : mol.atomNeighbors(atom)) {
+            if (!neighbor->getProp<bool>(BRANCH_MONOMER)) {
+                displacements[atom->getIdx()] =
+                    displacements[neighbor->getIdx()];
+                break;
+            }
+        }
+    }
     return displacements;
 }
 
@@ -3302,17 +3315,6 @@ void resize_monomers(
     if (monomer_sizes.empty()) {
         return;
     }
-
-    // callers must call store_initial_monomer_sizes first on any
-    // monomer that's never been sized. Otherwise the default-vs-actual size
-    // gap shows up here as a phantom resize and shifts neighbors.
-#ifndef NDEBUG
-    for (const auto& [idx, _] : monomer_sizes) {
-        assert(mol.getAtomWithIdx(idx)->hasProp(MONOMER_ITEM_SIZE) &&
-               "resize_monomers called on monomer without prior "
-               "store_initial_monomer_sizes");
-    }
-#endif
 
     // override ring info to ensure rings are fully perceived.
     compute_full_ring_info(mol);
