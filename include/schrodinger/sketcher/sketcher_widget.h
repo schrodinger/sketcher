@@ -164,6 +164,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @param options Rendering options to apply
      */
     void setRenderOptions(const RenderOptions& options);
+    
+    /**
+     * Set whether the "Load Monomer Database..." menu item is visible. This
+     * should be hidden when the monomer database is supplied by the host
+     * application (e.g. from a monomer service).
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
