@@ -39,7 +39,8 @@ bool coordinates_are_all_zero(const RDKit::Conformer& conf)
 
 } // namespace
 
-void update_2d_coordinates(RDKit::ROMol& mol)
+void update_2d_coordinates(RDKit::ROMol& mol,
+                           const bool render_peptides_linearly)
 {
 
     ::RDKit::Conformer* conf_to_keep_3d = nullptr;
@@ -55,7 +56,7 @@ void update_2d_coordinates(RDKit::ROMol& mol)
     if (conf_2d == mol.endConformers() || coordinates_are_all_zero(**conf_2d)) {
         // remove all (3d) conformers and generate new 2d coordinates
         mol.clearConformers();
-        rdkit_extensions::compute2DCoords(mol);
+        rdkit_extensions::compute2DCoords(mol, {}, render_peptides_linearly);
     } else {
         // keep only the first 2D conformer and rescale the bond length
         auto conf_to_keep_2d = new ::RDKit::Conformer(**conf_2d);

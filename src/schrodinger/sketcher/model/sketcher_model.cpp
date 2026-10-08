@@ -671,6 +671,7 @@ int SketcherModel::getFontSize() const
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
     m_font_size = opts.font_size;
+    m_render_peptides_linearly = opts.render_peptides_linearly;
     AtomDisplaySettings atom_display_settings(m_atom_display_settings);
     atom_display_settings.m_carbon_labels = opts.carbon_labels;
     atom_display_settings.m_show_symbol_for_H_isotopes =
@@ -692,6 +693,11 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     bond_display_settings.m_stereo_labels_shown =
         opts.show_stereo_annotations != StereoLabels::NONE;
     setBondDisplaySettings(bond_display_settings);
+}
+
+bool SketcherModel::renderPeptidesLinearly() const
+{
+    return m_render_peptides_linearly;
 }
 
 void SketcherModel::setSelectToolAllowedWhenSceneEmpty(const bool allowed)

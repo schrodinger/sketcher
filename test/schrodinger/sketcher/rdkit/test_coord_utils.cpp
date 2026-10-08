@@ -1,6 +1,8 @@
 
 #define BOOST_TEST_MODULE test_coord_utils
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 
 #include <boost/test/unit_test.hpp>
@@ -121,6 +123,46 @@ $$$$
 
 namespace utf = boost::unit_test;
 namespace bdata = boost::unit_test::data;
+
+constexpr const char* CYCLIC_PEPTIDE_HELM =
+    "PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,"
+    "1:R3-7:R3|PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$V2.0";
+
+BOOST_AUTO_TEST_CASE(test_linear_peptide_layout_when_coordinates_are_missing)
+{
+    auto mol = rdkit_extensions::to_rdkit(CYCLIC_PEPTIDE_HELM);
+    BOOST_REQUIRE(mol->getNumConformers() == 0);
+
+    update_2d_coordinates(*mol, /* render_peptides_linearly = */ true);
+
+    const auto& conformer = mol->getConformer();
+    for (const auto* monomer : mol->atoms()) {
+        BOOST_TEST(conformer.getAtomPos(monomer->getIdx()).y == 0.0,
+                   boost::test_tools::tolerance(0.01));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_linear_peptide_layout_preserves_existing_coordinates)
+{
+    auto mol = rdkit_extensions::to_rdkit(CYCLIC_PEPTIDE_HELM);
+    rdkit_extensions::compute2DCoords(*mol);
+
+    const auto original_positions = mol->getConformer().getPositions();
+    BOOST_REQUIRE(std::any_of(
+        original_positions.begin(), original_positions.end(),
+        [](const auto& position) { return std::abs(position.y) > 0.01; }));
+
+    update_2d_coordinates(*mol, /* render_peptides_linearly = */ true);
+
+    const auto& updated_positions = mol->getConformer().getPositions();
+    BOOST_REQUIRE(updated_positions.size() == original_positions.size());
+    for (std::size_t idx = 0; idx < original_positions.size(); ++idx) {
+        BOOST_TEST(updated_positions[idx].x == original_positions[idx].x,
+                   boost::test_tools::tolerance(0.01));
+        BOOST_TEST(updated_positions[idx].y == original_positions[idx].y,
+                   boost::test_tools::tolerance(0.01));
+    }
+}
 
 /**
  * Make sure that rescale_bond_length_if_needed can successfully rescale both

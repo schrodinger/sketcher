@@ -36,11 +36,14 @@ compute_centroid(const std::vector<RDGeom::Point3D>& positions);
  *
  * @param mol rdkit mol
  * @param frozen_ids vector of atom indexes to NOT generate coordinates for
+ * @param render_peptides_linearly If true, monomer coordinate generation lays
+ * peptide backbones out as horizontal chains.
  * @return ID of the conformation added to the molecule containing the 2D coords
  */
 RDKIT_EXTENSIONS_API unsigned int
 compute2DCoords(RDKit::ROMol& mol,
-                const std::vector<unsigned int>& frozen_ids = {});
+                const std::vector<unsigned int>& frozen_ids = {},
+                bool render_peptides_linearly = false);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

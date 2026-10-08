@@ -312,6 +312,12 @@ static bool is_nucleic_acid(const RDKit::ROMol& polymer)
            boost::starts_with(polymer_id, "RNA");
 }
 
+static bool is_peptide(const RDKit::ROMol& polymer)
+{
+    return boost::starts_with(polymer.getProp<std::string>(POLYMER_ID),
+                              "PEPTIDE");
+}
+
 void compute_full_ring_info(const RDKit::ROMol& polymer)
 {
     std::vector<unsigned int> zob_idxs{};
@@ -1738,6 +1744,9 @@ lay_out_linear_polymer(RDKit::ROMol& polymer,
         });
     auto branch_dir = rotate ? BranchDirection::UP : BranchDirection::DOWN;
     auto chain_dir = rotate ? ChainDirection::RTL : ChainDirection::LTR;
+    // lay_out_chain() keeps every backbone residue at y=0 and advances its x
+    // coordinate by MONOMER_BOND_LENGTH. Branch residues are placed above or
+    // below that horizontal backbone.
     lay_out_chain(polymer, start_monomer, placed_monomers_idcs,
                   RDGeom::Point3D(0, 0, 0), chain_dir, branch_dir);
 }
@@ -1768,8 +1777,17 @@ lay_out_linear_polymer(RDKit::ROMol& polymer,
  */
 static void lay_out_polymer(RDKit::ROMol& polymer,
                             std::unordered_set<int>& placed_monomers_idcs,
-                            const bool rotate = false)
+                            const bool rotate = false,
+                            const bool render_peptides_linearly = false)
 {
+    if (render_peptides_linearly && is_peptide(polymer)) {
+        // Traverse only backbone linkages. Non-backbone connections are left
+        // for the renderer, which can represent them without bending the
+        // peptide backbone into rings or turns.
+        lay_out_linear_polymer(polymer, placed_monomers_idcs, rotate);
+        return;
+    }
+
     if (!polymer.getRingInfo()->isInitialized()) {
         constexpr bool include_dative_bonds = true;
         RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
@@ -2483,6 +2501,9 @@ static unsigned int copy_polymer_coords_to_monomer_mol(
     RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
     auto conformer = new RDKit::Conformer(monomer_mol.getNumAtoms());
+    // RDKit conformers default to 3D. Mark this one explicitly so image import
+    // preserves these coordinates instead of replacing them as missing 2D
+    // coordinates.
     conformer->set3D(false);
     for (auto polymer : polymers) {
         for (auto monomer : polymer->atoms()) {
@@ -2595,7 +2616,8 @@ static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
 
 void lay_out_polymers(
     const std::vector<RDKit::ROMOL_SPTR>& polymers,
-    const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
+    const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer,
+    const bool render_peptides_linearly = false)
 {
     std::unordered_set<int> placed_monomers_idcs{};
     std::vector<RDKit::ROMOL_SPTR> placed_polymers;
@@ -2621,7 +2643,8 @@ void lay_out_polymers(
         // strands run anti-parallel to each other
         bool rotate_polymer = (parent != nullptr) &&
                               are_double_stranded_nucleic_acid(polymer, parent);
-        lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer);
+        lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer,
+                        render_peptides_linearly);
         if (parent != nullptr) {
             orient_polymer(*polymer, *parent, rotate_polymer, placed_polymers);
         }
@@ -3347,17 +3370,22 @@ void resize_monomers(
     mol.getRingInfo()->reset();
 }
 
-unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
+unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol,
+                                        const bool render_peptides_linearly)
 {
     // clear layout related props so we can start a fresh layout
     clear_layout_props(monomer_mol);
     auto [polymers, parent_polymer] = break_into_polymers(monomer_mol);
+    const bool use_linear_peptide_layout =
+        render_peptides_linearly &&
+        std::any_of(polymers.begin(), polymers.end(),
+                    [](const auto& polymer) { return is_peptide(*polymer); });
     // SHARED-9795: Special case for single polymers that are strictly
     // chains
-    if (is_single_linear_polymer(monomer_mol)) {
+    if (!use_linear_peptide_layout && is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
-        lay_out_polymers(polymers, parent_polymer);
+        lay_out_polymers(polymers, parent_polymer, use_linear_peptide_layout);
     }
 
     auto conformer_id =
@@ -3367,7 +3395,11 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
 
-    if (!coordinates_are_valid(monomer_mol)) {
+    // Linear peptide layouts deliberately leave non-backbone connections
+    // stretched across the horizontal chain. Those bonds will be handled by
+    // the linear peptide renderer, so they must not trigger the normal cyclic
+    // layout fallback.
+    if (!use_linear_peptide_layout && !coordinates_are_valid(monomer_mol)) {
         // the coordinates are not good, try breaking the molecule into
         // topological units. This considers rings as a single unit, even if
         // they are made of monomers that belong to different polymers.

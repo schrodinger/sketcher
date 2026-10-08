@@ -1188,7 +1188,8 @@ void MolModel::remove(
 
 void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
                         const QString& description,
-                        const bool enforce_monomer_validity)
+                        const bool enforce_monomer_validity,
+                        const bool render_peptides_linearly)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -1196,13 +1197,14 @@ void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
     center_mol_on(mol, position);
     addMol(mol, description, /* reposition_mol = */ false,
            /* new_molecule_added = */ false, /* enforce_size_limit = */ true,
-           enforce_monomer_validity);
+           enforce_monomer_validity, render_peptides_linearly);
 }
 
 void MolModel::addMol(RDKit::RWMol mol, const QString& description,
                       const bool reposition_mol, const bool new_molecule_added,
                       const bool enforce_size_limit,
-                      const bool enforce_monomer_validity)
+                      const bool enforce_monomer_validity,
+                      const bool render_peptides_linearly)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -1226,7 +1228,7 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     }
 
     // Ensure the newly added mol has coords and necessary stereo information
-    prepare_mol(mol);
+    prepare_mol(mol, render_peptides_linearly);
 
     // if this is a monomeric molecule, make sure that the chain names are
     // different than the chains that are currently in MolModel
@@ -3302,18 +3304,20 @@ void add_mol_or_reaction_to_mol_model(
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
     const std::optional<RDGeom::Point3D> position, const bool recenter_view,
-    const bool enforce_monomer_validity)
+    const bool enforce_monomer_validity, const bool render_peptides_linearly)
 {
     if (std::holds_alternative<boost::shared_ptr<RDKit::RWMol>>(
             mol_or_reaction)) {
         auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
         if (position.has_value()) {
             mol_model.addMolAt(*mol, *position, "Import molecule",
-                               enforce_monomer_validity);
+                               enforce_monomer_validity,
+                               render_peptides_linearly);
         } else {
             mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
                              recenter_view, /* enforce_size_limit = */ true,
-                             enforce_monomer_validity);
+                             enforce_monomer_validity,
+                             render_peptides_linearly);
         }
     } else {
         auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
@@ -3326,11 +3330,13 @@ void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
                            const rdkit_extensions::Format format,
                            const std::optional<RDGeom::Point3D> position,
                            const bool recenter_view,
-                           const bool enforce_monomer_validity)
+                           const bool enforce_monomer_validity,
+                           const bool render_peptides_linearly)
 {
     auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
     add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, position,
-                                     recenter_view, enforce_monomer_validity);
+                                     recenter_view, enforce_monomer_validity,
+                                     render_peptides_linearly);
 }
 
 void MolModel::resizeMonomers(
