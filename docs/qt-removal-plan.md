@@ -38,7 +38,7 @@ A single UI on every target means either a web UI in a webview everywhere, or a 
   - **Speed and hiring:** iteration speed and how easy it is to hire for.
   - **Bundle size:** not a real differentiator, because the RDKit WASM core (about 10–15 MB) dwarfs either UI runtime.
 - **What Slint does better:** a smaller desktop footprint, and a cleaner way to embed in Qt hosts.
-- **Gate:** the Phase 4 spike decides whether a webview is acceptable inside Qt hosts.
+- **Gate:** whether a webview is acceptable inside Qt hosts is decided by the Qt-host gate in Phase 5.
 
 ### 2.3 Depiction geometry lives in C++
 
@@ -135,11 +135,11 @@ Each consumer embeds the same React bundle, and React talks to `sketcher_core`. 
 
 ## 5. Phased plan
 
-Every PR lands on `main` and leaves the existing Qt app working until Phase 8. Phases 1–3 pay off whatever Phase 4 decides about Qt hosts.
+Every PR lands on `main` and leaves the existing Qt app working until Phase 7. Phases 1–4 pay off whatever the Qt-host gate in Phase 5 decides.
 
 ### Phase 1 — Extract `sketcher_core` (model + rdkit)
 
-Make the chemistry and model layer Qt-free behind a new library, without changing behavior. `SketcherModel` stays in the Qt library: it holds UI state (current tool, display settings) that moves to React in Phase 5.
+Make the chemistry and model layer Qt-free behind a new library, without changing behavior. `SketcherModel` stays in the Qt library: it holds UI state (current tool, display settings) that moves to React in Phase 4.
 
 | PR  | Change                                                                                                                                                                                  |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -179,20 +179,7 @@ Build the Qt-free WASM target and the command/event protocol that every host wil
 
 **Done when:** the demo page loads and edits a molecule through the protocol, and the bundle size is measured against the Qt build.
 
-### Phase 4 — Qt-host spike (runs in parallel with Phases 2–3)
-
-A time-boxed prototype on a branch. Nothing merges; the output is a written go/no-go decision on running `QWebEngineView` inside Qt hosts. It answers:
-
-- **Packaging:** whether our Qt package can include QtWebEngine. It's currently built with `-skip qtwebengine`, so enabling it means new build deps and a Chromium build.
-- **Distribution:** what QtWebEngine adds to Maestro's size and process model.
-- **Startup ordering:** QtWebEngine must be initialized before the host creates its `QApplication`, which means changes on the host side.
-- **Scale:** startup latency and memory with several sketchers in one PyQt panel.
-- **Integration:** focus, shortcuts, clipboard, drag-and-drop and theming across the webview boundary.
-- **SIP:** synchronous SIP-exposed calls behave unchanged.
-
-**If the gate fails:** Qt hosts keep a native Qt UI over `sketcher_core`. That gives up the single frontend for Qt hosts and needs an explicit decision.
-
-### Phase 5 — React app (web first)
+### Phase 4 — React app (web first)
 
 Build the new frontend in the repo at full feature parity with the Qt app. It replaces the Qt WASM build as "v2 web" only once nothing is missing. The UI refresh design (chrome and depiction styling) is reviewed before the feature PRs start.
 
@@ -220,9 +207,20 @@ PRs 1–2 land in order. PRs 3–9 can land in any order, or in parallel, after 
 
 **Done when:** every tool, dialog and menu action in the Qt app exists in v2 web, and the full ported Playwright suite passes.
 
-### Phase 6 — Qt-host integration (if Phase 4 passes)
+### Phase 5 — Qt-host integration
 
 Swap `SketcherWidget` to a `QWebEngineView` shell around the same React bundle. The public C++ and SIP API stays the same, and the core is held in-process, so synchronous calls stay synchronous.
+
+**Gate: QtWebEngine in Qt hosts.** Answer this during Phases 2–3, well before this phase starts. It takes a time-boxed prototype on a branch, and nothing from it merges. The output is a written go/no-go decision on running `QWebEngineView` inside Qt hosts, covering:
+
+- **Packaging:** whether our Qt package can include QtWebEngine. It's currently built with `-skip qtwebengine`, so enabling it means new build deps and a Chromium build.
+- **Distribution:** what QtWebEngine adds to Maestro's size and process model.
+- **Startup ordering:** QtWebEngine must be initialized before the host creates its `QApplication`, which means changes on the host side.
+- **Scale:** startup latency and memory with several sketchers in one PyQt panel.
+- **Integration:** focus, shortcuts, clipboard, drag-and-drop and theming across the webview boundary.
+- **SIP:** synchronous SIP-exposed calls behave unchanged.
+
+**If the gate fails:** this phase is replaced by a native Qt UI over `sketcher_core` for Qt hosts. That gives up the single frontend for Qt hosts and needs an explicit decision.
 
 | PR  | Change                                                                                                                                                  |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -233,7 +231,7 @@ Swap `SketcherWidget` to a `QWebEngineView` shell around the same React bundle. 
 
 **Done when:** the sketcher C++ tests and the mmshare Maestro and Python tests pass, and consumers need no API changes apart from the overlay switch.
 
-### Phase 7 — Qt-free standalone app
+### Phase 6 — Qt-free standalone app
 
 | PR  | Change                                                                                                                                                   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -241,7 +239,7 @@ Swap `SketcherWidget` to a `QWebEngineView` shell around the same React bundle. 
 | 2   | New `sketcher_standalone` target: a `main.cpp` that hosts the React bundle in a system webview and links only `sketcher_core` + `rdkit_extensions`.      |
 | 3   | Switch the shipped app to `sketcher_standalone`.                                                                                                         |
 
-### Phase 8 — Delete
+### Phase 7 — Delete
 
 One PR per area:
 
@@ -271,7 +269,7 @@ One PR per area:
 
 - **QtWebEngine may be unacceptable in Qt hosts.**
   - _Why:_ a new Maestro dependency with startup and memory costs, a Qt recipe change, and `QWebEngineView` doesn't work inside `QGraphicsProxyWidget`.
-  - _Mitigation:_ the Phase 4 gate, a native `SketcherView` for the overlay, and the fallback to a native Qt UI over the core.
+  - _Mitigation:_ the Qt-host gate in Phase 5, a native `SketcherView` for the overlay, and the fallback to a native Qt UI over the core.
 - **Depiction correctness during extraction** (wedges, stereo annotations, label placement, monomer shapes).
   - _Mitigation:_ Phase 2 is a faithful port checked by the existing screenshots. After the refresh, golden images of the new look take over as the regression net.
 - **Text metrics drift between C++ and browsers.**
