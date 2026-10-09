@@ -163,6 +163,11 @@ void SketcherTopBar::setModel(SketcherModel* model)
             &SketcherTopBar::updateWidgetsEnabled);
 }
 
+void SketcherTopBar::setLoadMonomerDatabaseVisible(const bool visible)
+{
+    m_import_menu->m_load_monomer_database_act->setVisible(visible);
+}
+
 void SketcherTopBar::updateWidgetsEnabled()
 {
     auto model = getModel();

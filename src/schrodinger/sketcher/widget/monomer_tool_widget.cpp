@@ -110,7 +110,8 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     custom_monomer_menu->addSeparator();
     auto* custom_chem_monomer_action = new QAction("Sketch CHEM...", this);
     custom_monomer_menu->addAction(custom_chem_monomer_action);
-    ui->custom_monomer_btn->setMenu(custom_monomer_menu);
+    // Avoid QToolButton's synchronous menu event loop in WASM builds.
+    ui->custom_monomer_btn->setPopupWidget(custom_monomer_menu);
     connect(ui->custom_monomer_btn, &QToolButton::clicked, this,
             [this]() { m_custom_monomer_action->trigger(); });
     connect(m_custom_monomer_action, &QAction::triggered, this,

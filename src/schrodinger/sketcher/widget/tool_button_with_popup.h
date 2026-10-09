@@ -17,6 +17,10 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     /**
      * Assign the popup widget for this button.
      *
+     * QMenu popups are opened asynchronously on long press without activating
+     * the button. Other popups also open when an already checked button is
+     * clicked and activate the button when opened by long press.
+     *
      * This widget can only be set a single time.
      *
      * @throws std::runtime_error If this method is called when the popup widget
