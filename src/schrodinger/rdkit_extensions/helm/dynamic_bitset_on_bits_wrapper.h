@@ -83,6 +83,8 @@ class dynamic_bitset_on_bits_wrapper
     {
     }
 
+    dynamic_bitset_on_bits_wrapper(boost::dynamic_bitset<>&&) = delete;
+
     using iterator = dynamic_bitset_on_bits_iterator;
 
     iterator begin() const
