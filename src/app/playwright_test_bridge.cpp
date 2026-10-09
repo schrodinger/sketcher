@@ -14,9 +14,14 @@
  * still a clickable page coordinate. Such a widget is reached with a real mouse
  * event like anything else.
  *
- * Menus behave the same way: the sketcher shows them with QMenu::popup() rather
- * than exec(), so they do not run a nested event loop and their rows are
- * located with a "menu:" selector and clicked for real.
+ * A context menu behaves the same way: the sketcher shows one with
+ * QMenu::show() rather than exec(), so it does not run a nested event loop and
+ * its rows are located with a "menu:" selector and clicked for real.
+ *
+ * A QToolButton's menu is the one exception, and sketcher_activate_action()
+ * exists for it alone: Qt runs a nested event loop while such a menu is open,
+ * which under Asyncify suspends the WebAssembly stack and stops any call
+ * into the module from completing until the menu closes. See that function.
  *
  * Everything here is self-contained: the functions are registered with
  * JavaScript by the EMSCRIPTEN_BINDINGS block at the bottom, so no other
@@ -495,7 +500,8 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
  * "checked" and "toolTip".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
- * menu first.
+ * menu first. It does not reach a QToolButton's menu, which cannot be open and
+ * queried at the same time; use sketcher_activate_action() for those rows.
  *
  * Monomers are addressed as "atom" and monomer connectors as "bond", since the
  * model stores them as RDKit atoms and bonds. Every atom has a non-empty
@@ -539,6 +545,45 @@ std::string sketcher_get_rect(const std::string& selector)
 }
 
 /**
+ * Trigger a menu action by objectName or visible text, without opening the menu
+ * it belongs to. Mnemonic ampersands are ignored when comparing text.
+ *
+ * This exists because a menu row cannot be clicked the way every other control
+ * can. The menu belongs to a QToolButton, and Qt runs a nested event loop for
+ * as long as that menu is open. Qt/WASM is built with Asyncify, so that nested
+ * loop leaves the WebAssembly stack suspended, and no further call into the
+ * module completes until the menu closes — sketcher_get_rect() included. A test
+ * therefore cannot ask where a menu row is while the menu is showing, which
+ * leaves triggering the action directly as the only way to reach it.
+ *
+ * Note what this gives up: the menu never opens, so nothing here covers the
+ * menu's own layout or hit-testing, only the action's effect. Controls outside
+ * a menu — including those in Qt::Popup widgets, which do not run a nested
+ * event loop — should still be clicked with real mouse events.
+ *
+ * Throws std::runtime_error if nothing matches, or if the match is disabled.
+ * Triggering skips the enabled check a real mouse event goes through, so
+ * refusing here keeps a test from passing against a row the user could not have
+ * activated.
+ */
+void sketcher_activate_action(const std::string& name_or_text)
+{
+    auto& sketcher = get_sketcher_instance();
+    auto* action = find_action(sketcher.findChildren<QAction*>(),
+                               QString::fromStdString(name_or_text));
+    if (action == nullptr) {
+        throw std::runtime_error(
+            "playwright test bridge: no action found matching '" +
+            name_or_text + "'");
+    }
+    if (!action->isEnabled()) {
+        throw std::runtime_error("playwright test bridge: action '" +
+                                 name_or_text + "' is disabled");
+    }
+    action->trigger();
+}
+
+/**
  * Return the objectName of the button whose popup holds the named widget, or an
  * empty string if it isn't in a popup.
  *
@@ -558,6 +603,8 @@ std::string sketcher_get_popup_owner(const std::string& name)
 EMSCRIPTEN_BINDINGS(sketcher_playwright_test_bridge)
 {
     emscripten::function("_sketcher_get_rect", &sketcher_get_rect);
+    emscripten::function("_sketcher_activate_action",
+                         &sketcher_activate_action);
     emscripten::function("_sketcher_get_popup_owner",
                          &sketcher_get_popup_owner);
 }
