@@ -35,12 +35,14 @@
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
+#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 #include "schrodinger/sketcher/widget/sketcher_top_bar.h"
+#include "schrodinger/sketcher/widget/modular_tool_button.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
@@ -79,6 +81,8 @@ struct TestWidgetFixture : QApplicationRequiredFixture {
         widget->clear();
         widget->m_undo_stack->clear();
         widget->m_sketcher_model->reset();
+        // reset() does not restore display settings changed by RenderOptions.
+        widget->setRenderOptions(RenderOptions());
         return widget.get();
     }
 
@@ -88,6 +92,30 @@ struct TestWidgetFixture : QApplicationRequiredFixture {
 };
 
 BOOST_GLOBAL_FIXTURE(TestWidgetFixture);
+
+BOOST_AUTO_TEST_CASE(test_set_render_options)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+
+    RenderOptions options;
+    options.font_size = 24;
+    options.bond_width_scale = 2.0;
+    options.carbon_labels = CarbonLabels::ALL;
+    options.color_scheme = ColorScheme::WHITE_BLACK;
+
+    sk.setRenderOptions(options);
+
+    BOOST_CHECK_EQUAL(sk.m_sketcher_model->getFontSize(), options.font_size);
+    BOOST_CHECK_EQUAL(
+        sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_bond_width, 4.8);
+    BOOST_CHECK(
+        sk.m_sketcher_model->getAtomDisplaySettingsPtr()->m_carbon_labels ==
+        CarbonLabels::ALL);
+    const auto* atom_settings =
+        sk.m_sketcher_model->getAtomDisplaySettingsPtr();
+    BOOST_CHECK(atom_settings->getAtomColor(static_cast<int>(Element::C)) ==
+                atom_settings->getAtomColor(static_cast<int>(Element::N)));
+}
 
 BOOST_AUTO_TEST_CASE(test_copy_all_as_image_from_top_bar)
 {
@@ -730,6 +758,7 @@ BOOST_DATA_TEST_CASE(
     boost::unit_test::data::make({DrawTool::ATOM, DrawTool::BOND}) *
         boost::unit_test::data::make({DrawTool::MONOMER,
                                       DrawTool::CUSTOM_MONOMER,
+                                      DrawTool::MONOMER_DB_MONOMER,
                                       DrawTool::MONOMERIC_CONNECTION}),
     previous_tool, monomeric_tool)
 {
@@ -912,7 +941,9 @@ static void check_nucleic_acid_base_mutation(const RDKit::ROMol& mol,
  * Verify that pinging AMINO_ACID_SYMBOL with a selection mutates the selected
  * peptide monomers.
  */
-BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
+BOOST_DATA_TEST_CASE(test_pingMutateMonomersPeptide,
+                     boost::unit_test::data::make({true, false}),
+                     database_monomer)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
@@ -924,12 +955,94 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
     BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
 
     // ping AMINO_ACID_SYMBOL with "C" to mutate all selected peptides
-    sk.m_sketcher_model->pingValue(ModelKey::AMINO_ACID_SYMBOL,
-                                   QVariant::fromValue(QString("C")));
+    if (database_monomer) {
+        sk.m_sketcher_model->pingValue(
+            ModelKey::MONOMER_DB_MONOMER,
+            schrodinger::rdkit_extensions::MonomerID{"C", ChainType::PEPTIDE});
+    } else {
+        sk.m_sketcher_model->pingValue(ModelKey::AMINO_ACID_SYMBOL,
+                                       QVariant::fromValue(QString("C")));
+    }
 
     // verify all monomers are now "C" (cysteine)
     const auto* mol = model->getMol();
     check_all_monomers_have_res_name(*mol, "C");
+}
+
+/** Typed CHEM selections mutate CHEMs without changing biological monomers. */
+BOOST_AUTO_TEST_CASE(test_pingMutateChemMonomers)
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            schrodinger::rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    const auto result = db.loadMonomersFromJson(R"([
+        {"symbol":"chemOne","polymer_type":"CHEM","natural_analog":"",
+         "smiles":"CC","name":"First CHEM","monomer_type":"undefined","author":"test"},
+        {"symbol":"chemTwo","polymer_type":"CHEM","natural_analog":"",
+         "smiles":"CN","name":"Second CHEM","monomer_type":"undefined","author":"test"}
+    ])");
+    BOOST_REQUIRE(result.second.empty());
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    auto* model = sk.m_mol_model;
+    model->addMonomer("chemOne", ChainType::CHEM, {0.0, 0.0, 0.0});
+    model->addMonomer("A", ChainType::PEPTIDE, {5.0, 0.0, 0.0});
+    model->addMonomer("C", ChainType::RNA, {10.0, 0.0, 0.0});
+    sk.m_sketcher_model->setValue(ModelKey::TOOL_SET, ToolSet::MONOMERIC);
+    model->selectAll();
+    for (const bool amino_acid : {true, false}) {
+        const auto before =
+            get_monomer_res_name(model->getMol()->getAtomWithIdx(0));
+        sk.findChild<QAbstractButton*>(amino_acid ? "amino_monomer_btn"
+                                                  : "nucleic_monomer_btn")
+            ->click();
+        BOOST_CHECK(sk.m_sketcher_model->getDrawTool() == DrawTool::SELECT);
+        BOOST_TEST(get_monomer_res_name(model->getMol()->getAtomWithIdx(0)) ==
+                   before);
+        auto* button = sk.findChild<ModularToolButton*>(
+            amino_acid ? "aa_unclassified_btn" : "na_unclassified_btn");
+        BOOST_REQUIRE(button != nullptr);
+        auto* popup = button->getPopupWidget();
+        BOOST_REQUIRE(popup != nullptr);
+        auto* entry = popup->findChild<QToolButton*>(
+            amino_acid ? "analog_chemTwo_btn" : "na_analog_chemOne_btn");
+        BOOST_REQUIRE(entry != nullptr);
+        entry->click();
+        const auto* mol = model->getMol();
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 3);
+        BOOST_TEST(get_monomer_res_name(mol->getAtomWithIdx(0)) ==
+                   (amino_acid ? "chemTwo" : "chemOne"));
+        BOOST_CHECK(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                    MonomerType::CHEM);
+        BOOST_TEST(get_monomer_res_name(mol->getAtomWithIdx(1)) == "A");
+        BOOST_TEST(get_monomer_res_name(mol->getAtomWithIdx(2)) == "C");
+        BOOST_CHECK(sk.m_sketcher_model->getDrawTool() == DrawTool::SELECT);
+    }
+    model->clearSelection();
+    auto* unclassified =
+        sk.findChild<ModularToolButton*>("na_unclassified_btn");
+    unclassified->click();
+    BOOST_CHECK(sk.m_sketcher_model->getDrawTool() ==
+                DrawTool::MONOMER_DB_MONOMER);
+    model->clear();
+    auto* atomistic_button = sk.findChild<QAbstractButton*>("atomistic_btn");
+    BOOST_REQUIRE(atomistic_button->isEnabled());
+    atomistic_button->click();
+    BOOST_CHECK(sk.m_sketcher_model->getToolSet() == ToolSet::ATOMISTIC);
+    sk.findChild<QAbstractButton*>("monomeric_btn")->click();
+    BOOST_CHECK(sk.m_sketcher_model->getDrawTool() ==
+                DrawTool::MONOMER_DB_MONOMER);
+    BOOST_TEST(unclassified->isChecked());
+    const auto monomer =
+        sk.m_sketcher_model->getValue(ModelKey::MONOMER_DB_MONOMER)
+            .value<schrodinger::rdkit_extensions::MonomerID>();
+    BOOST_TEST(monomer.symbol == "chemOne");
+    BOOST_CHECK(monomer.chain_type == ChainType::CHEM);
 }
 
 /**
@@ -1043,7 +1156,8 @@ BOOST_DATA_TEST_CASE(test_shortcutMutateMonomersNucleicAcidBase,
  * the selected base monomers to that analog. This exercises the end-to-end
  * popup-analog-selection pipeline at the model level.
  */
-BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
+BOOST_DATA_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog,
+                     boost::unit_test::data::make({false, true}), unclassified)
 {
     constexpr std::string_view custom_monomer_json =
         ("[{"
@@ -1069,11 +1183,16 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
     model->selectAll();
     BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
 
-    // Ping with tool=A (the natural analog) and symbol="ModA" — only the
-    // bases should change to "ModA".
-    sk.m_sketcher_model->pingValue(
-        ModelKey::NUCLEIC_ACID_SYMBOL,
-        NucleicAcidMutation{NucleicAcidTool::A, "ModA"});
+    // Both a standard base slot and the unclassified slot mutate only bases.
+    if (unclassified) {
+        sk.m_sketcher_model->pingValue(
+            ModelKey::MONOMER_DB_MONOMER,
+            schrodinger::rdkit_extensions::MonomerID{"ModA", ChainType::RNA});
+    } else {
+        sk.m_sketcher_model->pingValue(
+            ModelKey::NUCLEIC_ACID_SYMBOL,
+            NucleicAcidMutation{NucleicAcidTool::A, "ModA"});
+    }
 
     const auto* mol = model->getMol();
     int base_count = 0;

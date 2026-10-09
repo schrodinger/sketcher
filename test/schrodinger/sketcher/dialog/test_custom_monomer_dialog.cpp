@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include <QPushButton>
 #include <QTextEdit>
 #include <QToolButton>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
@@ -25,10 +27,17 @@ BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+MAKE_ENUM_LOGGABLE(ChainType);
+}
+
 namespace sketcher
 {
 
 using rdkit_extensions::ChainType;
+namespace bdata = boost::unit_test::data;
 
 static QPushButton* get_ok_button(const QWidget& dialog)
 {
@@ -108,7 +117,7 @@ static void check_footer_placement(CustomMonomerDialog& dialog)
 
 BOOST_AUTO_TEST_CASE(custom_monomer_dialog_footer_follows_available_height)
 {
-    CustomMonomerDialog dialog(ChainType::PEPTIDE);
+    CustomMonomerDialog dialog(ChainType::PEPTIDE, false);
     check_footer_placement(dialog);
 }
 
@@ -121,7 +130,7 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_footer_keyboard_routing)
     class TrackingDialog : public CustomMonomerDialog
     {
       public:
-        TrackingDialog() : CustomMonomerDialog(ChainType::PEPTIDE)
+        TrackingDialog() : CustomMonomerDialog(ChainType::PEPTIDE, false)
         {
             setAttribute(Qt::WA_DeleteOnClose, false);
         }
@@ -230,7 +239,7 @@ BOOST_AUTO_TEST_CASE(
     class DialogWithTitleBar : public CustomMonomerDialog
     {
       public:
-        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE)
+        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE, false)
         {
             if (m_title_bar == nullptr) {
                 m_title_bar = new CustomTitleBar(windowTitle(), this);
@@ -260,7 +269,7 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_title_bar_can_shrink)
     class DialogWithTitleBar : public CustomMonomerDialog
     {
       public:
-        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE)
+        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE, false)
         {
             if (m_title_bar == nullptr) {
                 m_title_bar = new CustomTitleBar(windowTitle(), this);
@@ -314,12 +323,12 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_title_bar_can_shrink)
  */
 BOOST_AUTO_TEST_CASE(custom_monomer_dialog_validation_and_acceptance)
 {
-    CustomMonomerDialog dialog(ChainType::PEPTIDE);
+    CustomMonomerDialog dialog(ChainType::PEPTIDE, false);
     auto* sketcher = dialog.findChild<SketcherWidget*>();
     auto* ok_button = get_ok_button(dialog);
     BOOST_REQUIRE(sketcher != nullptr);
 
-    BOOST_TEST(dialog.windowTitle() == "Sketch Custom Peptide Monomer");
+    BOOST_TEST(dialog.windowTitle() == "Define Custom Peptide Residue");
     BOOST_TEST(!ok_button->isEnabled());
 
     dialog.addSMILES("CC");
@@ -340,16 +349,20 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_validation_and_acceptance)
                static_cast<int>(ChainType::PEPTIDE));
 }
 
-BOOST_AUTO_TEST_CASE(custom_monomer_dialog_titles_reflect_chain_type)
+BOOST_DATA_TEST_CASE(
+    custom_monomer_dialog_titles_reflect_chain_type,
+    bdata::make(std::vector<std::tuple<ChainType, bool, QString>>{
+        {ChainType::PEPTIDE, false, "Define Custom Peptide Residue"},
+        {ChainType::RNA, false, "Define Custom Nucleic Acid Base"},
+        {ChainType::CHEM, false, "Define Custom Structure"},
+        {ChainType::PEPTIDE, true, "Edit Selected Peptide Residue"},
+        {ChainType::RNA, true, "Edit Selected Nucleic Acid Base"},
+        {ChainType::CHEM, true, "Edit Selected Structure"},
+    }),
+    chain_type, existing_monomer, expected_title)
 {
-    CustomMonomerDialog peptide_dialog(ChainType::PEPTIDE);
-    CustomMonomerDialog nucleic_acid_dialog(ChainType::RNA);
-    CustomMonomerDialog chem_dialog(ChainType::CHEM);
-
-    BOOST_TEST(peptide_dialog.windowTitle() == "Sketch Custom Peptide Monomer");
-    BOOST_TEST(nucleic_acid_dialog.windowTitle() ==
-               "Sketch Custom Nucleic Acid Monomer");
-    BOOST_TEST(chem_dialog.windowTitle() == "Sketch Custom Chem Monomer");
+    CustomMonomerDialog dialog(chain_type, existing_monomer);
+    BOOST_TEST(dialog.windowTitle() == expected_title);
 }
 
 /**
@@ -366,7 +379,7 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_rejects_duplicate_attachment_points)
          "points must be unique."}};
 
     for (const auto& [smiles, expected_error] : test_cases) {
-        CustomMonomerDialog dialog(ChainType::PEPTIDE);
+        CustomMonomerDialog dialog(ChainType::PEPTIDE, false);
         bool accepted = false;
         QObject::connect(&dialog, &CustomMonomerDialog::customMonomerAccepted,
                          [&accepted]() { accepted = true; });
@@ -388,7 +401,7 @@ BOOST_AUTO_TEST_CASE(custom_monomer_dialog_rejects_duplicate_attachment_points)
 /** Unique numbered attachment points continue to be accepted. */
 BOOST_AUTO_TEST_CASE(custom_monomer_dialog_accepts_unique_attachment_points)
 {
-    CustomMonomerDialog dialog(ChainType::PEPTIDE);
+    CustomMonomerDialog dialog(ChainType::PEPTIDE, false);
     bool accepted = false;
     QObject::connect(&dialog, &CustomMonomerDialog::customMonomerAccepted,
                      [&accepted]() { accepted = true; });
@@ -413,7 +426,7 @@ BOOST_AUTO_TEST_CASE(
 
     for (const auto& [required_attachment_points, expected_warning] :
          test_cases) {
-        CustomMonomerDialog dialog(ChainType::PEPTIDE);
+        CustomMonomerDialog dialog(ChainType::PEPTIDE, true);
         bool accepted = false;
         QObject::connect(&dialog, &CustomMonomerDialog::customMonomerAccepted,
                          [&accepted]() { accepted = true; });
@@ -441,7 +454,7 @@ BOOST_AUTO_TEST_CASE(
 BOOST_AUTO_TEST_CASE(
     custom_monomer_dialog_continues_after_attachment_point_warning)
 {
-    CustomMonomerDialog dialog(ChainType::PEPTIDE);
+    CustomMonomerDialog dialog(ChainType::PEPTIDE, true);
     bool accepted = false;
     QObject::connect(&dialog, &CustomMonomerDialog::customMonomerAccepted,
                      [&accepted]() { accepted = true; });

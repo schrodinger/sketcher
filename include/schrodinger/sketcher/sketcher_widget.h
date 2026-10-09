@@ -67,6 +67,7 @@ class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
+struct RenderOptions;
 class SketcherSideBar;
 enum class ImageFormat;
 enum class ModelKey;
@@ -156,6 +157,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      * the background color.
      */
     void setColorScheme(const ColorScheme color_scheme);
+
+    /**
+     * Apply image-generation rendering options to this widget's display model.
+     *
+     * @param options Rendering options to apply
+     */
+    void setRenderOptions(const RenderOptions& options);
 
     /**
      * Set whether the "Load Monomer Database..." menu item is visible. This

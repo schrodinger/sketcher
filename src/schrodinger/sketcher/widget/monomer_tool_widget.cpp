@@ -30,6 +30,17 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+
+// Text for the "+ Custom" button menu
+static const QString SMILES_monomer_CHEM_text = "Draw Structure...";
+static const QString SMILES_monomer_peptide_text = "Sketch Residue...";
+// TODO: change this as part of SKETCH-2796
+static const QString SMILES_monomer_nucleic_acid_text = "Sketch Base...";
+
+} // namespace
+
 MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     AbstractDrawToolWidget(parent)
 {
@@ -52,6 +63,11 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     ui->unk_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
     ui->na_n_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
     ui->custom_monomer_btn->setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
+    ui->custom_monomer_btn->setCenterContents(true);
+    for (auto* button : {ui->aa_unclassified_btn, ui->na_unclassified_btn}) {
+        button->setUpdateAppearanceFromPopup(false);
+        button->setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
+    }
 
     using ButtonAminoAcidBimapType =
         boost::bimap<QAbstractButton*, AminoAcidTool>;
@@ -80,7 +96,8 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
             (ui->trp_btn, AminoAcidTool::TRP)
             (ui->tyr_btn, AminoAcidTool::TYR)
             (ui->val_btn, AminoAcidTool::VAL)
-            (ui->unk_btn, AminoAcidTool::UNK);
+            (ui->unk_btn, AminoAcidTool::UNK)
+            (ui->aa_unclassified_btn, AminoAcidTool::UNCLASSIFIED);
     m_button_nucleic_acid_bimap =
         boost::assign::list_of<ButtonNucleicAcidBimapType::relation>
             (ui->na_a_btn, NucleicAcidTool::A)
@@ -94,7 +111,8 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
             (ui->na_p_btn, NucleicAcidTool::P)
             (ui->na_rna_btn, NucleicAcidTool::RNA_NUCLEOTIDE)
             (ui->na_dna_btn, NucleicAcidTool::DNA_NUCLEOTIDE)
-            (ui->na_custom_nt_btn, NucleicAcidTool::CUSTOM_NUCLEOTIDE);
+            (ui->na_custom_nt_btn, NucleicAcidTool::CUSTOM_NUCLEOTIDE)
+            (ui->na_unclassified_btn, NucleicAcidTool::UNCLASSIFIED);
     // clang-format on
 
     connect(ui->amino_or_nucleic_group, &QButtonGroup::buttonClicked, this,
@@ -108,10 +126,13 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     m_custom_monomer_action = new QAction(this);
     custom_monomer_menu->addAction(m_custom_monomer_action);
     custom_monomer_menu->addSeparator();
-    auto* custom_chem_monomer_action = new QAction("Sketch CHEM...", this);
+    auto* custom_chem_monomer_action =
+        new QAction(SMILES_monomer_CHEM_text, this);
     custom_monomer_menu->addAction(custom_chem_monomer_action);
     // Avoid QToolButton's synchronous menu event loop in WASM builds.
     ui->custom_monomer_btn->setPopupWidget(custom_monomer_menu);
+    ui->custom_monomer_btn->showPopupIndicator(false);
+    ui->custom_monomer_btn->showPopupIndicatorOnHover(true);
     connect(ui->custom_monomer_btn, &QToolButton::clicked, this,
             [this]() { m_custom_monomer_action->trigger(); });
     connect(m_custom_monomer_action, &QAction::triggered, this,
@@ -163,17 +184,33 @@ void MonomerToolWidget::updateMonomerButtons()
     };
     clear_popups(m_amino_acid_symbol_popups);
     clear_popups(m_nucleic_acid_symbol_popups);
+    for (auto* button : {ui->aa_unclassified_btn, ui->na_unclassified_btn}) {
+        button->setEnumItem(-1);
+        button->hide();
+    }
+
+    auto& db = rdkit_extensions::MonomerDatabase::instance();
+    const auto chem_monomers =
+        db.getMonomersByPolymerType(rdkit_extensions::ChainType::CHEM);
+    auto add_chem_monomers = [&](auto& analogs) {
+        analogs.insert(analogs.end(), chem_monomers.begin(),
+                       chem_monomers.end());
+    };
 
     // Set up amino acid analog popups from the monomer database
     auto analogs_by_aa =
         rdkit_extensions::MonomerDatabase::instance()
             .getMonomersByNaturalAnalog(rdkit_extensions::ChainType::PEPTIDE);
+    add_chem_monomers(analogs_by_aa["X"]);
 
     for (auto& entry : m_button_amino_acid_bimap.left) {
         auto* button = entry.first;
         auto aa_tool = entry.second;
-        auto symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
-        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
+        const bool unclassified = aa_tool == AminoAcidTool::UNCLASSIFIED;
+        auto symbol =
+            unclassified ? "X" : AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
+        auto name = unclassified ? "Unclassified"
+                                 : AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
         if (aa_tool == AminoAcidTool::UNK) {
             // the UNK button doesn't get a popup and isn't a ModularToolButton
             button->setToolTip(QString::fromStdString(name));
@@ -191,9 +228,13 @@ void MonomerToolWidget::updateMonomerButtons()
             button->setToolTip(QString::fromStdString(name));
             continue;
         }
-        auto* popup = new AminoAcidSymbolPopup(symbol, name, it->second, this);
+        auto* popup = new AminoAcidSymbolPopup(unclassified ? "" : symbol, name,
+                                               it->second, this);
         modular_btn->setPopupWidget(popup);
-        modular_btn->setEnumItem(0); // default to standard AA
+        modular_btn->setEnumItem(unclassified ? -1 : 0);
+        if (unclassified) {
+            button->show();
+        }
         modular_btn->showPopupIndicatorOnHover(true);
         m_amino_acid_symbol_popups[button] = popup;
         if (auto* model = getModel()) {
@@ -213,6 +254,9 @@ void MonomerToolWidget::updateMonomerButtons()
 
     auto na_tool_to_std_name = [](NucleicAcidTool na_tool)
         -> std::optional<std::pair<std::string, std::string>> {
+        if (na_tool == NucleicAcidTool::UNCLASSIFIED) {
+            return {{"N", "Unclassified"}};
+        }
         auto res_it = NUCLEIC_ACID_TOOL_TO_RES_NAME.find(na_tool);
         if (res_it == NUCLEIC_ACID_TOOL_TO_RES_NAME.end()) {
             return std::nullopt;
@@ -225,6 +269,7 @@ void MonomerToolWidget::updateMonomerButtons()
     };
 
     auto analogs_by_na = get_merged_na_analogs();
+    add_chem_monomers(analogs_by_na["N"]);
 
     for (auto& [button, na_tool] : m_button_nucleic_acid_bimap.left) {
         auto std_name = na_tool_to_std_name(na_tool);
@@ -244,15 +289,22 @@ void MonomerToolWidget::updateMonomerButtons()
         // attached.
         modular_btn->showPopupIndicator(false);
 
-        auto analogs =
-            get_analogs_for_na_button(symbol, analogs_by_na, STANDARD_NA_NAMES);
+        const bool unclassified = na_tool == NucleicAcidTool::UNCLASSIFIED;
+        auto analogs = unclassified
+                           ? analogs_by_na[symbol]
+                           : get_analogs_for_na_button(symbol, analogs_by_na,
+                                                       STANDARD_NA_NAMES);
         if (analogs.empty()) {
             button->setToolTip(QString::fromStdString(name));
             continue;
         }
-        auto* popup = new NucleicAcidSymbolPopup(symbol, name, analogs, this);
+        auto* popup = new NucleicAcidSymbolPopup(unclassified ? "" : symbol,
+                                                 name, analogs, this);
         modular_btn->setPopupWidget(popup);
-        modular_btn->setEnumItem(0); // default to standard base
+        modular_btn->setEnumItem(unclassified ? -1 : 0);
+        if (unclassified) {
+            button->show();
+        }
         modular_btn->showPopupIndicatorOnHover(true);
         m_nucleic_acid_symbol_popups[button] = popup;
         if (auto* model = getModel()) {
@@ -309,9 +361,9 @@ void MonomerToolWidget::updateWidgetsEnabled()
 
     // Enable individual nucleic acid component buttons only if that
     // component type is in the selection (or there's no monomer selection)
-    auto base_btns =
-        std::to_array<QToolButton*>({ui->na_a_btn, ui->na_c_btn, ui->na_g_btn,
-                                     ui->na_u_btn, ui->na_t_btn, ui->na_n_btn});
+    auto base_btns = std::to_array<QToolButton*>(
+        {ui->na_a_btn, ui->na_c_btn, ui->na_g_btn, ui->na_u_btn, ui->na_t_btn,
+         ui->na_n_btn, ui->na_unclassified_btn});
     for (auto* btn : base_btns) {
         btn->setEnabled(!has_monomer_selection || has_na_base);
     }
@@ -348,19 +400,29 @@ void MonomerToolWidget::updateCheckedButton()
     QAbstractButton* connection_button = nullptr;
     bool has_sel = model->hasActiveSelection();
     auto draw_tool = model->getDrawTool();
+    const bool database_monomer_selected =
+        draw_tool == DrawTool::MONOMER_DB_MONOMER && !has_sel &&
+        !model->getValue(ModelKey::MONOMER_DB_MONOMER)
+             .value<rdkit_extensions::MonomerID>()
+             .symbol.empty();
     if (draw_tool == DrawTool::MONOMER ||
+        draw_tool == DrawTool::MONOMER_DB_MONOMER ||
         draw_tool == DrawTool::CUSTOM_MONOMER) {
         if (model->getMonomerToolType() == MonomerToolType::AMINO_ACID) {
             ui->amino_monomer_btn->setChecked(true);
             ui->amino_or_nucleic_stack->setCurrentWidget(ui->amino_page);
-            if (draw_tool == DrawTool::MONOMER && !has_sel) {
+            if (database_monomer_selected) {
+                amino_button = ui->aa_unclassified_btn;
+            } else if (draw_tool == DrawTool::MONOMER && !has_sel) {
                 auto amino_acid = model->getAminoAcidTool();
                 amino_button = m_button_amino_acid_bimap.right.at(amino_acid);
             }
         } else {
             ui->nucleic_monomer_btn->setChecked(true);
             ui->amino_or_nucleic_stack->setCurrentWidget(ui->nucleic_page);
-            if (draw_tool == DrawTool::MONOMER && !has_sel) {
+            if (database_monomer_selected) {
+                nucleic_button = ui->na_unclassified_btn;
+            } else if (draw_tool == DrawTool::MONOMER && !has_sel) {
                 auto nucleic_acid = model->getNucleicAcidTool();
                 nucleic_button =
                     m_button_nucleic_acid_bimap.right.at(nucleic_acid);
@@ -378,6 +440,7 @@ void MonomerToolWidget::updateCheckedButton()
                                   ui->monomeric_connection_group);
     const bool custom_monomer_selected = draw_tool == DrawTool::CUSTOM_MONOMER;
     ui->custom_monomer_btn->setChecked(custom_monomer_selected);
+    ui->custom_monomer_btn->showPopupIndicator(custom_monomer_selected);
     setCustomMonomerActionChainType(
         ui->amino_or_nucleic_group->checkedButton() == ui->amino_monomer_btn
             ? rdkit_extensions::ChainType::PEPTIDE
@@ -394,6 +457,9 @@ void MonomerToolWidget::updateCheckedButton()
     // sync amino acid analog popup state
     auto analog = model->getValueString(ModelKey::AMINO_ACID_SYMBOL);
     for (auto& [btn, popup] : m_amino_acid_symbol_popups) {
+        if (btn == ui->aa_unclassified_btn) {
+            continue;
+        }
         auto* modular_btn = qobject_cast<ModularToolButton*>(btn);
         Q_ASSERT_X(modular_btn, "MonomerToolWidget",
                    "Expected ModularToolButton");
@@ -419,10 +485,12 @@ void MonomerToolWidget::updateCheckedButton()
                          .value<NucleicAcidMutation>()
                          .symbol;
     auto active_it = m_nucleic_acid_symbol_popups.find(nucleic_button);
-    if (active_it != m_nucleic_acid_symbol_popups.end()) {
+    if (active_it != m_nucleic_acid_symbol_popups.end() &&
+        nucleic_button != ui->na_unclassified_btn) {
         std::unordered_set<QString> other_standards;
         for (auto& [other_btn, other_popup] : m_nucleic_acid_symbol_popups) {
-            if (other_btn != nucleic_button) {
+            if (other_btn != nucleic_button &&
+                other_btn != ui->na_unclassified_btn) {
                 other_standards.insert(other_popup->getSymbolForId(0));
             }
         }
@@ -439,6 +507,33 @@ void MonomerToolWidget::updateCheckedButton()
             }
             modular_btn->setEnumItem(packet.enum_int);
             break;
+        }
+    }
+
+    // Sync only the active unclassified button. The shared database-monomer
+    // value must not replace the other page's remembered selection.
+    if (draw_tool == DrawTool::MONOMER_DB_MONOMER) {
+        const auto monomer = model->getValue(ModelKey::MONOMER_DB_MONOMER)
+                                 .value<rdkit_extensions::MonomerID>();
+        auto sync_popup = [&](auto* button, auto* popup) {
+            for (const auto& packet : popup->getButtonPackets()) {
+                if (popup->getMonomerForId(packet.enum_int) == monomer) {
+                    button->setEnumItem(packet.enum_int);
+                    break;
+                }
+            }
+        };
+        if (model->getMonomerToolType() == MonomerToolType::AMINO_ACID) {
+            auto it = m_amino_acid_symbol_popups.find(ui->aa_unclassified_btn);
+            if (it != m_amino_acid_symbol_popups.end()) {
+                sync_popup(ui->aa_unclassified_btn, it->second);
+            }
+        } else {
+            auto it =
+                m_nucleic_acid_symbol_popups.find(ui->na_unclassified_btn);
+            if (it != m_nucleic_acid_symbol_popups.end()) {
+                sync_popup(ui->na_unclassified_btn, it->second);
+            }
         }
     }
 
@@ -468,6 +563,24 @@ void MonomerToolWidget::onAminoOrNucleicBtnClicked(QAbstractButton* button)
         setCustomMonomerActionChainType(rdkit_extensions::ChainType::RNA);
     }
     ui->amino_or_nucleic_stack->setCurrentWidget(page);
+    auto* model = getModel();
+    if (model->hasActiveSelection()) {
+        // Changing pages must not ping a remembered monomer into the selection.
+        model->setValue(ModelKey::MONOMER_TOOL_TYPE, tool_type);
+        return;
+    }
+    QAbstractButton* unclassified_button = nullptr;
+    if (tool_type == MonomerToolType::AMINO_ACID &&
+        model->getAminoAcidTool() == AminoAcidTool::UNCLASSIFIED) {
+        unclassified_button = ui->aa_unclassified_btn;
+    } else if (tool_type == MonomerToolType::NUCLEIC_ACID &&
+               model->getNucleicAcidTool() == NucleicAcidTool::UNCLASSIFIED) {
+        unclassified_button = ui->na_unclassified_btn;
+    }
+    if (unclassified_button != nullptr) {
+        activateMonomerDbMonomer(unclassified_button);
+        return;
+    }
     getModel()->setValues(
         {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::MONOMER)},
          {ModelKey::MONOMER_TOOL_TYPE, QVariant::fromValue(tool_type)}});
@@ -482,8 +595,8 @@ void MonomerToolWidget::setCustomMonomerActionChainType(
     m_custom_monomer_chain_type = chain_type;
     m_custom_monomer_action->setText(
         chain_type == rdkit_extensions::ChainType::PEPTIDE
-            ? "Sketch peptide..."
-            : "Sketch nucleic acid...");
+            ? SMILES_monomer_peptide_text
+            : SMILES_monomer_nucleic_acid_text);
 }
 
 /**
@@ -520,6 +633,14 @@ ping_or_set_model_value(SketcherModel* model, const ModelKey key, const T value)
 
 void MonomerToolWidget::onAminoAcidClicked(QAbstractButton* button)
 {
+    if (button == ui->aa_unclassified_btn) {
+        if (ui->aa_unclassified_btn->getEnumItem() == -1) {
+            updateCheckedButton();
+        } else {
+            activateMonomerDbMonomer(button);
+        }
+        return;
+    }
     on_tool_clicked<AminoAcidTool>(getModel(), ModelKey::AMINO_ACID_TOOL,
                                    m_button_amino_acid_bimap, button);
 
@@ -548,7 +669,7 @@ void MonomerToolWidget::sketchCustomMonomer(
     const bool custom_monomer_selected = draw_tool == DrawTool::CUSTOM_MONOMER;
     ui->custom_monomer_btn->setChecked(custom_monomer_selected);
 
-    auto* dialog = new CustomMonomerDialog(chain_type, this);
+    auto* dialog = new CustomMonomerDialog(chain_type, false, this);
     connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
             &MonomerToolWidget::onCustomMonomerDialogAccepted);
     dialog->show();
@@ -588,6 +709,14 @@ void MonomerToolWidget::onCustomMonomerDialogAccepted(
 
 void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
 {
+    if (button == ui->na_unclassified_btn) {
+        if (ui->na_unclassified_btn->getEnumItem() == -1) {
+            updateCheckedButton();
+        } else {
+            activateMonomerDbMonomer(button);
+        }
+        return;
+    }
     on_tool_clicked<NucleicAcidTool>(getModel(), ModelKey::NUCLEIC_ACID_TOOL,
                                      m_button_nucleic_acid_bimap, button);
     // if one of the full nucleotide buttons was clicked, we also need to inform
@@ -619,6 +748,41 @@ void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
     }
     ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
                             NucleicAcidMutation{na_tool, symbol});
+}
+
+rdkit_extensions::MonomerID
+MonomerToolWidget::getMonomerDbMonomerForButton(QAbstractButton* button) const
+{
+    auto* modular_button = qobject_cast<ModularToolButton*>(button);
+    const auto id = modular_button->getEnumItem();
+    if (id == -1) {
+        return {"", rdkit_extensions::ChainType::PEPTIDE};
+    }
+    if (button == ui->aa_unclassified_btn) {
+        return m_amino_acid_symbol_popups.at(button)->getMonomerForId(id);
+    }
+    return m_nucleic_acid_symbol_popups.at(button)->getMonomerForId(id);
+}
+
+void MonomerToolWidget::activateMonomerDbMonomer(QAbstractButton* button)
+{
+    auto* model = getModel();
+    const auto monomer = getMonomerDbMonomerForButton(button);
+    if (model->hasActiveSelection()) {
+        model->pingValue(ModelKey::MONOMER_DB_MONOMER, monomer);
+        return;
+    }
+    const bool amino_acid = button == ui->aa_unclassified_btn;
+    model->setValues(
+        {{ModelKey::DRAW_TOOL,
+          QVariant::fromValue(DrawTool::MONOMER_DB_MONOMER)},
+         {ModelKey::MONOMER_DB_MONOMER, QVariant::fromValue(monomer)},
+         {ModelKey::MONOMER_TOOL_TYPE,
+          QVariant::fromValue(amino_acid ? MonomerToolType::AMINO_ACID
+                                         : MonomerToolType::NUCLEIC_ACID)},
+         {amino_acid ? ModelKey::AMINO_ACID_TOOL : ModelKey::NUCLEIC_ACID_TOOL,
+          amino_acid ? QVariant::fromValue(AminoAcidTool::UNCLASSIFIED)
+                     : QVariant::fromValue(NucleicAcidTool::UNCLASSIFIED)}});
 }
 
 void MonomerToolWidget::onConnectionButtonClicked(int button_id)

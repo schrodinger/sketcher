@@ -1,4 +1,5 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 
 #include <functional>
 #include <unordered_set>
@@ -651,6 +652,7 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::DNA_NUCLEOBASE:
             case ModelKey::CUSTOM_NUCLEOTIDE:
             case ModelKey::CUSTOM_MONOMER:
+            case ModelKey::MONOMER_DB_MONOMER:
             case ModelKey::MONOMERIC_CONNECTION_TOOL:
                 updateSceneTool();
                 break;
@@ -759,7 +761,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 m_mol_model, is_smiles);
         } else {
             auto tool = m_sketcher_model->getNucleicAcidTool();
-            if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool)) {
+            if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool) ||
+                tool == NucleicAcidTool::UNCLASSIFIED) {
                 auto mutation =
                     m_sketcher_model->getValue(ModelKey::NUCLEIC_ACID_SYMBOL)
                         .value<NucleicAcidMutation>();
@@ -796,6 +799,16 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
                 *m_sketcher_model->getBondDisplaySettingsPtr(), this,
                 m_mol_model);
+        }
+    } else if (draw_tool == DrawTool::MONOMER_DB_MONOMER) {
+        auto monomer = m_sketcher_model->getValue(ModelKey::MONOMER_DB_MONOMER)
+                           .value<rdkit_extensions::MonomerID>();
+        if (!monomer.symbol.empty()) {
+            return std::make_shared<DrawMonomerSceneTool>(
+                monomer.symbol, monomer.chain_type, m_fonts,
+                *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *m_sketcher_model->getBondDisplaySettingsPtr(), this,
+                m_mol_model, /*is_smiles_monomer=*/false);
         }
     } else if (draw_tool == DrawTool::CUSTOM_MONOMER) {
         auto [smiles, monomer_type] = m_sketcher_model->getCustomMonomer();
