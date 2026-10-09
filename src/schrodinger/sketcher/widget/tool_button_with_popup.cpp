@@ -6,6 +6,7 @@
 #include <QMenu>
 #include <QPoint>
 #include <QScreen>
+#include <QStyleOptionButton>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
 #include <QTimer>
@@ -44,7 +45,35 @@ void ToolButtonWithPopup::paintEvent(QPaintEvent* event)
         (m_show_popup_indicator_on_hover && hovered && isEnabled())) {
         opt.features |= QStyleOptionToolButton::HasMenu;
     }
-    p.drawComplexControl(QStyle::CC_ToolButton, opt);
+    if (!m_center_contents ||
+        opt.toolButtonStyle != Qt::ToolButtonTextBesideIcon) {
+        p.drawComplexControl(QStyle::CC_ToolButton, opt);
+        return;
+    }
+
+    // The centered painting path (i.e. the code below this comment) is only
+    // used in the "+ Custom" button so that the button is centered, but the
+    // blue background still covers the entire row when the button is pushed.
+
+    // Keep the background and corner indicator at the full button size.
+    auto background = opt;
+    background.text.clear();
+    background.icon = QIcon();
+    p.drawComplexControl(QStyle::CC_ToolButton, background);
+
+    // Push-button label painting centers the icon and text as a group.
+    // Do not reserve menu space: our indicator is in the corner.
+    QStyleOptionButton label;
+    label.initFrom(this);
+    label.rect = opt.rect;
+    label.state = opt.state;
+    label.palette = opt.palette;
+    label.fontMetrics = opt.fontMetrics;
+    label.text = opt.text;
+    label.icon = opt.icon;
+    label.iconSize = opt.iconSize;
+    p.setFont(opt.font);
+    p.drawControl(QStyle::CE_PushButtonLabel, label);
 }
 
 void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
@@ -92,6 +121,15 @@ void ToolButtonWithPopup::showPopupIndicatorOnHover(bool show)
     }
     m_show_popup_indicator_on_hover = show;
     updateStyle();
+    update();
+}
+
+void ToolButtonWithPopup::setCenterContents(bool center)
+{
+    if (m_center_contents == center) {
+        return;
+    }
+    m_center_contents = center;
     update();
 }
 

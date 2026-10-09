@@ -69,11 +69,12 @@ static QString chain_type_display_name(const ChainType chain_type)
 {
     switch (chain_type) {
         case ChainType::PEPTIDE:
-            return "Peptide";
+            return "Peptide Residue";
         case ChainType::RNA:
-            return "Nucleic Acid";
+            // TODO: change this as part of SKETCH-2796
+            return "Nucleic Acid Base";
         case ChainType::CHEM:
-            return "Chem";
+            return "Structure";
         default:
             throw std::invalid_argument(
                 "Custom monomer dialog does not support this chain type");
@@ -81,6 +82,7 @@ static QString chain_type_display_name(const ChainType chain_type)
 }
 
 CustomMonomerDialog::CustomMonomerDialog(const ChainType chain_type,
+                                         const bool existing_monomer,
                                          QWidget* parent) :
     ResizableModalDialog(parent),
     m_chain_type(chain_type)
@@ -89,8 +91,9 @@ CustomMonomerDialog::CustomMonomerDialog(const ChainType chain_type,
     setupDialogUI(*ui);
     ui->button_bar->installEventFilter(this);
     setStyleSheet(CUSTOM_MONOMER_DIALOG_STYLE);
-    setWindowTitle("Sketch Custom " + chain_type_display_name(chain_type) +
-                   " Monomer");
+    QString title = (existing_monomer ? "Edit Selected " : "Define Custom ") +
+                    chain_type_display_name(chain_type);
+    setWindowTitle(title);
     ui->sketcher_widget->setInterfaceType(InterfaceType::ATOMISTIC);
 
 #ifdef __EMSCRIPTEN__

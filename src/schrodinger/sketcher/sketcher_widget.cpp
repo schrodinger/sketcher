@@ -947,7 +947,7 @@ void SketcherWidget::showEditMonomerStructureDialog(
 
     auto [required_attachment_points, required_connections] =
         get_required_attachment_points(atom);
-    auto* dialog = new CustomMonomerDialog(chain_type, this);
+    auto* dialog = new CustomMonomerDialog(chain_type, true, this);
     dialog->setRequiredAttachmentPoints(required_attachment_points);
     if (smiles) {
         dialog->addSMILES(normalize_smiles_attachment_points(*smiles));
