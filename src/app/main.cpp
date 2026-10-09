@@ -18,10 +18,14 @@
 #include <vector>
 
 #include <QApplication>
+#include <QEvent>
 #include <QFile>
 #include <QIcon>
+#include <QPointer>
 #include <QString>
 #include <QStyleHints>
+#include <QTimer>
+#include <QWidget>
 
 #include "image_generation_from_js.h"
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -230,6 +234,64 @@ EMSCRIPTEN_BINDINGS(sketcher)
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+/**
+ * Gives browser focus to the canvas of the given top-level widget, so the
+ * browser delivers key events to it again. Qt only does this itself when
+ * there's no input context, and the WASM platform plugin always creates one.
+ */
+void focus_canvas(QWidget& window)
+{
+    auto canvas = emscripten::val::module_property(
+        "specialHTMLTargets")["!qtwindow" + std::to_string(window.winId())];
+    if (!canvas.isUndefined()) {
+        canvas.call<void>("focus");
+    }
+}
+
+/**
+ * Hands activation back to the window underneath a popup once the popup
+ * closes.
+ *
+ * Qt 6.7's WASM platform plugin activates a popup's window when the popup is
+ * shown, but doesn't reactivate anything when it's hidden. Key events then
+ * keep going to the hidden popup (and, for popups that close themselves, the
+ * browser leaves focus on the page body), so shortcuts stop working until the
+ * user clicks in the sketcher (SKETCH-1652). This is fixed upstream by
+ * QTBUG-144692, which isn't in a Qt release yet; remove this once we're on one
+ * that includes it.
+ */
+class PopupActivationRestorer : public QObject
+{
+  public:
+    using QObject::QObject;
+
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        auto* popup = qobject_cast<QWidget*>(watched);
+        if (event->type() == QEvent::Hide && popup != nullptr &&
+            popup->windowType() == Qt::Popup) {
+            auto* parent = popup->parentWidget();
+            QPointer<QWidget> window =
+                parent != nullptr ? parent->window() : &get_sketcher_instance();
+            // Defer until Qt has finished closing the popup, and leave things
+            // alone if another popup (e.g. a parent menu) is still open or if
+            // the popup's action opened a modal dialog
+            QTimer::singleShot(0, this, [window]() {
+                auto* modal = QApplication::activeModalWidget();
+                if (window != nullptr && window->isVisible() &&
+                    QApplication::activePopupWidget() == nullptr &&
+                    (modal == nullptr || modal == window)) {
+                    window->activateWindow();
+                    focus_canvas(*window);
+                }
+            });
+        }
+        return QObject::eventFilter(watched, event);
+    }
+};
+#endif
+
 void apply_stylesheet(QApplication& app)
 {
     QFile styleFile(":resources/schrodinger_livedesign.qss");
@@ -268,6 +330,7 @@ int main(int argc, char** argv)
     // (https://bugreports.qt.io/browse/QTBUG-94583), which would otherwise
     // prevent tooltips from showing up. (See SKETCH-2565.)
     sk.setAttribute(Qt::WA_AlwaysShowToolTips);
+    application.installEventFilter(new PopupActivationRestorer(&application));
     QObject::connect(&sk, &SketcherWidget::moleculeChanged, &sketcher_changed);
     QObject::connect(&sk, &SketcherWidget::representationChanged,
                      &sketcher_changed);
