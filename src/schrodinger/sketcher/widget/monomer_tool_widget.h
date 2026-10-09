@@ -26,7 +26,8 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 enum class ChainType;
-}
+struct MonomerID;
+} // namespace rdkit_extensions
 
 namespace sketcher
 {
@@ -103,6 +104,15 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
      * Respond to the user clicking on a specific nucleic acid
      */
     void onNucleicAcidClicked(QAbstractButton* button);
+
+    /**
+     * Activate the remembered database monomer from either unclassified
+     * button.
+     */
+    void activateMonomerDbMonomer(QAbstractButton* button);
+
+    rdkit_extensions::MonomerID
+    getMonomerDbMonomerForButton(QAbstractButton* button) const;
 
     /**
      * Respond to the user clicking on a specific monomeric connection button

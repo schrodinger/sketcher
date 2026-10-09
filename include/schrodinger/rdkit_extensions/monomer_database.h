@@ -82,6 +82,8 @@ struct RDKIT_EXTENSIONS_API ResidueQuery {
 struct RDKIT_EXTENSIONS_API MonomerID {
     std::string symbol;
     ChainType chain_type;
+
+    bool operator==(const MonomerID&) const = default;
 };
 
 class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
@@ -194,6 +196,11 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
     getMonomersByNaturalAnalog(ChainType polymer_type) const;
 
+    // Returns all monomers of the given polymer type, including monomers
+    // without a natural analog.
+    [[nodiscard]] std::vector<MonomerInfo>
+    getMonomersByPolymerType(ChainType polymer_type) const;
+
     // Return the cached list of complex monomer queries. (A "complex
     // monomer" is one that can't be matched correctly using a generic SMARTS
     // pattern.) The cache is invalidated whenever the database is modified.
@@ -201,6 +208,9 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     getComplexMonomerQueries() const;
 
   private:
+    std::vector<MonomerInfo> getMonomers(ChainType polymer_type,
+                                         bool non_natural_only) const;
+
     // this is private because we don't want to allow managing
     // just any db -- we require the proper schema!
     MonomerDatabase();

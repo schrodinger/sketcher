@@ -1243,12 +1243,34 @@ void MonomerDatabase::onDatabaseChanged()
 [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
 MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
 {
-    auto type_value = toString(polymer_type);
-    auto sql = fmt::format("SELECT {} FROM {} WHERE {}=? AND {} != {};",
-                           fmt::join(getDbFields(), ", "), monomer_defs_table,
-                           polymer_type_column, symbol_column, analog_column);
-
     std::unordered_map<std::string, std::vector<MonomerInfo>> result;
+    for (auto& monomer : getMonomers(polymer_type, true)) {
+        if (monomer.natural_analog) {
+            result[*monomer.natural_analog].push_back(std::move(monomer));
+        }
+    }
+    return result;
+}
+
+std::vector<MonomerInfo>
+MonomerDatabase::getMonomersByPolymerType(ChainType polymer_type) const
+{
+    return getMonomers(polymer_type, false);
+}
+
+std::vector<MonomerInfo>
+MonomerDatabase::getMonomers(ChainType polymer_type,
+                             bool non_natural_only) const
+{
+    auto type_value = toString(polymer_type);
+    auto sql = fmt::format(
+        "SELECT {} FROM {} WHERE {}=?{};", fmt::join(getDbFields(), ", "),
+        monomer_defs_table, polymer_type_column,
+        non_natural_only
+            ? fmt::format(" AND {} != {}", symbol_column, analog_column)
+            : "");
+
+    std::vector<MonomerInfo> result;
 
     sqlite3_stmt* stmt = nullptr;
     for (sqlite3* db : {m_core_monomers_db, m_custom_monomers_db}) {
@@ -1268,9 +1290,7 @@ MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
                 auto value = _sqlite3_column_cstring(stmt, i);
                 assign_monomer_info(m, key, value);
             }
-            if (m.natural_analog.has_value()) {
-                result[*m.natural_analog].push_back(std::move(m));
-            }
+            result.push_back(std::move(m));
         }
     }
 

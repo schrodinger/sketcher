@@ -114,6 +114,7 @@ static MonomerType nucleic_acid_tool_to_monomer_type(NucleicAcidTool tool)
         case NucleicAcidTool::C:
         case NucleicAcidTool::T:
         case NucleicAcidTool::N:
+        case NucleicAcidTool::UNCLASSIFIED:
             return MonomerType::NA_BASE;
         case NucleicAcidTool::R:
         case NucleicAcidTool::dR:
@@ -1914,6 +1915,15 @@ void SketcherWidget::applyModelValuePingToTargets(
             m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
             break;
         }
+        case ModelKey::MONOMER_DB_MONOMER: {
+            auto monomer = value.value<rdkit_extensions::MonomerID>();
+            if (!monomer.symbol.empty()) {
+                m_mol_model->mutateMonomers(
+                    atoms, monomer.symbol,
+                    get_monomer_type(monomer.symbol, monomer.chain_type));
+            }
+            break;
+        }
         case ModelKey::CUSTOM_MONOMER: {
             auto [smiles, chain_type] =
                 value.value<std::pair<QString, rdkit_extensions::ChainType>>();
@@ -1935,7 +1945,8 @@ void SketcherWidget::applyModelValuePingToTargets(
         }
         case ModelKey::NUCLEIC_ACID_SYMBOL: {
             auto mutation = value.value<NucleicAcidMutation>();
-            if (!NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(mutation.tool)) {
+            if (!NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(mutation.tool) &&
+                mutation.tool != NucleicAcidTool::UNCLASSIFIED) {
                 break; // full nucleotide tools not supported for mutation
             }
             auto target_type = nucleic_acid_tool_to_monomer_type(mutation.tool);
