@@ -697,21 +697,6 @@ void MolModel::addMonomer(const std::string_view res_name_or_smiles,
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
 
-static MonomerType
-get_monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
-                                 const std::string_view res_name)
-{
-    using rdkit_extensions::ChainType;
-    switch (chain_type) {
-        case (ChainType::PEPTIDE):
-            return MonomerType::PEPTIDE;
-        case (ChainType::CHEM):
-            return MonomerType::CHEM;
-        default:
-            return get_na_monomer_type_from_res_name(res_name);
-    }
-}
-
 /**
  * @return a set of all residue numbers for monomers that are in the same
  * polymer as the given atom.
@@ -742,7 +727,7 @@ int get_residue_number_for_new_monomer(
 {
     using rdkit_extensions::ChainType;
 
-    auto monomer_type = get_monomer_type_from_chain_type(chain_type, res_name);
+    auto monomer_type = get_monomer_type(res_name, chain_type);
     auto existing_res_nums =
         get_all_residue_numbers_in_polymer(bound_to_monomer);
 

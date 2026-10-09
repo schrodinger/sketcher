@@ -7,6 +7,8 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
 Q_DECLARE_METATYPE(std::unordered_set<schrodinger::sketcher::ModelKey>);
@@ -53,6 +55,35 @@ BOOST_AUTO_TEST_CASE(model_keys)
         }
         BOOST_TEST(element_found);
     }
+}
+
+/**
+ * Database monomers have a fixed type and do not change peptide symbol types.
+ */
+BOOST_AUTO_TEST_CASE(monomer_db_monomer)
+{
+    SketcherModel model;
+    using rdkit_extensions::ChainType;
+    using rdkit_extensions::MonomerID;
+    const auto monomer =
+        model.getValue(ModelKey::MONOMER_DB_MONOMER).value<MonomerID>();
+    BOOST_TEST(monomer.symbol.empty());
+    BOOST_CHECK(monomer.chain_type == ChainType::PEPTIDE);
+    QSignalSpy changed(&model, &SketcherModel::valuesChanged);
+    const MonomerID chem{"chem", ChainType::CHEM};
+    model.setValue(ModelKey::MONOMER_DB_MONOMER, chem);
+    BOOST_CHECK(
+        model.getValue(ModelKey::MONOMER_DB_MONOMER).value<MonomerID>() ==
+        chem);
+    BOOST_REQUIRE_EQUAL(changed.size(), 1);
+    model.setValue(ModelKey::MONOMER_DB_MONOMER, chem);
+    BOOST_TEST(changed.size() == 1);
+    BOOST_CHECK_THROW(
+        model.setValue(ModelKey::MONOMER_DB_MONOMER, QString("chem")),
+        std::runtime_error);
+    BOOST_CHECK_THROW(model.setValue(ModelKey::AMINO_ACID_SYMBOL, chem),
+                      std::runtime_error);
+    BOOST_TEST(model.getValueString(ModelKey::AMINO_ACID_SYMBOL) == "A");
 }
 
 /**
@@ -120,6 +151,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         if (key == ModelKey::RESIDUE_TYPE ||
             key == ModelKey::AMINO_ACID_SYMBOL ||
             key == ModelKey::CUSTOM_MONOMER ||
+            key == ModelKey::MONOMER_DB_MONOMER ||
             key == ModelKey::NUCLEIC_ACID_SYMBOL ||
             key == ModelKey::CUSTOM_NUCLEOTIDE) {
             // These values are not stored as int-like objects
