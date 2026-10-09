@@ -62,13 +62,7 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // change won't affect anything else.)
     m_bolded_fonts.m_main_label_font.setBold(true);
     m_bolded_fonts.updateFontMetrics();
-    if (chain_type == rdkit_extensions::ChainType::PEPTIDE) {
-        m_monomer_type = MonomerType::PEPTIDE;
-    } else if (chain_type == rdkit_extensions::ChainType::CHEM) {
-        m_monomer_type = MonomerType::CHEM;
-    } else {
-        m_monomer_type = get_na_monomer_type_from_res_name(res_name);
-    }
+    m_monomer_type = get_monomer_type(res_name, chain_type);
 }
 
 AbstractDrawMonomerOrMonomericConnectionSceneTool::
