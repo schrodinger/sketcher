@@ -2839,6 +2839,17 @@ inline RDGeom::Point3D clamp_monomer_size(const RDGeom::Point3D& size)
             std::max(size.y, MONOMER_MINIMUM_SIZE), size.z};
 }
 
+std::unordered_map<int, RDGeom::Point3D> clamp_monomer_sizes(
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
+{
+    std::unordered_map<int, RDGeom::Point3D> clamped_sizes;
+    clamped_sizes.reserve(monomer_sizes.size());
+    for (const auto& [index, size] : monomer_sizes) {
+        clamped_sizes.emplace(index, clamp_monomer_size(size));
+    }
+    return clamped_sizes;
+}
+
 struct RingResizeInfo {
     std::vector<std::vector<int>> rings; // list of resizeable rings
     std::unordered_map<int, std::set<int>>
@@ -2888,8 +2899,7 @@ std::vector<RingResizeData> collect_ring_resize_data(
                 continue;
             }
 
-            const RDGeom::Point3D new_size =
-                clamp_monomer_size(resize_it->second);
+            const RDGeom::Point3D& new_size = resize_it->second;
             const RDGeom::Point3D current_size =
                 get_monomer_size(mol, atom_idx);
 
@@ -2941,7 +2951,7 @@ std::vector<MonomerResizeData> collect_linear_resize_data(
         if (ring_resize_info.atom_to_ring_map.contains(index)) {
             continue;
         }
-        const RDGeom::Point3D new_size = clamp_monomer_size(r.second);
+        const RDGeom::Point3D& new_size = r.second;
 
         const RDGeom::Point3D current_size = get_monomer_size(mol, index);
 
@@ -3214,9 +3224,8 @@ void update_monomer_sizes(
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
     for (const auto& r : monomer_sizes) {
-        const auto size = clamp_monomer_size(r.second);
         mol.getAtomWithIdx(r.first)->setProp<std::array<double, 3>>(
-            MONOMER_ITEM_SIZE, {size.x, size.y, size.z});
+            MONOMER_ITEM_SIZE, {r.second.x, r.second.y, r.second.z});
     }
 }
 
@@ -3224,7 +3233,7 @@ void store_initial_monomer_sizes(
     RDKit::ROMol& mol,
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
-    update_monomer_sizes(mol, monomer_sizes);
+    update_monomer_sizes(mol, clamp_monomer_sizes(monomer_sizes));
 }
 
 bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
@@ -3331,19 +3340,18 @@ void resize_monomers(
         return;
     }
 
+    const auto clamped_monomer_sizes = clamp_monomer_sizes(monomer_sizes);
+
     // override ring info to ensure rings are fully perceived.
     compute_full_ring_info(mol);
 
     auto ring_resize_info = compute_ring_info_for_resize(mol);
 
-    auto linear_resize_data =
-        collect_linear_resize_data(mol, monomer_sizes, ring_resize_info);
+    auto linear_resize_data = collect_linear_resize_data(
+        mol, clamped_monomer_sizes, ring_resize_info);
 
     auto ring_resize_data =
-        collect_ring_resize_data(mol, monomer_sizes, ring_resize_info);
-    if (linear_resize_data.empty() && ring_resize_data.empty()) {
-        return;
-    }
+        collect_ring_resize_data(mol, clamped_monomer_sizes, ring_resize_info);
 
     // compute displacements caused by monomers in chains
     auto linear_displacements =
@@ -3358,7 +3366,7 @@ void resize_monomers(
     apply_displacements(mol, ring_displacements);
 
     // persist new sizes
-    update_monomer_sizes(mol, monomer_sizes);
+    update_monomer_sizes(mol, clamped_monomer_sizes);
 
     // reset ring info to avoid leaking "internal" perception of rings
     mol.getRingInfo()->reset();
