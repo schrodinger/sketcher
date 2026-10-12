@@ -90,11 +90,18 @@ BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
     auto scene = TestScene::getScene();
     import_mol_text(scene->m_mol_model, helm);
 
-    const auto mol = scene->m_mol_model->getMol();
-    const auto& conformer = mol->getConformer();
-    const auto first_bond_length =
-        (conformer.getAtomPos(0) - conformer.getAtomPos(1)).length();
-    BOOST_TEST(first_bond_length > 2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
+    const auto get_first_bond_length = [&]() {
+        const auto& conformer = scene->m_mol_model->getMol()->getConformer();
+        return (conformer.getAtomPos(0) - conformer.getAtomPos(1)).length();
+    };
+    BOOST_TEST(get_first_bond_length() >
+               2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
+
+    // Coordinate regeneration starts from the default layout, so it must
+    // reapply the measured label sizes rather than treating them as current.
+    scene->m_mol_model->regenerateCoordinates();
+    BOOST_TEST(get_first_bond_length() >
+               2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)

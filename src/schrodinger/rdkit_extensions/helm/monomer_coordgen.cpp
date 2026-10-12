@@ -2539,7 +2539,8 @@ static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
  */
 static void clear_layout_props(RDKit::ROMol& monomer_mol)
 {
-    std::vector<std::string> layout_props{BOND_TO, ORIGINAL_INDEX};
+    std::vector<std::string> layout_props{BOND_TO, ORIGINAL_INDEX,
+                                          MONOMER_ITEM_SIZE};
     for (auto monomer : monomer_mol.atoms()) {
         for (auto prop : layout_props) {
             monomer->clearProp(prop);
@@ -2826,6 +2827,18 @@ inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
     return {stored[0], stored[1], stored[2]};
 }
 
+/**
+ * Return the effective size used by the layout. Graphics items can measure
+ * slightly smaller than the default bead because of platform-specific font
+ * metrics, but that must not contract the coordinate layout below its
+ * supported minimum.
+ */
+inline RDGeom::Point3D clamp_monomer_size(const RDGeom::Point3D& size)
+{
+    return {std::max(size.x, MONOMER_MINIMUM_SIZE),
+            std::max(size.y, MONOMER_MINIMUM_SIZE), size.z};
+}
+
 struct RingResizeInfo {
     std::vector<std::vector<int>> rings; // list of resizeable rings
     std::unordered_map<int, std::set<int>>
@@ -2875,7 +2888,8 @@ std::vector<RingResizeData> collect_ring_resize_data(
                 continue;
             }
 
-            const RDGeom::Point3D& new_size = resize_it->second;
+            const RDGeom::Point3D new_size =
+                clamp_monomer_size(resize_it->second);
             const RDGeom::Point3D current_size =
                 get_monomer_size(mol, atom_idx);
 
@@ -2927,7 +2941,7 @@ std::vector<MonomerResizeData> collect_linear_resize_data(
         if (ring_resize_info.atom_to_ring_map.contains(index)) {
             continue;
         }
-        const RDGeom::Point3D& new_size = r.second;
+        const RDGeom::Point3D new_size = clamp_monomer_size(r.second);
 
         const RDGeom::Point3D current_size = get_monomer_size(mol, index);
 
@@ -3200,8 +3214,9 @@ void update_monomer_sizes(
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
     for (const auto& r : monomer_sizes) {
+        const auto size = clamp_monomer_size(r.second);
         mol.getAtomWithIdx(r.first)->setProp<std::array<double, 3>>(
-            MONOMER_ITEM_SIZE, {r.second.x, r.second.y, r.second.z});
+            MONOMER_ITEM_SIZE, {size.x, size.y, size.z});
     }
 }
 
