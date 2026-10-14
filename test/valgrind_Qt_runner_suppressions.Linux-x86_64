@@ -579,3 +579,36 @@
    fun:_ZN11QThreadPool5startEP9QRunnablei
    fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
 }
+# Qt raster fills can omit QThreadPoolPrivate::startThread from the reported
+# stack. Keep separate solid-color and gradient variants rather than using
+# an unbounded frame wildcard: only glibc TLS allocations made by these Qt
+# paint paths should be suppressed, not allocations in Sketcher paint code.
+{
+   Qt solid raster paint thread pool TLS - inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
+}
+{
+   Qt gradient raster paint thread pool TLS - inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
