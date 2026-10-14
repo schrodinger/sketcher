@@ -24,7 +24,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-/** Copy hint coordinates, which must outlive the temporary hint molecule. */
+/**
+ * Copy hint coordinates, which must outlive the temporary hint molecule.
+ */
 static std::array<RDGeom::Point3D, 2>
 get_hint_coordinates(const MonomerToolTestFixture& fix)
 {
@@ -59,7 +61,9 @@ struct LongLabelMonomerFixture {
     }
 };
 
-/** Long labels must have the same spacing in hints, clicks, and drags. */
+/**
+ * Long labels must have the same spacing in hints, clicks, and drags.
+ */
 BOOST_DATA_TEST_CASE_F(LongLabelMonomerFixture,
                        test_long_label_hint_matches_placement,
                        boost::unit_test::data::make({"A", "LongAA"}) *

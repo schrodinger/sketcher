@@ -896,11 +896,11 @@ BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
 }
 
 /**
- * Verify that connection offsets match resizing a two-monomer molecule in all
- * eight cardinal and diagonal directions, including widths below the minimum
- * bead size. Repeating the resize must leave the coordinates unchanged.
- * The Cartesian product also generates (dx, dy) = (0, 0), which is skipped
- * because it does not define a connection direction.
+ * Verify that calculating the connection offset matches the results of resizing
+ * a two-monomer molecule.  Check this for all eight cardinal and diagonal
+ * directions for a variety of monomer widths, including widths below the
+ * minimum bead size. Confirm that repeating the resize leaves the coordinates
+ * unchanged.
  */
 BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
                      bdata::make({-1.0, 0.0, 1.0}) *
@@ -910,6 +910,7 @@ BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
                      dx, dy, start_width, end_width)
 {
     if (dx == 0 && dy == 0) {
+        // skip the test case where the monomers would be on top of each other
         return;
     }
     using namespace schrodinger::rdkit_extensions;
@@ -939,7 +940,7 @@ BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
         BOOST_CHECK_CLOSE(std::abs(actual.y), 1.5, 1e-6);
     }
 
-    // Repeating the same measurement must not change the coordinates.
+    // repeating the same resize call must not change the coordinates
     resize_monomers(*mol, {{0, start_size}, {1, end_size}});
     BOOST_CHECK_SMALL(
         (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
