@@ -949,16 +949,9 @@ void Scene::updateMonomerLabelSizeOnModel()
         if (!is_atom_monomeric(atom)) {
             continue;
         }
-        // create a temporary graphics item to figure out the label size
-        auto* item = get_monomer_graphics_item(
+        monomer_sizes[atom->getIdx()] = get_monomer_graphics_item_size(
             atom, m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
             *m_sketcher_model->getBondDisplaySettingsPtr());
-        const auto bounding_rect = item->boundingRect();
-        RDGeom::Point3D size(bounding_rect.width() / VIEW_SCALE,
-                             bounding_rect.height() / VIEW_SCALE, 0);
-        delete item;
-
-        monomer_sizes[atom->getIdx()] = size;
     }
     if (!monomer_sizes.empty()) {
         m_mol_model->resizeMonomers(monomer_sizes);

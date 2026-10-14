@@ -411,11 +411,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param coords The coordinates for the new monomer
      * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
      * a SMILES string
+     * @param initial_size Optional measured size in molecular coordinates, if
+     * coords already account for the monomer's label size.
      */
     void addMonomer(const std::string_view res_name_or_smiles,
                     const rdkit_extensions::ChainType chain_type,
                     const RDGeom::Point3D& coords,
-                    bool is_smiles_monomer = false);
+                    bool is_smiles_monomer = false,
+                    std::optional<RDGeom::Point3D> initial_size = std::nullopt);
 
     /**
      * Undoably add an atom that represents a monomer, and add a connection

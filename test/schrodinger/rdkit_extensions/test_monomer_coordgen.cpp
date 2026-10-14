@@ -895,4 +895,71 @@ BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
     }
 }
 
+BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
+                     bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({0.1, 0.8, 4.0}) *
+                         bdata::make({0.1, 0.8, 2.0}),
+                     dx, dy, start_width, end_width)
+{
+    if (dx == 0 && dy == 0) {
+        return;
+    }
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    const RDGeom::Point3D offset(dx * 1.5, dy * 1.5, 0);
+    auto& conf = mol->getConformer();
+    conf.setAtomPos(0, {0, 0, 0});
+    conf.setAtomPos(1, offset);
+    const RDGeom::Point3D start_size(start_width, 0.8, 0);
+    const RDGeom::Point3D end_size(end_width, 0.8, 0);
+    const auto expected =
+        get_monomer_connection_offset(offset, start_size, end_size);
+
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    const auto actual = conf.getAtomPos(1) - conf.getAtomPos(0);
+    BOOST_CHECK_SMALL((actual - expected).length(), 1e-6);
+    if (dx != 0) {
+        // Both horizontal and diagonal connections must clear the label
+        // widths with the standard 0.7-unit gap along the horizontal axis.
+        BOOST_CHECK_CLOSE(
+            std::abs(actual.x),
+            0.7 + (std::max(start_width, 0.8) + std::max(end_width, 0.8)) / 2,
+            1e-6);
+    } else {
+        BOOST_CHECK_SMALL(actual.x, 1e-6);
+        BOOST_CHECK_CLOSE(std::abs(actual.y), 1.5, 1e-6);
+    }
+
+    // Repeating the same measurement must not change the coordinates.
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    BOOST_CHECK_SMALL(
+        (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
+}
+
+BOOST_DATA_TEST_CASE(RingResizeAccountsForLabelsAtEveryVertex, bdata::xrange(4),
+                     long_label_idx)
+{
+    using namespace schrodinger::rdkit_extensions;
+    auto mol =
+        helm_to_rdkit("PEPTIDE1{A.A.A.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    conf.setAtomPos(0, {0, 0, 0});
+    conf.setAtomPos(1, {1.5, 0, 0});
+    conf.setAtomPos(2, {1.5, 1.5, 0});
+    conf.setAtomPos(3, {0, 1.5, 0});
+    resize_monomers(*mol, {{long_label_idx, {4.0, 0.8, 0}}});
+    const auto new_length = (conf.getAtomPos(1) - conf.getAtomPos(0)).length();
+    BOOST_CHECK_CLOSE(new_length, 3.1, 1e-6);
+    // Expanding the ring must preserve its regular polygon geometry.
+    for (const auto* bond : mol->bonds()) {
+        const auto length = (conf.getAtomPos(bond->getEndAtomIdx()) -
+                             conf.getAtomPos(bond->getBeginAtomIdx()))
+                                .length();
+        BOOST_CHECK_CLOSE(length, new_length, 1e-5);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

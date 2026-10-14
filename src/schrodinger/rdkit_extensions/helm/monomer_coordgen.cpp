@@ -50,14 +50,6 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
-// empty space gap between a monomer and the one following it in the chain. This
-// will be the length of the visibile bond line connecting the two.
-constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
-// total distance from the center of one monomer to the center of the following
-// in the chain
-constexpr double MONOMER_BOND_LENGTH =
-    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
-
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
@@ -2880,6 +2872,33 @@ inline RDGeom::Point3D clamp_monomer_size(const RDGeom::Point3D& size)
             std::max(size.y, MONOMER_MINIMUM_SIZE), size.z};
 }
 
+// Monomers in the same row/column move together. Outside that row/column,
+// each endpoint contributes half of its change in size to the spacing.
+static double get_axis_resize_displacement(double offset, double size_delta)
+{
+    if (offset > MONOMER_MINIMUM_SIZE) {
+        return size_delta / 2.0;
+    }
+    if (offset < -MONOMER_MINIMUM_SIZE) {
+        return -size_delta / 2.0;
+    }
+    return 0.0;
+}
+
+RDGeom::Point3D
+get_monomer_connection_offset(const RDGeom::Point3D& default_offset,
+                              const RDGeom::Point3D& start_size,
+                              const RDGeom::Point3D& end_size)
+{
+    const auto delta =
+        clamp_monomer_size(start_size) + clamp_monomer_size(end_size) -
+        RDGeom::Point3D(2 * MONOMER_MINIMUM_SIZE, 2 * MONOMER_MINIMUM_SIZE, 0);
+    return default_offset +
+           RDGeom::Point3D(
+               get_axis_resize_displacement(default_offset.x, delta.x),
+               get_axis_resize_displacement(default_offset.y, delta.y), 0);
+}
+
 std::unordered_map<int, RDGeom::Point3D> clamp_monomer_sizes(
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
@@ -2916,9 +2935,6 @@ std::vector<RingResizeData> collect_ring_resize_data(
          ++ring_id) {
         const auto& ring = ring_resize_info.rings[ring_id];
 
-        // --- centroid ---
-        auto centroid = compute_centroid(mol, ring);
-
         // --- compute average current side length ---
         double side_sum = 0.0;
         for (size_t i = 0; i < ring.size(); ++i) {
@@ -2931,32 +2947,33 @@ std::vector<RingResizeData> collect_ring_resize_data(
             continue;
         }
 
-        // --- find max projected side delta ---
+        // Find the largest required side expansion using both endpoints of
+        // each edge. Using a signed tangent at a single vertex misses labels
+        // on one side of the ring and can underestimate diagonal edges.
         double max_side_delta = 0.0;
 
-        for (const auto& atom_idx : ring) {
-            auto resize_it = resizes.find(atom_idx);
-            if (resize_it == resizes.end()) {
-                continue;
-            }
-
-            const RDGeom::Point3D& new_size = resize_it->second;
-            const RDGeom::Point3D current_size =
-                get_monomer_size(mol, atom_idx);
-
-            RDGeom::Point3D delta_size = new_size - current_size;
-
-            RDGeom::Point3D pos = conformer.getAtomPos(atom_idx);
-            RDGeom::Point3D radial = pos - centroid;
-
-            radial.normalize();
-
-            RDGeom::Point3D tangent(-radial.y, radial.x, 0.0);
-
-            const double side_delta =
-                delta_size.x * tangent.x + delta_size.y * tangent.y;
-
-            max_side_delta = std::max(max_side_delta, side_delta);
+        for (size_t i = 0; i < ring.size(); ++i) {
+            const auto start_idx = ring[i];
+            const auto end_idx = ring[(i + 1) % ring.size()];
+            const auto offset =
+                conformer.getAtomPos(end_idx) - conformer.getAtomPos(start_idx);
+            auto direction = offset;
+            direction.normalize();
+            const auto default_offset = direction * MONOMER_BOND_LENGTH;
+            const auto old_start_size = get_monomer_size(mol, start_idx);
+            const auto old_end_size = get_monomer_size(mol, end_idx);
+            const auto start_it = resizes.find(start_idx);
+            const auto end_it = resizes.find(end_idx);
+            const auto& new_start_size =
+                start_it == resizes.end() ? old_start_size : start_it->second;
+            const auto& new_end_size =
+                end_it == resizes.end() ? old_end_size : end_it->second;
+            const auto old_offset = get_monomer_connection_offset(
+                default_offset, old_start_size, old_end_size);
+            const auto new_offset = get_monomer_connection_offset(
+                default_offset, new_start_size, new_end_size);
+            max_side_delta = std::max(max_side_delta, new_offset.length() -
+                                                          old_offset.length());
         }
 
         if (max_side_delta > 0.0) {
@@ -3068,15 +3085,10 @@ compute_linear_displacements(const RDKit::ROMol& mol,
 
         const double max_delta = max_per_cluster.at(cluster);
 
-        if (pos > ref + MONOMER_MINIMUM_SIZE) {
+        if (std::abs(pos - ref) > MONOMER_MINIMUM_SIZE) {
             used_clusters.insert(cluster);
-            return max_delta / 2.0;
         }
-        if (pos < ref - MONOMER_MINIMUM_SIZE) {
-            used_clusters.insert(cluster);
-            return -max_delta / 2.0;
-        }
-        return 0.0;
+        return get_axis_resize_displacement(pos - ref, max_delta);
     };
 
     /**

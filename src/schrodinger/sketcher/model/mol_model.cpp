@@ -680,14 +680,20 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
 void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords,
-                          const bool is_smiles_monomer)
+                          const bool is_smiles_monomer,
+                          std::optional<RDGeom::Point3D> initial_size)
 {
     auto chain_id = get_first_available_chain_name(m_mol, chain_type);
     auto create_atom = std::bind(create_monomer, res_name_or_smiles, chain_id,
                                  1, is_smiles_monomer);
-    auto cmd_func = [this, create_atom, coords]() {
+    auto cmd_func = [this, create_atom, coords, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
+        if (initial_size.has_value()) {
+            rdkit_extensions::store_initial_monomer_sizes(
+                m_mol,
+                {{static_cast<int>(m_mol.getNumAtoms() - 1), *initial_size}});
+        }
         rdkit_extensions::assignChains(m_mol);
         // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
         // source of truth inside MolModel; clearing it here keeps it from
