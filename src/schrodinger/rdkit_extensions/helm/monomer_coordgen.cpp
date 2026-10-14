@@ -2935,6 +2935,9 @@ std::vector<RingResizeData> collect_ring_resize_data(
          ++ring_id) {
         const auto& ring = ring_resize_info.rings[ring_id];
 
+        // --- centroid ---
+        auto centroid = compute_centroid(mol, ring);
+
         // --- compute average current side length ---
         double side_sum = 0.0;
         for (size_t i = 0; i < ring.size(); ++i) {
@@ -2947,33 +2950,32 @@ std::vector<RingResizeData> collect_ring_resize_data(
             continue;
         }
 
-        // Find the largest required side expansion using both endpoints of
-        // each edge. Using a signed tangent at a single vertex misses labels
-        // on one side of the ring and can underestimate diagonal edges.
+        // --- find max projected side delta ---
         double max_side_delta = 0.0;
 
-        for (size_t i = 0; i < ring.size(); ++i) {
-            const auto start_idx = ring[i];
-            const auto end_idx = ring[(i + 1) % ring.size()];
-            const auto offset =
-                conformer.getAtomPos(end_idx) - conformer.getAtomPos(start_idx);
-            auto direction = offset;
-            direction.normalize();
-            const auto default_offset = direction * MONOMER_BOND_LENGTH;
-            const auto old_start_size = get_monomer_size(mol, start_idx);
-            const auto old_end_size = get_monomer_size(mol, end_idx);
-            const auto start_it = resizes.find(start_idx);
-            const auto end_it = resizes.find(end_idx);
-            const auto& new_start_size =
-                start_it == resizes.end() ? old_start_size : start_it->second;
-            const auto& new_end_size =
-                end_it == resizes.end() ? old_end_size : end_it->second;
-            const auto old_offset = get_monomer_connection_offset(
-                default_offset, old_start_size, old_end_size);
-            const auto new_offset = get_monomer_connection_offset(
-                default_offset, new_start_size, new_end_size);
-            max_side_delta = std::max(max_side_delta, new_offset.length() -
-                                                          old_offset.length());
+        for (const auto& atom_idx : ring) {
+            auto resize_it = resizes.find(atom_idx);
+            if (resize_it == resizes.end()) {
+                continue;
+            }
+
+            const RDGeom::Point3D& new_size = resize_it->second;
+            const RDGeom::Point3D current_size =
+                get_monomer_size(mol, atom_idx);
+
+            RDGeom::Point3D delta_size = new_size - current_size;
+
+            RDGeom::Point3D pos = conformer.getAtomPos(atom_idx);
+            RDGeom::Point3D radial = pos - centroid;
+
+            radial.normalize();
+
+            RDGeom::Point3D tangent(-radial.y, radial.x, 0.0);
+
+            const double side_delta =
+                delta_size.x * tangent.x + delta_size.y * tangent.y;
+
+            max_side_delta = std::max(max_side_delta, side_delta);
         }
 
         if (max_side_delta > 0.0) {
