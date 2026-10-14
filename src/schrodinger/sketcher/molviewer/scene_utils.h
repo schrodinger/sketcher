@@ -66,7 +66,10 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
                           const BondDisplaySettings& bond_display_settings,
                           const bool is_dark_mode = false);
 
-/** Measure a monomer's graphics item in molecular coordinates. */
+/**
+ * Create a temporary graphics item for the given monomer and return its size
+ * converted to RDKit coordinates.
+ */
 SKETCHER_API RDGeom::Point3D get_monomer_graphics_item_size(
     const RDKit::Atom* atom, const Fonts& fonts,
     const AtomDisplaySettings& atom_display_settings,

@@ -677,7 +677,10 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
     return monomer;
 }
 
-/** Store the measured size of the monomer just appended to the molecule. */
+/**
+ * Store the measured size of the monomer that was just appended to the
+ * molecule.
+ */
 static void store_initial_size_for_new_monomer(
     RDKit::ROMol& mol, const std::optional<RDGeom::Point3D>& initial_size)
 {
