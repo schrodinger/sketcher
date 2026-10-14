@@ -1001,9 +1001,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
     /**
-     * Persist sizes for monomers that have never been sized before, without
-     * triggering resize_monomers' displacement. Called by Scene on newly-added
-     * monomers so existing ones don't get pushed around.
+     * Persist monomer sizes without moving any monomers.
      */
     void storeInitialMonomerSizes(
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
