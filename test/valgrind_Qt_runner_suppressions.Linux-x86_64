@@ -612,3 +612,25 @@
    fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
    fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
 }
+# Qt 6.7.3 owns and deletes the GUI paint pool during QCoreApplication teardown.
+# Its Unix QThread::wait() can finish before destroy_current_thread_data()
+# releases the pthread's reference. The reported loss is consistent with this
+# process-exit race. This definite new allocation needs its own suppression.
+# Restrict it to the observed Qt Fusion scrollbar gradient-fill call chain;
+# application-created threads and other definite leaks must remain visible.
+{
+   Qt Fusion scrollbar paint worker data - shutdown leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN7QThreadC1EP7QObject
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+   fun:_ZL19fillRect_normalizedRK5QRectP9QSpanDataP25QRasterPaintEnginePrivate.isra.0
+   fun:_ZN8QPainter8fillRectERK5QRectRK6QBrush
+   fun:_ZNK12QFusionStyle18drawComplexControlEN6QStyle14ComplexControlEPK19QStyleOptionComplexP8QPainterPK7QWidget
+   fun:_ZNK16QStyleSheetStyle18drawComplexControlEN6QStyle14ComplexControlEPK19QStyleOptionComplexP8QPainterPK7QWidget
+   fun:_ZN10QScrollBar10paintEventEP11QPaintEvent
+}
