@@ -895,4 +895,55 @@ BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
     }
 }
 
+/**
+ * Verify that calculating the connection offset matches the results of resizing
+ * a two-monomer molecule.  Check this for all eight cardinal and diagonal
+ * directions for a variety of monomer widths, including widths below the
+ * minimum bead size. Confirm that repeating the resize leaves the coordinates
+ * unchanged.
+ */
+BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
+                     bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({0.1, 0.8, 4.0}) *
+                         bdata::make({0.1, 0.8, 2.0}),
+                     dx, dy, start_width, end_width)
+{
+    if (dx == 0 && dy == 0) {
+        // skip the test case where the monomers would be on top of each other
+        return;
+    }
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    const RDGeom::Point3D offset(dx * 1.5, dy * 1.5, 0);
+    auto& conf = mol->getConformer();
+    conf.setAtomPos(0, {0, 0, 0});
+    conf.setAtomPos(1, offset);
+    const RDGeom::Point3D start_size(start_width, 0.8, 0);
+    const RDGeom::Point3D end_size(end_width, 0.8, 0);
+    const auto expected =
+        get_monomer_connection_offset(offset, start_size, end_size);
+
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    const auto actual = conf.getAtomPos(1) - conf.getAtomPos(0);
+    BOOST_CHECK_SMALL((actual - expected).length(), 1e-6);
+    if (dx != 0) {
+        // Both horizontal and diagonal connections must clear the label
+        // widths with the standard 0.7-unit gap along the horizontal axis.
+        BOOST_CHECK_CLOSE(
+            std::abs(actual.x),
+            0.7 + (std::max(start_width, 0.8) + std::max(end_width, 0.8)) / 2,
+            1e-6);
+    } else {
+        BOOST_CHECK_SMALL(actual.x, 1e-6);
+        BOOST_CHECK_CLOSE(std::abs(actual.y), 1.5, 1e-6);
+    }
+
+    // repeating the same resize call must not change the coordinates
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    BOOST_CHECK_SMALL(
+        (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

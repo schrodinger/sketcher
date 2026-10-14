@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 
+#include <memory>
+
 #include <QBitmap>
 #include <QColor>
 #include <QFile>
@@ -83,6 +85,17 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
         default:
             throw std::runtime_error("Unrecognized monomer type");
     }
+}
+
+RDGeom::Point3D
+get_monomer_graphics_item_size(const RDKit::Atom* atom, const Fonts& fonts,
+                               const AtomDisplaySettings& atom_display_settings,
+                               const BondDisplaySettings& bond_display_settings)
+{
+    std::unique_ptr<AbstractMonomerItem> item(get_monomer_graphics_item(
+        atom, fonts, atom_display_settings, bond_display_settings));
+    const auto rect = item->boundingRect();
+    return {rect.width() / VIEW_SCALE, rect.height() / VIEW_SCALE, 0};
 }
 
 std::tuple<std::vector<QGraphicsItem*>,

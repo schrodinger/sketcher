@@ -105,17 +105,18 @@ void DrawMonomerSceneTool::onLeftButtonClick(
             // the user clicked on an attachment point or this monomer has a
             // default attachment point for this tool, so add a new monomer
             // bound to that attachment point
-            auto new_monomer_ap_name = get_attachment_point_for_new_monomer(
-                monomer_type, clicked_ap->model_name, m_monomer_type,
-                m_res_name, m_is_smiles_monomer);
-            auto new_pos = get_default_coords_for_bound_monomer(
-                monomer, clicked_ap->direction);
+            auto start_info =
+                createHintFragmentMonomerInfoForHintToOrFromExistingMonomer(
+                    item, clicked_ap->model_name);
+            auto end_info = createHintFragmentMonomerInfoForHintToDirection(
+                start_info, clicked_ap->direction);
             // the attachment point labels won't be valid once the new monomer
             // is added, so clear them now (otherwise we risk a crash)
             clearAttachmentPointsLabelsAndHintFragmentItem();
-            m_mol_model->addBoundMonomer(
-                m_res_name, m_chain_type, new_pos, new_monomer_ap_name, monomer,
-                clicked_ap->model_name, m_is_smiles_monomer);
+            m_mol_model->addBoundMonomer(m_res_name, m_chain_type, end_info.pos,
+                                         end_info.ap_model_name, monomer,
+                                         clicked_ap->model_name,
+                                         m_is_smiles_monomer, end_info.size);
 
         } else if (clickShouldMutate(monomer, monomer_type)) {
             // the user clicked directly on the monomer and the clicked
