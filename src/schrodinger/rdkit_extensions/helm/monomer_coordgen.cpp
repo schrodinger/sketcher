@@ -50,14 +50,6 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
-// empty space gap between a monomer and the one following it in the chain. This
-// will be the length of the visibile bond line connecting the two.
-constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
-// total distance from the center of one monomer to the center of the following
-// in the chain
-constexpr double MONOMER_BOND_LENGTH =
-    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
-
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
@@ -2880,6 +2872,33 @@ inline RDGeom::Point3D clamp_monomer_size(const RDGeom::Point3D& size)
             std::max(size.y, MONOMER_MINIMUM_SIZE), size.z};
 }
 
+// Monomers in the same row/column move together. Outside that row/column,
+// each endpoint contributes half of its change in size to the spacing.
+static double get_axis_resize_displacement(double offset, double size_delta)
+{
+    if (offset > MONOMER_MINIMUM_SIZE) {
+        return size_delta / 2.0;
+    }
+    if (offset < -MONOMER_MINIMUM_SIZE) {
+        return -size_delta / 2.0;
+    }
+    return 0.0;
+}
+
+RDGeom::Point3D
+get_monomer_connection_offset(const RDGeom::Point3D& default_offset,
+                              const RDGeom::Point3D& start_size,
+                              const RDGeom::Point3D& end_size)
+{
+    const auto delta =
+        clamp_monomer_size(start_size) + clamp_monomer_size(end_size) -
+        RDGeom::Point3D(2 * MONOMER_MINIMUM_SIZE, 2 * MONOMER_MINIMUM_SIZE, 0);
+    return default_offset +
+           RDGeom::Point3D(
+               get_axis_resize_displacement(default_offset.x, delta.x),
+               get_axis_resize_displacement(default_offset.y, delta.y), 0);
+}
+
 std::unordered_map<int, RDGeom::Point3D> clamp_monomer_sizes(
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
@@ -3068,15 +3087,10 @@ compute_linear_displacements(const RDKit::ROMol& mol,
 
         const double max_delta = max_per_cluster.at(cluster);
 
-        if (pos > ref + MONOMER_MINIMUM_SIZE) {
+        if (std::abs(pos - ref) > MONOMER_MINIMUM_SIZE) {
             used_clusters.insert(cluster);
-            return max_delta / 2.0;
         }
-        if (pos < ref - MONOMER_MINIMUM_SIZE) {
-            used_clusters.insert(cluster);
-            return -max_delta / 2.0;
-        }
-        return 0.0;
+        return get_axis_resize_displacement(pos - ref, max_delta);
     };
 
     /**
