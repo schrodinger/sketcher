@@ -113,7 +113,10 @@ void DrawMonomerSceneTool::onLeftButtonClick(
             // the attachment point labels won't be valid once the new monomer
             // is added, so clear them now (otherwise we risk a crash)
             clearAttachmentPointsLabelsAndHintFragmentItem();
-            addDragStructureToMolModel(start_info, end_info);
+            m_mol_model->addBoundMonomer(m_res_name, m_chain_type, end_info.pos,
+                                         end_info.ap_model_name, monomer,
+                                         clicked_ap->model_name,
+                                         m_is_smiles_monomer, end_info.size);
 
         } else if (clickShouldMutate(monomer, monomer_type)) {
             // the user clicked directly on the monomer and the clicked

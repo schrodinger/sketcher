@@ -677,6 +677,16 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
     return monomer;
 }
 
+/** Store the measured size of the monomer just appended to the molecule. */
+static void store_initial_size_for_new_monomer(
+    RDKit::ROMol& mol, const std::optional<RDGeom::Point3D>& initial_size)
+{
+    if (initial_size.has_value()) {
+        rdkit_extensions::store_initial_monomer_sizes(
+            mol, {{static_cast<int>(mol.getNumAtoms() - 1), *initial_size}});
+    }
+}
+
 void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords,
@@ -689,11 +699,7 @@ void MolModel::addMonomer(const std::string_view res_name_or_smiles,
     auto cmd_func = [this, create_atom, coords, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
-        if (initial_size.has_value()) {
-            rdkit_extensions::store_initial_monomer_sizes(
-                m_mol,
-                {{static_cast<int>(m_mol.getNumAtoms() - 1), *initial_size}});
-        }
+        store_initial_size_for_new_monomer(m_mol, initial_size);
         rdkit_extensions::assignChains(m_mol);
         // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
         // source of truth inside MolModel; clearing it here keeps it from
@@ -794,7 +800,8 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                const std::string_view new_monomer_ap_name,
                                const RDKit::Atom* const bound_to_monomer,
                                const std::string_view bound_to_monomer_ap_name,
-                               const bool is_smiles_monomer)
+                               const bool is_smiles_monomer,
+                               std::optional<RDGeom::Point3D> initial_size)
 {
     auto [linkage, flip_monomer_order] =
         build_linkage_string(bound_to_monomer_ap_name, new_monomer_ap_name);
@@ -829,9 +836,10 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                  res_num, is_smiles_monomer);
 
     auto cmd_func = [this, create_atom, coords, bond_start_idx, bond_end_idx,
-                     linkage, is_custom_bond]() {
+                     linkage, is_custom_bond, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
+        store_initial_size_for_new_monomer(m_mol, initial_size);
         addMonomericConnectionCommandFunc(bond_start_idx, bond_end_idx, linkage,
                                           is_custom_bond);
     };

@@ -124,8 +124,12 @@ BOOST_DATA_TEST_CASE_F(LongLabelMonomerFixture,
         (conf.getAtomPos(1) - conf.getAtomPos(0) - hint_offset).length(), 1e-6);
     auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
     BOOST_REQUIRE(undo_stack != nullptr);
+    const auto expected_undo_text =
+        via_drag ? "Add monomeric connection" : "Add bound monomer";
+    BOOST_TEST(undo_stack->undoText().toStdString() == expected_undo_text);
     undo_stack->undo();
     BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 1);
+    BOOST_TEST(undo_stack->redoText().toStdString() == expected_undo_text);
     undo_stack->redo();
     const auto& redone_conf = fix.m_mol_model->getMol()->getConformer();
     BOOST_CHECK_SMALL(
