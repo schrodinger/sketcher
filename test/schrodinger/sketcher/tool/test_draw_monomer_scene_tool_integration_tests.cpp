@@ -142,6 +142,11 @@ BOOST_DATA_TEST_CASE_F(LongLabelMonomerFixture,
         1e-6);
 }
 
+/**
+ * Verify that dragging from empty space creates two long-label monomers at
+ * their previewed coordinates, without expanding their spacing again when
+ * their graphics items are first measured on insertion into the model.
+ */
 BOOST_FIXTURE_TEST_CASE(test_long_label_drag_from_empty_space,
                         LongLabelMonomerFixture)
 {
