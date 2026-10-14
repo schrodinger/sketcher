@@ -612,6 +612,40 @@
    fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
    fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
 }
+# Additional paint-thread TLS paths with startThread present in the stack.
+# Keep the glibc TLS allocation and Qt blending frames explicit so these rules
+# do not suppress allocations in Sketcher code or unrelated thread pools.
+{
+   Qt gradient raster paint thread pool TLS - non-inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
+{
+   Qt ARGB raster paint thread pool TLS - non-inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL16blend_color_argbiPK11QT_FT_Span_Pv
+}
 # Qt 6.7.3 owns and deletes the GUI paint pool during QCoreApplication teardown.
 # Its Unix QThread::wait() can finish before destroy_current_thread_data()
 # releases the pthread's reference. The reported loss is consistent with this
