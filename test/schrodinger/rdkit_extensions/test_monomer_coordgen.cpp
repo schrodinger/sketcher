@@ -895,6 +895,13 @@ BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
     }
 }
 
+/**
+ * Verify that connection offsets match resizing a two-monomer molecule in all
+ * eight cardinal and diagonal directions, including widths below the minimum
+ * bead size. Repeating the resize must leave the coordinates unchanged.
+ * The Cartesian product also generates (dx, dy) = (0, 0), which is skipped
+ * because it does not define a connection direction.
+ */
 BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
                      bdata::make({-1.0, 0.0, 1.0}) *
                          bdata::make({-1.0, 0.0, 1.0}) *
