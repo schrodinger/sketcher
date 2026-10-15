@@ -181,9 +181,9 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] std::string
     getMonomerDefinitions(bool include_core = true) const;
 
-    // Regenerate the SMILES and CORE_SMILES columns in the DBs.
-    // This should be used after loading SQL/JSON/a SQlite file
-    // to make sure the SMILES strings are correctly canonicalized.
+    // Canonicalize SMILES fields in the DBs, deriving CORE_SMILES from SMILES
+    // only when CORE_SMILES was not supplied.
+    // This should be used after loading SQL/JSON/a SQLite file.
     void canonicalizeSmilesFields(bool include_core = false);
 
     [[nodiscard]] all_smiles_t getAllSMILES() const;
