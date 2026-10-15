@@ -995,6 +995,37 @@ MonomerInfo MonomerDatabase::getMonomerInfo(const std::string& monomer_id,
     };
 }
 
+MonomerInfo
+MonomerDatabase::getMonomerInfoBySmiles(const std::string& smiles) const
+{
+    auto fields = fmt::format("{}", fmt::join(getDbFields(), ", "));
+    auto canonical_smiles = canonicalize_monomer_smiles(smiles.c_str()).first;
+    // Escape apostrophes possible in CXSMILES
+    auto escaped_smiles = boost::replace_all_copy(canonical_smiles, "'", "''");
+    auto sql = fmt::format("SELECT {} FROM {} WHERE {}='{}';", fields,
+                           monomer_defs_table, smiles_column, escaped_smiles);
+
+    auto monomer_info_getter = [](sqlite3_stmt* stmt) {
+        auto m = std::make_optional<MonomerInfo>();
+        for (int i = 0; i < sqlite3_column_count(stmt); ++i) {
+            auto key = sqlite3_column_name(stmt, i);
+            auto value = _sqlite3_column_cstring(stmt, i);
+            assign_monomer_info(*m, key, value);
+        }
+        return m;
+    };
+
+    if (auto ret = get_info_from_database(
+            m_custom_monomers_db, m_core_monomers_db, sql, monomer_info_getter);
+        ret.has_value()) {
+        return *ret;
+    }
+
+    return MonomerInfo{
+        .symbol = boost::trim_copy(smiles),
+    };
+}
+
 void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
 {
     for (sqlite3* db : {include_core == true ? m_core_monomers_db : nullptr,
