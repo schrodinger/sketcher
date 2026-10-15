@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   // Navigate to the page that loads the WASM module and
   // wait for the WASM module to be fully loaded and available
   await page.goto('/wasm_shell.html');
-  await page.waitForFunction(() => typeof window.Module !== 'undefined', {
+  await page.waitForFunction(() => typeof window.Module !== 'undefined', undefined, {
     timeout: 20000,
   });
 });
