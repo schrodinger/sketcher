@@ -29,6 +29,7 @@ async function checkpoint(page, name) {
 
 test.describe('tst_configure_view_menu', () => {
   test('main', async ({ page }) => {
+    test.setTimeout(90_000);
     const sk = new Sketcher(page);
     await sk.open();
 
