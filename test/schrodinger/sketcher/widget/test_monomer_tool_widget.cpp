@@ -467,8 +467,8 @@ BOOST_AUTO_TEST_CASE(unclassified_monomers)
                           button->mapToGlobal(button->rect().center()));
         QApplication::sendEvent(button, &enter);
         QTest::mousePress(button, Qt::LeftButton);
-        QTest::qWait(300);
-        BOOST_TEST(popup->isVisible());
+        BOOST_TEST(
+            QTest::qWaitFor([popup]() { return popup->isVisible(); }, 2000));
         QTest::mouseRelease(button, Qt::LeftButton);
         popup->close();
         BOOST_TEST(!button->underMouse());
