@@ -1291,7 +1291,7 @@
     </widget>
    </item>
    <item>
-    <widget class="schrodinger::sketcher::ToolButtonWithPopup" name="custom_monomer_btn">
+    <widget class="schrodinger::sketcher::CustomMonomerButton" name="custom_monomer_btn">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -1481,6 +1481,11 @@
    <class>schrodinger::sketcher::ModularToolButton</class>
    <extends>QToolButton</extends>
    <header>schrodinger/sketcher/widget/modular_tool_button.h</header>
+  </customwidget>
+  <customwidget>
+   <class>schrodinger::sketcher::CustomMonomerButton</class>
+   <extends>QToolButton</extends>
+   <header>schrodinger/sketcher/widget/custom_monomer_button.h</header>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::ToolButtonWithPopup</class>
