@@ -18,10 +18,14 @@
 #include <vector>
 
 #include <QApplication>
+#include <QEvent>
 #include <QFile>
 #include <QIcon>
+#include <QPointer>
 #include <QString>
 #include <QStyleHints>
+#include <QTimer>
+#include <QWidget>
 
 #include "image_generation_from_js.h"
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -230,6 +234,50 @@ EMSCRIPTEN_BINDINGS(sketcher)
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+/**
+ * Qt 6.7 on WASM doesn't give focus back to the underlying window when a popup
+ * closes, so shortcuts stop working until the user clicks the sketcher
+ * (SKETCH-1652). Remove once we're on a Qt release with QTBUG-144692.
+ */
+class PopupFocusRestorer : public QObject
+{
+  public:
+    using QObject::QObject;
+
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        auto* popup = qobject_cast<QWidget*>(watched);
+        if (event->type() == QEvent::Hide && popup != nullptr &&
+            popup->windowType() == Qt::Popup) {
+            auto* parent = popup->parentWidget();
+            QPointer<QWidget> window =
+                parent != nullptr ? parent->window() : &get_sketcher_instance();
+            // Wait for the popup to finish closing. Skip if another popup is
+            // still open or the popup's action opened a modal dialog.
+            QTimer::singleShot(0, this, [window]() {
+                auto* modal = QApplication::activeModalWidget();
+                if (window == nullptr || !window->isVisible() ||
+                    QApplication::activePopupWidget() != nullptr ||
+                    (modal != nullptr && modal != window)) {
+                    return;
+                }
+                window->activateWindow();
+                // Qt doesn't move browser focus itself, since it always
+                // creates an input context on WASM
+                auto id = "!qtwindow" + std::to_string(window->winId());
+                auto canvas =
+                    emscripten::val::module_property("specialHTMLTargets")[id];
+                if (!canvas.isUndefined()) {
+                    canvas.call<void>("focus");
+                }
+            });
+        }
+        return QObject::eventFilter(watched, event);
+    }
+};
+#endif
+
 void apply_stylesheet(QApplication& app)
 {
     QFile styleFile(":resources/schrodinger_livedesign.qss");
@@ -268,6 +316,7 @@ int main(int argc, char** argv)
     // (https://bugreports.qt.io/browse/QTBUG-94583), which would otherwise
     // prevent tooltips from showing up. (See SKETCH-2565.)
     sk.setAttribute(Qt::WA_AlwaysShowToolTips);
+    application.installEventFilter(new PopupFocusRestorer(&application));
     QObject::connect(&sk, &SketcherWidget::moleculeChanged, &sketcher_changed);
     QObject::connect(&sk, &SketcherWidget::representationChanged,
                      &sketcher_changed);
