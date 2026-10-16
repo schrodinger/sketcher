@@ -24,6 +24,7 @@
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
@@ -908,10 +909,14 @@ void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
     auto mime_data = event->mimeData();
     for (auto url : mime_data->urls()) {
         if (url.isLocalFile()) { // File drop event
-            auto file_path = url.toLocalFile().toStdString();
-            auto contents = get_file_text(file_path);
-            auto format = rdkit_extensions::get_file_format(file_path);
-            emit importTextRequested(contents, format);
+            try {
+                auto file_path = url.toLocalFile().toStdString();
+                auto contents = get_file_text(file_path);
+                auto format = rdkit_extensions::get_file_format(file_path);
+                emit importTextRequested(contents, format);
+            } catch (const std::exception& exc) {
+                show_error_dialog("File Error", exc.what(), window());
+            }
         }
     }
     event->acceptProposedAction();
