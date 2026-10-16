@@ -677,6 +677,18 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
     return monomer;
 }
 
+/**
+ * Run rdkit_extensions::assignChains on the given molecule and then clear the
+ * structure-level HELM_MODEL flag that rdkit_extensions::assignChains sets.
+ * MolModel uses per-atom flags to identify monomeric versus atomistic atoms, so
+ * we intentionally avoid setting the structure-level flag until export.
+ */
+static void assign_chains(RDKit::RWMol& mol)
+{
+    rdkit_extensions::assignChains(mol);
+    mol.clearProp(HELM_MODEL);
+}
+
 void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords,
@@ -688,11 +700,7 @@ void MolModel::addMonomer(const std::string_view res_name_or_smiles,
     auto cmd_func = [this, create_atom, coords]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
-        rdkit_extensions::assignChains(m_mol);
-        // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
-        // source of truth inside MolModel; clearing it here keeps it from
-        // leaking into export copies after monomers are removed.
-        m_mol.clearProp(HELM_MODEL);
+        assign_chains(m_mol);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
@@ -857,9 +865,7 @@ void MolModel::addMonomericConnectionCommandFunc(const size_t bond_start_idx,
             break;
         }
     }
-    rdkit_extensions::assignChains(m_mol);
-    // see note in addMonomer about why we clear this here
-    m_mol.clearProp(HELM_MODEL);
+    assign_chains(m_mol);
 }
 
 /**
@@ -2873,6 +2879,14 @@ void MolModel::removeCommandFunc(
     }
     for (auto cur_tag : non_molecular_tags) {
         removeNonMolecularObjectCommandFunc(cur_tag);
+    }
+
+    if (!bond_tags_with_atoms.empty() && contains_monomeric_atom(m_mol)) {
+        // If we've removed any monomeric backbone connections, then we need to
+        // split up the associated chain into two separate chains. Otherwise, a
+        // HELM export will still show the removed bond since it assumes that
+        // adjacent monomers in a chain must have a backbone connection.
+        assign_chains(m_mol);
     }
 }
 
