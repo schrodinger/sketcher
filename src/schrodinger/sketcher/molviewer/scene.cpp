@@ -909,7 +909,6 @@ void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
     auto mime_data = event->mimeData();
     for (auto url : mime_data->urls()) {
         if (url.isLocalFile()) { // File drop event
-            // Exceptions must not escape a Qt event handler (SKETCH-2907)
             try {
                 auto file_path = url.toLocalFile().toStdString();
                 auto contents = get_file_text(file_path);

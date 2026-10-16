@@ -229,7 +229,7 @@ BOOST_AUTO_TEST_CASE(test_arrow_plus_tool_no_crash)
 
 /**
  * Make sure that dropping a file with an unsupported extension shows an error
- * instead of throwing out of the Qt event handler. SKETCH-2907
+ * instead of throwing out of the Qt event handler.
  */
 BOOST_AUTO_TEST_CASE(test_drop_unsupported_file)
 {
