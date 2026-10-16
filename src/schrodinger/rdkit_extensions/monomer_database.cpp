@@ -1,5 +1,6 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -702,6 +703,51 @@ MonomerDatabase::loadMonomersFromJson(std::string_view json)
     onDatabaseChanged();
 
     return result;
+}
+
+std::vector<unsigned char> MonomerDatabase::serializeCustomMonomers() const
+{
+    if (m_custom_monomers_db == nullptr) {
+        throw std::runtime_error("No custom monomer database is loaded");
+    }
+    sqlite3_int64 size = 0;
+    std::unique_ptr<unsigned char, decltype(&sqlite3_free)> data(
+        sqlite3_serialize(m_custom_monomers_db, "main", &size, 0),
+        &sqlite3_free);
+    if (data == nullptr) {
+        throw std::runtime_error("Could not serialize custom monomer database");
+    }
+    return {data.get(), data.get() + size};
+}
+
+void MonomerDatabase::loadSerializedCustomMonomers(
+    const std::vector<unsigned char>& data)
+{
+    if (data.empty()) {
+        throw std::runtime_error("Empty custom monomer database image");
+    }
+    auto db = create_empty_monomer_db();
+    auto* buffer = static_cast<unsigned char*>(sqlite3_malloc64(data.size()));
+    if (buffer == nullptr) {
+        throw std::bad_alloc();
+    }
+    std::memcpy(buffer, data.data(), data.size());
+    // SQLite takes ownership of buffer, including when deserialization fails.
+    if (sqlite3_deserialize(db.get(), "main", buffer, data.size(), data.size(),
+                            SQLITE_DESERIALIZE_FREEONCLOSE |
+                                SQLITE_DESERIALIZE_RESIZEABLE) != SQLITE_OK) {
+        throw std::runtime_error(
+            "Could not deserialize custom monomer database");
+    }
+    if (!check_db(db.get()).empty()) {
+        throw std::runtime_error(
+            "Custom monomer database image has an invalid schema");
+    }
+    if (auto path = getMonomerDbPath(); path.has_value()) {
+        dumpToFile(db.get(), *path);
+    }
+    swap_custom_monomers_db(db.release());
+    onDatabaseChanged();
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
