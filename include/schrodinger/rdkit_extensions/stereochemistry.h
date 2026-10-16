@@ -48,9 +48,13 @@ RDKIT_EXTENSIONS_API void assign_stereochemistry(RDKit::ROMol& mol);
 /**
  * A custom wrapper around RDkit's WedgeMolBonds() that makes sure
  * we don't wedge attachment point dummy atoms
+ * @param keep_existing_wedges if true, existing wedged/dashed bonds are
+ * preserved and only chiral atoms that lack one are wedged; otherwise, all
+ * bond directions are recalculated from scratch
  */
 RDKIT_EXTENSIONS_API void wedgeMolBonds(RDKit::ROMol& mol,
-                                        const RDKit::Conformer* conf);
+                                        const RDKit::Conformer* conf,
+                                        bool keep_existing_wedges = false);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
