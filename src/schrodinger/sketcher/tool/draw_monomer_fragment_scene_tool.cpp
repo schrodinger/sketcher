@@ -468,7 +468,6 @@ void DrawMonomerFragmentSceneTool::addBoundFragmentToMolModel(
     m_mol_model->addMol(*positioned_frag, "Add monomeric fragment",
                         /* reposition_mol = */ false,
                         /* new_mol_added = */ false,
-                        /* enforce_size_limit = */ false,
                         /* enforce_monomer_validity = */ false);
     auto* mol = m_mol_model->getMol();
     hovered_monomer = mol->getAtomWithIdx(hovered_monomer_idx);
@@ -491,7 +490,6 @@ void DrawMonomerFragmentSceneTool::addUnboundFragmentToMolModel(
     m_mol_model->addMol(*frag_copy, "Add monomeric fragment",
                         /* reposition_mol = */ false,
                         /* new_mol_added = */ false,
-                        /* enforce_size_limit = */ false,
                         /* enforce_monomer_validity = */ false);
 }
 

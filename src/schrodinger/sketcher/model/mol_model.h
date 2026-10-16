@@ -713,8 +713,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * empty.
      * @param new_mol_added If true (default), indicates that a new molecule was
      * added to the model.
-     * @param enforce_size_limit If true (default), enforce the maximum atom
-     * count limit for molecules.
      * @param enforce_monomer_validity If true (default), confirm that all
      * monomer names exist in the monomer database and that all inline SMILES
      * can be successfully parsed before importing.
@@ -724,7 +722,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true,
                 const bool new_mol_added = true,
-                const bool enforce_size_limit = true,
                 const bool enforce_monomer_validity = true);
 
     /**
@@ -733,12 +730,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * between the molecules.  Note that reaction agents will *not* be added.
      *
      * @param reaction The reaction to add
-     * @param enforce_size_limit If true (default), enforces the maximum atom
-     * count limit for reactions
      * @throw std::runtime_error if the model already contains a reaction arrow
      */
-    void addReaction(RDKit::ChemicalReaction reaction,
-                     const bool enforce_size_limit = true);
+    void addReaction(RDKit::ChemicalReaction reaction);
 
     /**
      * Undoably add a fragment and (optionally) bond it to the existing
