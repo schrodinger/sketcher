@@ -1,14 +1,21 @@
 #define BOOST_TEST_MODULE test_monomer_tool_widget
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <vector>
+
 #include <QAbstractButton>
+#include <QAction>
+#include <QEnterEvent>
 #include <QGridLayout>
 #include <QGraphicsSceneMouseEvent>
 #include <QMenu>
 #include <QPointer>
+#include <QProxyStyle>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSignalSpy>
+#include <QStyleOptionToolButton>
 #include <QTest>
 #include <QTimer>
 
@@ -19,6 +26,7 @@
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/widget/amino_acid_symbol_popup.h"
+#include "schrodinger/sketcher/widget/custom_monomer_button.h"
 #include "schrodinger/sketcher/widget/modular_tool_button.h"
 #include "schrodinger/sketcher/widget/monomer_tool_widget.h"
 #include "schrodinger/sketcher/widget/nucleic_acid_symbol_popup.h"
@@ -27,8 +35,16 @@ BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {
+namespace rdkit_extensions
+{
+MAKE_ENUM_LOGGABLE(ChainType);
+}
+
 namespace sketcher
 {
+
+using rdkit_extensions::ChainType;
+namespace bdata = boost::unit_test::data;
 
 /**
  * Keep the existing column thresholds and make overflow buttons reachable by
@@ -95,10 +111,11 @@ BOOST_AUTO_TEST_CASE(monomer_popup_scrolling)
 }
 
 /**
- * A long press opens the custom monomer menu asynchronously, without also
- * opening a drawing dialog or changing the button's check state.
+ * Clicking opens the custom monomer menu asynchronously without opening a
+ * drawing dialog or changing the button's check state. Holding has no special
+ * behavior.
  */
-BOOST_AUTO_TEST_CASE(custom_monomer_menu_long_press)
+BOOST_AUTO_TEST_CASE(custom_monomer_menu_click)
 {
     auto scene = TestScene::getScene();
     for (bool checked : {false, true}) {
@@ -106,40 +123,157 @@ BOOST_AUTO_TEST_CASE(custom_monomer_menu_long_press)
         widget.setModel(scene->m_sketcher_model);
         widget.show();
         auto* button =
-            widget.findChild<ToolButtonWithPopup*>("custom_monomer_btn");
+            widget.findChild<CustomMonomerButton*>("custom_monomer_btn");
         BOOST_REQUIRE(button != nullptr);
-        auto* menu = qobject_cast<QMenu*>(button->getPopupWidget());
+        auto* menu = button->findChild<QMenu*>();
         BOOST_REQUIRE(menu != nullptr);
         // Installing this as a built-in menu would reintroduce QMenu::exec().
         BOOST_TEST(button->menu() == nullptr);
         button->setChecked(checked);
-        button->setPopupDelay(10);
         QSignalSpy clicked(button, &QToolButton::clicked);
+        const auto draw_tool = scene->m_sketcher_model->getDrawTool();
 
-        // Ensure a regression to a blocking menu cannot hang this test.
-        QTimer::singleShot(500, menu, &QMenu::hide);
         QTest::mousePress(button, Qt::LeftButton);
-        BOOST_REQUIRE(
-            QTest::qWaitFor([menu]() { return menu->isVisible(); }, 200));
+        QTest::qWait(300);
+        BOOST_TEST(!menu->isVisible());
         BOOST_TEST(button->isChecked() == checked);
         BOOST_TEST(clicked.count() == 0);
         BOOST_TEST(widget.findChild<CustomMonomerDialog*>() == nullptr);
 
+        // Ensure a regression to a blocking menu cannot hang this test.
+        bool watchdog_fired = false;
+        QTimer watchdog;
+        watchdog.setSingleShot(true);
+        QObject::connect(&watchdog, &QTimer::timeout, menu,
+                         [menu, &watchdog_fired]() {
+                             watchdog_fired = true;
+                             menu->hide();
+                         });
+        watchdog.start(500);
         QTest::mouseRelease(button, Qt::LeftButton);
+        watchdog.stop();
+        BOOST_TEST(!watchdog_fired);
         BOOST_TEST(menu->isVisible());
-        BOOST_TEST(clicked.count() == 0);
+        BOOST_TEST(clicked.count() == 1);
+        BOOST_TEST(button->isChecked() == checked);
         BOOST_TEST(widget.findChild<CustomMonomerDialog*>() == nullptr);
         menu->hide();
 
-        // Short clicks must still open the default drawing dialog, including
-        // when the custom monomer tool is already selected.
+        QEnterEvent enter(button->rect().center(), button->rect().center(),
+                          button->mapToGlobal(button->rect().center()));
+        QApplication::sendEvent(button, &enter);
         QTest::mouseClick(button, Qt::LeftButton);
-        auto* dialog = widget.findChild<CustomMonomerDialog*>();
+        BOOST_TEST(menu->isVisible());
+        BOOST_TEST(clicked.count() == 2);
+        BOOST_TEST(button->isChecked() == checked);
+        BOOST_TEST(widget.findChild<CustomMonomerDialog*>() == nullptr);
+        BOOST_TEST(scene->m_sketcher_model->getDrawTool() == draw_tool);
+        // Dismissal through the title bar or another window need not deliver
+        // a leave event to the button that opened the menu.
+        menu->hide();
+        BOOST_TEST(!button->underMouse());
+        BOOST_TEST(!button->isDown());
+        BOOST_TEST(button->isChecked() == checked);
+
+        menu->actions().front()->trigger();
+        auto* dialog = button->findChild<CustomMonomerDialog*>();
         BOOST_REQUIRE(dialog != nullptr);
-        BOOST_TEST(dialog->isVisible());
-        BOOST_TEST(dialog->windowTitle() == "Define Custom Peptide Residue");
-        BOOST_TEST(!menu->isVisible());
+        BOOST_TEST(button->isChecked() == checked);
         dialog->reject();
+        BOOST_TEST(button->isChecked() == checked);
+        BOOST_TEST(scene->m_sketcher_model->getDrawTool() == draw_tool);
+    }
+}
+
+/**
+ * Menu actions follow the selected tab and forward accepted custom monomers
+ * through the button to the model.
+ */
+BOOST_DATA_TEST_CASE(custom_monomer_menu_actions,
+                     bdata::make(std::vector<ChainType>{
+                         ChainType::PEPTIDE, ChainType::RNA, ChainType::CHEM}),
+                     chain_type)
+{
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    auto* button = widget.findChild<CustomMonomerButton*>("custom_monomer_btn");
+    BOOST_REQUIRE(button != nullptr);
+    auto* menu = button->findChild<QMenu*>();
+    BOOST_REQUIRE(menu != nullptr);
+    BOOST_REQUIRE_EQUAL(menu->actions().size(), 3);
+    BOOST_TEST(menu->actions()[0]->text() == "Sketch Residue...");
+    if (chain_type == ChainType::RNA) {
+        widget.findChild<QToolButton*>("nucleic_monomer_btn")->click();
+        BOOST_TEST(menu->actions()[0]->text() == "Sketch Base...");
+        widget.findChild<QToolButton*>("amino_monomer_btn")->click();
+        BOOST_TEST(menu->actions()[0]->text() == "Sketch Residue...");
+        widget.findChild<QToolButton*>("nucleic_monomer_btn")->click();
+    }
+    menu->actions()[chain_type == ChainType::CHEM ? 2 : 0]->trigger();
+    auto* dialog = button->findChild<CustomMonomerDialog*>();
+    BOOST_REQUIRE(dialog != nullptr);
+    BOOST_TEST(dialog->isVisible());
+    BOOST_TEST(!button->isChecked());
+    const QString expected_title =
+        chain_type == ChainType::PEPTIDE ? "Define Custom Peptide Residue"
+        : chain_type == ChainType::RNA   ? "Define Custom Nucleic Acid Base"
+                                         : "Define Custom Structure";
+    BOOST_TEST(dialog->windowTitle() == expected_title);
+    dialog->addSMILES("CC");
+    dialog->accept();
+    BOOST_TEST(model.getDrawTool() == DrawTool::CUSTOM_MONOMER);
+    const auto monomer = model.getValue(ModelKey::CUSTOM_MONOMER)
+                             .value<std::pair<QString, ChainType>>();
+    BOOST_TEST(monomer.first == "CC");
+    BOOST_CHECK(monomer.second == chain_type);
+    BOOST_TEST(button->isChecked());
+}
+
+/**
+ * Only hovered or checked custom monomer buttons request a native menu arrow.
+ */
+BOOST_AUTO_TEST_CASE(custom_monomer_menu_indicator)
+{
+    class RecordingStyle : public QProxyStyle
+    {
+      public:
+        mutable bool m_painted = false;
+        mutable bool m_has_menu = false;
+
+        void drawComplexControl(ComplexControl control,
+                                const QStyleOptionComplex* option,
+                                QPainter* painter,
+                                const QWidget* widget) const override
+        {
+            if (control == CC_ToolButton) {
+                const auto* button_option =
+                    qstyleoption_cast<const QStyleOptionToolButton*>(option);
+                m_painted = true;
+                m_has_menu =
+                    button_option->features & QStyleOptionToolButton::HasMenu;
+            }
+            QProxyStyle::drawComplexControl(control, option, painter, widget);
+        }
+    } style;
+    CustomMonomerButton button;
+    button.setStyle(&style);
+    button.resize(100, 32);
+    for (const bool enabled : {false, true}) {
+        for (const bool checked : {false, true}) {
+            for (const bool hovered : {false, true}) {
+                button.setEnabled(enabled);
+                button.setChecked(checked);
+                button.setAttribute(Qt::WA_UnderMouse, hovered);
+                style.m_painted = false;
+                QPixmap image(button.size());
+                button.render(&image);
+                BOOST_TEST(style.m_painted);
+                BOOST_TEST(style.m_has_menu ==
+                           (checked || (enabled && hovered)));
+            }
+        }
     }
 }
 
@@ -328,6 +462,20 @@ BOOST_AUTO_TEST_CASE(unclassified_monomers)
         BOOST_CHECK(model.getValue(key) == previous_tool);
         BOOST_TEST(!button->isChecked());
         popup->close();
+
+        QEnterEvent enter(button->rect().center(), button->rect().center(),
+                          button->mapToGlobal(button->rect().center()));
+        QApplication::sendEvent(button, &enter);
+        QTest::mousePress(button, Qt::LeftButton);
+        BOOST_TEST(
+            QTest::qWaitFor([popup]() { return popup->isVisible(); }, 2000));
+        QTest::mouseRelease(button, Qt::LeftButton);
+        popup->close();
+        BOOST_TEST(!button->underMouse());
+        BOOST_TEST(!button->isDown());
+        BOOST_TEST(!button->isChecked());
+        BOOST_CHECK(model.getValue(key) == previous_tool);
+
         button->click();
         BOOST_TEST(popup->isVisible());
         first_analog->click();
