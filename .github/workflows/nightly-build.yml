@@ -39,3 +39,32 @@ jobs:
     with:
       ref: ${{ matrix.branch }}
       publish-npm-package: ${{ !inputs.dry-run }}
+
+  # Publish the main branch wasm build to GitHub Pages so the latest Sketcher
+  # can be tried directly in the browser
+  deploy-pages:
+    needs: [parse-inputs, build-branch]
+    if: ${{ contains(fromJson(needs.parse-inputs.outputs.branches), 'main') }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download wasm artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: sketcher-main-wasm
+          path: site
+
+      - name: Use the wasm shell as the landing page
+        run: cp site/wasm_shell.html site/index.html
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
