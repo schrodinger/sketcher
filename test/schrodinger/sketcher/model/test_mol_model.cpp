@@ -4934,6 +4934,26 @@ BOOST_AUTO_TEST_CASE(test_removing_monomeric_connection_splits_peptide_chain)
 }
 
 /**
+ * Removing a peptide monomer splits the HELM chain at that point.
+ */
+BOOST_AUTO_TEST_CASE(test_removing_monomer_splits_peptide_chain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "PEPTIDE1{A.A.A.A.A.A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 6);
+    BOOST_REQUIRE(mol->getNumBonds() == 5);
+
+    const auto* monomer = mol->getAtomWithIdx(2);
+    model.remove({monomer}, {}, {}, {}, {});
+
+    const auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.A}|PEPTIDE2{A.A.A}$$$$V2.0");
+}
+
+/**
  * Use addBoundMonomer to extend a peptide chain in the opposite direction,
  * building from C terminus to N terminus. We also add a side chain interaction
  * to a new chain and confirm that the new chain remains separate

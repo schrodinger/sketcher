@@ -2881,11 +2881,13 @@ void MolModel::removeCommandFunc(
         removeNonMolecularObjectCommandFunc(cur_tag);
     }
 
-    if (!bond_tags_with_atoms.empty() && contains_monomeric_atom(m_mol)) {
-        // If we've removed any monomeric backbone connections, then we need to
-        // split up the associated chain into two separate chains. Otherwise, a
-        // HELM export will still show the removed bond since it assumes that
-        // adjacent monomers in a chain must have a backbone connection.
+    if ((!all_atom_tags_to_delete.empty() || !bond_tags_with_atoms.empty()) &&
+        contains_monomeric_atom(m_mol)) {
+        // If we've removed any monomeric backbone connections (which can happen
+        // implicitly if we removed a monomer), then we need to split up the
+        // associated chain into two separate chains. Otherwise, a HELM export
+        // will still show the removed bond since it assumes that adjacent
+        // monomers in a chain must have a backbone connection.
         assign_chains(m_mol);
     }
 }
