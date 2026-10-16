@@ -942,11 +942,9 @@ void Scene::updateMonomerLabelSizeOnModel()
     if (!m_mol_model->isMonomeric()) {
         return;
     }
-    // split into "first-time sizing" vs "resize". First-time must
-    // skip resize_monomers' displacement, else every new monomer's default-vs-
-    // actual size gap pushes existing monomers outward on every add.
-    std::unordered_map<int, RDGeom::Point3D> initial_sizes;
-    std::unordered_map<int, RDGeom::Point3D> resize_sizes;
+    // resizeMonomers uses the default bead size when an atom has no previous
+    // measurement, allowing long labels to expand the layout on first render.
+    std::unordered_map<int, RDGeom::Point3D> monomer_sizes;
     for (auto atom : m_mol_model->getMol()->atoms()) {
         if (!is_atom_monomeric(atom)) {
             continue;
@@ -960,17 +958,10 @@ void Scene::updateMonomerLabelSizeOnModel()
                              bounding_rect.height() / VIEW_SCALE, 0);
         delete item;
 
-        if (atom->hasProp(rdkit_extensions::MONOMER_ITEM_SIZE)) {
-            resize_sizes[atom->getIdx()] = size;
-        } else {
-            initial_sizes[atom->getIdx()] = size;
-        }
+        monomer_sizes[atom->getIdx()] = size;
     }
-    if (!initial_sizes.empty()) {
-        m_mol_model->storeInitialMonomerSizes(initial_sizes);
-    }
-    if (!resize_sizes.empty()) {
-        m_mol_model->resizeMonomers(resize_sizes);
+    if (!monomer_sizes.empty()) {
+        m_mol_model->resizeMonomers(monomer_sizes);
     }
 }
 
