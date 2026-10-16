@@ -6,7 +6,7 @@ import { expect } from '@playwright/test';
  */
 export async function waitForSketcherReady(page) {
   await page.goto('/wasm_shell.html');
-  await page.waitForFunction(() => typeof window.Module !== 'undefined', {
+  await page.waitForFunction(() => typeof window.Module !== 'undefined', undefined, {
     timeout: 20000,
   });
   // Wait for the canvas inside the shadow DOM to be attached and visible
