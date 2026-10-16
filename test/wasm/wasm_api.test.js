@@ -314,7 +314,6 @@ test.describe('Custom Monomer DB', () => {
 
     const result = await page.evaluate((json) => {
       return Module.sketcher_load_custom_monomers(json);
-      const arr = [];
     }, incomplete);
 
     expect(result.succeeded.length).toBe(0);
@@ -322,7 +321,7 @@ test.describe('Custom Monomer DB', () => {
     expect(result.failed[0]).toContain('missing');
   });
 
-  test('loading monomer with unknown fields throws', async ({ page }) => {
+  test('loading monomer with unknown fields rejects', async ({ page }) => {
     const extraFields = JSON.stringify([
       {
         SYMBOL: 'Extra',
@@ -337,17 +336,63 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    const result = await page.evaluate((json) => {
+    const result = await page.evaluate(async (json) => {
       try {
-        Module.sketcher_load_custom_monomers(json);
-        return { threw: false };
+        await Module.sketcher_load_custom_monomers(json);
+        return { rejected: false };
       } catch (e) {
-        const [type, message] = Module.getExceptionMessage(e);
-        return { threw: true, type, message };
+        return { rejected: true, isError: e instanceof Error, message: e.message };
       }
     }, extraFields);
 
-    expect(result.threw).toBe(true);
+    expect(result.rejected).toBe(true);
+    expect(result.isError).toBe(true);
     expect(result.message).toContain('exception');
+  });
+
+  test('large monomer imports leave the main thread available', async ({ page }) => {
+    test.setTimeout(120000);
+    const result = await page.evaluate(async () => {
+      // Warm the worker so ticks measure the import rather than module startup.
+      await Module.sketcher_load_custom_monomers('[]');
+      const json = JSON.stringify(
+        Array.from({ length: 10000 }, (_, i) => ({
+          SYMBOL: `Responsive${i}`,
+          POLYMER_TYPE: 'PEPTIDE',
+          NATURAL_ANALOG: 'A',
+          SMILES: 'CC(N)C(=O)O',
+          NAME: `Responsive monomer ${i}`,
+          MONOMER_TYPE: 'Backbone',
+          AUTHOR: 'test',
+        })),
+      );
+      let ticks = 0;
+      const timer = setInterval(() => ++ticks, 10);
+      try {
+        const pending = Module.sketcher_load_custom_monomers(json);
+        const isPromise = pending instanceof Promise;
+        const imported = await pending;
+        return { isPromise, ticks, succeeded: imported.succeeded.length };
+      } finally {
+        clearInterval(timer);
+      }
+    });
+    expect(result.isPromise).toBe(true);
+    expect(result.ticks).toBeGreaterThan(1);
+    expect(result.succeeded).toBe(10000);
+  });
+
+  test('imports stay ordered and recover after a rejected request', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const order = [];
+      const first = Module.sketcher_load_custom_monomers('[]').then(() => order.push('first'));
+      const invalid = Module.sketcher_load_custom_monomers('invalid JSON').catch(() =>
+        order.push('invalid'),
+      );
+      const last = Module.sketcher_load_custom_monomers('[]').then(() => order.push('last'));
+      await Promise.all([first, invalid, last]);
+      return order;
+    });
+    expect(result).toEqual(['first', 'invalid', 'last']);
   });
 });

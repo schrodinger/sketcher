@@ -134,6 +134,19 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     std::pair<std::vector<std::string>, std::vector<std::string>>
     loadMonomersFromJson(std::string_view json);
 
+    /**
+     * @return A SQLite image of the custom database for transfer to another
+     * instance. Requires a loaded custom database.
+     */
+    [[nodiscard]] std::vector<unsigned char> serializeCustomMonomers() const;
+
+    /**
+     * Install a SQLite image prepared by serializeCustomMonomers(). Checks the
+     * schema and notifies subscribers without repeating SMILES
+     * canonicalization. The previous database is preserved on failure.
+     */
+    void loadSerializedCustomMonomers(const std::vector<unsigned char>& data);
+
     // use the indicated SQLite DB file as the source for custom
     // monomer definitions.
     // @throws std::runtime_error if the DB file cannot be opened,
