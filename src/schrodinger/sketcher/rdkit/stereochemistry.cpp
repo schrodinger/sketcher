@@ -3,7 +3,6 @@
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/StereoGroup.h>
-
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
