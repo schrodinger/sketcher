@@ -1,0 +1,38 @@
+[
+    {
+        "SYMBOL": "CHM1",
+        "POLYMER_TYPE": "CHEM",
+        "NATURAL_ANALOG": "",
+        "SMILES": "C",
+        "CORE_SMILES": "C",
+        "NAME": "CHM1 test monomer",
+        "MONOMER_TYPE": "Undefined",
+        "AUTHOR": "Testing",
+        "PDBCODE": "",
+        "RGROUPS": ""
+    },
+    {
+        "SYMBOL": "CHM2",
+        "POLYMER_TYPE": "CHEM",
+        "NATURAL_ANALOG": "",
+        "SMILES": "CC",
+        "CORE_SMILES": "CC",
+        "NAME": "CHM2 test monomer",
+        "MONOMER_TYPE": "Undefined",
+        "AUTHOR": "Testing",
+        "PDBCODE": "",
+        "RGROUPS": ""
+    },
+    {
+        "SYMBOL": "CHM3",
+        "POLYMER_TYPE": "CHEM",
+        "NATURAL_ANALOG": "",
+        "SMILES": "CCC",
+        "CORE_SMILES": "CCC",
+        "NAME": "CHM3 test monomer",
+        "MONOMER_TYPE": "Undefined",
+        "AUTHOR": "Testing",
+        "PDBCODE": "",
+        "RGROUPS": ""
+    }
+]

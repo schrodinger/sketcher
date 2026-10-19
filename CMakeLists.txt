@@ -348,6 +348,7 @@ target_link_libraries(
   ${APP_TARGET}
   PRIVATE Boost::boost
           Boost::filesystem
+          fmt::fmt
           Qt6::Widgets
           RDKit::Depictor
           ${RDKIT_EXTENSIONS_TARGET}
@@ -368,7 +369,6 @@ target_link_libraries(
 
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
-  target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
   if(MSVC)
     target_compile_definitions(${APP_TARGET}
                                PRIVATE BOOST_STACKTRACE_USE_WINDBG)
