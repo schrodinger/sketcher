@@ -99,9 +99,10 @@ double get_most_common_bond_length(const RDKit::ROMol& mol)
 void rescale_bond_length_if_needed(RDKit::ROMol& mol)
 {
     if (rdkit_extensions::isMonomeric(mol) &&
-        std::any_of(mol.atoms().begin(), mol.atoms().end(), [](const auto* atom) {
-            return atom->hasProp(rdkit_extensions::MONOMER_ITEM_SIZE);
-        })) {
+        std::any_of(
+            mol.atoms().begin(), mol.atoms().end(), [](const auto* atom) {
+                return atom->hasProp(rdkit_extensions::MONOMER_ITEM_SIZE);
+            })) {
         // Measured bead sizes mean label spacing has already been applied.
         // Normalizing would undo that spacing and move positioned fragments.
         return;
