@@ -74,8 +74,7 @@ FormatList<Format> get_import_formats()
     }
     for (const auto& [format, label] : monomeric_import_formats) {
         auto extensions = rdkit_extensions::get_seq_extensions(format);
-        // we skip the FASTA subformats since those don't have any associated
-        // extensions
+        // we skip any formats that don't have associated extensions
         if (!extensions.empty()) {
             import_formats.push_back({format, label, extensions});
         }
