@@ -193,12 +193,11 @@ export async function getExportedHelm(page) {
 }
 
 /**
- * Select all items on the canvas via Cmd+A / Ctrl+A and wait for the
- * selection controls to reflect the completed selection.
+ * Select all items on the canvas and wait for the selection controls to
+ * reflect the completed selection.
  */
 export async function selectAll(page) {
-  await focusCanvas(page);
-  await page.keyboard.press('ControlOrMeta+a');
+  await clickWidget(page, 'select_all_btn');
   await expect.poll(async () => (await widgetState(page, 'select_all_btn')).enabled).toBe(false);
   await expect
     .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
