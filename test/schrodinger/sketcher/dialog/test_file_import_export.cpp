@@ -46,11 +46,14 @@ BOOST_AUTO_TEST_CASE(test_get_import_formats_includes_helm)
 
 BOOST_AUTO_TEST_CASE(test_get_import_name_filter)
 {
-    // SKETCH-2823: The default filter must list explicit extensions; WASM
-    // file pickers drop wildcard filters like *.*, which previously left
-    // the first specific format (MDL SD) as the default
     auto filters = get_import_name_filter().split(";;");
-    BOOST_TEST(filters.size() == get_import_formats().size() + 1);
+#ifdef __EMSCRIPTEN__
+    // SKETCH-2823: Qt drops wildcard filters on WASM, so any other filter
+    // would prevent the browser from showing all files
+    BOOST_TEST((filters == QStringList{"All files (*)"}));
+#else
+    // SKETCH-2823: All supported formats, each format, then All files
+    BOOST_TEST(filters.size() == get_import_formats().size() + 2);
     auto all_supported = filters.front();
     BOOST_TEST(all_supported.startsWith("All supported formats ("));
     BOOST_TEST(!all_supported.contains("*.*"));
@@ -59,4 +62,6 @@ BOOST_AUTO_TEST_CASE(test_get_import_name_filter)
             BOOST_TEST(all_supported.contains(QString::fromStdString(ext)));
         }
     }
+    BOOST_TEST((filters.back() == "All files (*)"));
+#endif
 }
