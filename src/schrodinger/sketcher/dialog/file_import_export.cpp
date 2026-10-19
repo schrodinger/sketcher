@@ -182,7 +182,6 @@ QString get_import_name_filter()
         filters.append(get_filter_name(label, extensions));
     }
     filters.prepend(get_filter_name("All supported formats", all_extensions));
-    filters.append("All files (*)");
     return filters.join(";;");
 #endif
 }

@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE(test_get_import_name_filter)
     // would prevent the browser from showing all files
     BOOST_TEST((filters == QStringList{"All files (*)"}));
 #else
-    // SKETCH-2823: All supported formats, each format, then All files
-    BOOST_TEST(filters.size() == get_import_formats().size() + 2);
+    // SKETCH-2823: All supported formats, then each format
+    BOOST_TEST(filters.size() == get_import_formats().size() + 1);
     auto all_supported = filters.front();
     BOOST_TEST(all_supported.startsWith("All supported formats ("));
     BOOST_TEST(!all_supported.contains("*.*"));
@@ -62,6 +62,5 @@ BOOST_AUTO_TEST_CASE(test_get_import_name_filter)
             BOOST_TEST(all_supported.contains(QString::fromStdString(ext)));
         }
     }
-    BOOST_TEST((filters.back() == "All files (*)"));
 #endif
 }
