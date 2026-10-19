@@ -353,8 +353,6 @@ test.describe('Custom Monomer DB', () => {
   test('large monomer imports leave the main thread available', async ({ page }) => {
     test.setTimeout(120000);
     const result = await page.evaluate(async () => {
-      // Warm the worker so ticks measure the import rather than module startup.
-      await Module.sketcher_load_custom_monomers('[]');
       const json = JSON.stringify(
         Array.from({ length: 10000 }, (_, i) => ({
           SYMBOL: `Responsive${i}`,
@@ -394,5 +392,48 @@ test.describe('Custom Monomer DB', () => {
       return order;
     });
     expect(result).toEqual(['first', 'invalid', 'last']);
+  });
+
+  test('each import terminates its worker before settling', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const NativeWorker = window.Worker;
+      const workers = [];
+      window.Worker = class extends NativeWorker {
+        constructor(...args) {
+          super(...args);
+          this.terminated = false;
+          workers.push(this);
+        }
+        terminate() {
+          this.terminated = true;
+          super.terminate();
+        }
+      };
+      try {
+        await Module.sketcher_load_custom_monomers('[]');
+        const terminatedAfterSuccess = workers[0].terminated;
+        let terminatedAfterFailure = false;
+        try {
+          await Module.sketcher_load_custom_monomers('invalid JSON');
+        } catch {
+          terminatedAfterFailure = workers[1].terminated;
+        }
+        await Module.sketcher_load_custom_monomers('[]');
+        return {
+          created: workers.length,
+          terminatedAfterSuccess,
+          terminatedAfterFailure,
+          allTerminated: workers.every((worker) => worker.terminated),
+        };
+      } finally {
+        window.Worker = NativeWorker;
+      }
+    });
+    expect(result).toEqual({
+      created: 3,
+      terminatedAfterSuccess: true,
+      terminatedAfterFailure: true,
+      allTerminated: true,
+    });
   });
 });

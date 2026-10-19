@@ -10,7 +10,6 @@ self.onmessage = async ({ data: json }) => {
   } catch (error) {
     self.postMessage({
       error: error instanceof Error ? error.message : String(error),
-      fatal: true,
     });
   }
 };

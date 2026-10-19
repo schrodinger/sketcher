@@ -4,7 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-function setup() {
+function setup({ failFirstPostMessage = false } = {}) {
   const workers = [];
   const installed = [];
   class Worker {
@@ -13,8 +13,15 @@ function setup() {
       this.requests = [];
       workers.push(this);
     }
-    postMessage(json) { this.requests.push(json); }
-    terminate() { this.terminated = true; }
+    postMessage(json) {
+      if (failFirstPostMessage && this === workers[0]) {
+        throw new Error('Could not send input to worker');
+      }
+      this.requests.push(json);
+    }
+    terminate() {
+      this.terminated = true;
+    }
   }
   const Module = {
     sketcher_install_custom_monomers(database) {
@@ -43,12 +50,15 @@ test('imports run in submission order and install only completed databases', asy
   workers[0].onmessage({ data: { database: 'db1', succeeded: ['a'], failed: [] } });
   const result = await first;
   assert.deepEqual(Array.from(result.succeeded), ['a']);
+  assert.equal(workers[0].terminated, true);
   await flush();
-  assert.deepEqual(workers[0].requests, ['first', 'second']);
-  workers[0].onmessage({ data: { database: 'db2', succeeded: [], failed: ['b'] } });
+  assert.equal(workers.length, 2);
+  assert.deepEqual(workers[0].requests, ['first']);
+  assert.deepEqual(workers[1].requests, ['second']);
+  workers[1].onmessage({ data: { database: 'db2', succeeded: [], failed: ['b'] } });
   await second;
+  assert.equal(workers[1].terminated, true);
   assert.deepEqual(installed, ['db1', 'db2']);
-  assert.equal(workers.length, 1);
 });
 
 test('parse failures reject with Error and leave the queue and database intact', async () => {
@@ -59,10 +69,13 @@ test('parse failures reject with Error and leave the queue and database intact',
   await flush();
   workers[0].onmessage({ data: { error: 'Invalid JSON' } });
   await rejected;
+  assert.equal(workers[0].terminated, true);
   assert.deepEqual(installed, []);
   await flush();
-  workers[0].onmessage({ data: { database: 'valid', succeeded: [], failed: [] } });
+  assert.equal(workers.length, 2);
+  workers[1].onmessage({ data: { database: 'valid', succeeded: [], failed: [] } });
   await next;
+  assert.equal(workers[1].terminated, true);
   assert.deepEqual(installed, ['valid']);
 });
 
@@ -74,7 +87,7 @@ for (const event of ['onerror', 'onmessageerror', 'initialization failure']) {
     const next = Module.sketcher_load_custom_monomers('second');
     await flush();
     if (event === 'initialization failure') {
-      workers[0].onmessage({ data: { error: 'Worker failed', fatal: true } });
+      workers[0].onmessage({ data: { error: 'Worker failed' } });
     } else {
       workers[0][event]({ message: 'Worker failed' });
     }
@@ -84,6 +97,7 @@ for (const event of ['onerror', 'onmessageerror', 'initialization failure']) {
     assert.equal(workers.length, 2);
     workers[1].onmessage({ data: { database: 'second', succeeded: [], failed: [] } });
     await next;
+    assert.equal(workers[1].terminated, true);
   });
 }
 
@@ -95,4 +109,18 @@ test('installation errors reject with a JavaScript Error', async () => {
   await flush();
   workers[0].onmessage({ data: { database: 'invalid' } });
   await rejected;
+  assert.equal(workers[0].terminated, true);
+});
+
+test('sending input failures terminate the worker and allow subsequent imports', async () => {
+  const { Module, workers } = setup({ failFirstPostMessage: true });
+  const first = Module.sketcher_load_custom_monomers('first');
+  const rejected = assert.rejects(first, /Could not send input to worker/);
+  const next = Module.sketcher_load_custom_monomers('second');
+  await rejected;
+  assert.equal(workers[0].terminated, true);
+  await flush();
+  workers[1].onmessage({ data: { database: 'second', succeeded: [], failed: [] } });
+  await next;
+  assert.equal(workers[1].terminated, true);
 });
