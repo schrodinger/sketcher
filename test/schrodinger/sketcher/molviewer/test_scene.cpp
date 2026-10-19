@@ -3,10 +3,19 @@
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <QCoreApplication>
+#include <QFile>
+#include <QGraphicsSceneDragDropEvent>
+#include <QMimeData>
 #include <QRectF>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QUrl>
+#include <QWidget>
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -216,6 +225,38 @@ BOOST_AUTO_TEST_CASE(test_arrow_plus_tool_no_crash)
     BOOST_TEST(mol_model->getNonMolecularObjects().size() == 1);
     BOOST_TEST(sketcher_model->getEnumerationTool() ==
                EnumerationTool::RXN_PLUS);
+}
+
+/**
+ * Make sure that dropping a file with an unsupported extension shows an error
+ * instead of throwing out of the Qt event handler.
+ */
+BOOST_AUTO_TEST_CASE(test_drop_unsupported_file)
+{
+    QTemporaryDir temp_dir;
+    auto file_path = temp_dir.filePath("unsupported.pdf");
+    QFile file(file_path);
+    BOOST_REQUIRE(file.open(QIODevice::WriteOnly));
+    file.write("not a structure");
+    file.close();
+
+    QWidget parent;
+    auto undo_stack = new QUndoStack();
+    auto mol_model = new MolModel(undo_stack);
+    auto sketcher_model = new SketcherModel();
+    TestScene scene(mol_model, sketcher_model, &parent);
+    undo_stack->setParent(mol_model);
+    mol_model->setParent(&scene);
+    sketcher_model->setParent(&scene);
+    QSignalSpy import_spy(&scene, &Scene::importTextRequested);
+
+    QMimeData mime_data;
+    mime_data.setUrls({QUrl::fromLocalFile(file_path)});
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    event.setMimeData(&mime_data);
+    BOOST_CHECK_NO_THROW(QCoreApplication::sendEvent(&scene, &event));
+    BOOST_TEST(import_spy.count() == 0);
+    BOOST_TEST(parent.findChildren<MessageBoxDialog*>().size() == 1);
 }
 
 } // namespace sketcher
