@@ -1,12 +1,14 @@
 #include "schrodinger/sketcher/tool/draw_monomer_fragment_scene_tool.h"
 
 #include <ranges>
+#include <unordered_map>
 
 #include <fmt/core.h>
 
 #include <QBitmap>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
@@ -15,6 +17,7 @@
 #include "schrodinger/sketcher/molviewer/monomer_hint_fragment_item.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 
 namespace schrodinger
@@ -117,6 +120,16 @@ DrawMonomerFragmentSceneTool::DrawMonomerFragmentSceneTool(
 {
     set_all_atoms_monomeric(m_frag);
     m_frag.getConformer().set3D(false);
+    // Expand the fragment to make room for any long monomer labels, and allow
+    // resize_monomers to store these label sizes with the fragment. This way,
+    // adding the fragment to the scene won't incorrectly move existing monomers
+    // to make room for long labels.
+    std::unordered_map<int, RDGeom::Point3D> monomer_sizes;
+    for (const auto* atom : m_frag.atoms()) {
+        monomer_sizes[atom->getIdx()] = get_monomer_graphics_item_size(
+            atom, fonts, atom_display_settings, bond_display_settings);
+    }
+    rdkit_extensions::resize_monomers(m_frag, monomer_sizes);
 }
 
 QPixmap DrawMonomerFragmentSceneTool::createDefaultCursorPixmap() const
@@ -425,13 +438,23 @@ DrawMonomerFragmentSceneTool::getPositionedFragment(
     // figure out where to translate the fragment to
     const auto& conf = hovered_monomer->getOwningMol().getConformer();
     auto monomer_pos = conf.getAtomPos(hovered_monomer->getIdx());
-    auto hint_pos =
-        get_default_coords_for_bound_monomer(monomer_pos, hovered_ap.direction);
+    const auto* bound_frag_monomer =
+        m_frag.getAtomWithIdx(attachment_info.frag_monomer_idx);
+    const auto start_size = get_monomer_graphics_item_size(
+        hovered_monomer, *m_fonts, *m_atom_display_settings,
+        *m_bond_display_settings);
+    const auto end_size = get_monomer_graphics_item_size(
+        bound_frag_monomer, *m_fonts, *m_atom_display_settings,
+        *m_bond_display_settings);
+    const auto default_offset =
+        rdkit_extensions::direction_to_vector(hovered_ap.direction) *
+        rdkit_extensions::MONOMER_BOND_LENGTH;
+    const auto hint_pos =
+        monomer_pos + rdkit_extensions::get_monomer_connection_offset(
+                          default_offset, start_size, end_size);
 
     // figure out what angle we need to rotate the fragment so that the
     // attachment points to be connected will line up
-    const auto* bound_frag_monomer =
-        m_frag.getAtomWithIdx(attachment_info.frag_monomer_idx);
     auto [bound_attachment_points, unbound_attachment_points] =
         get_attachment_points_for_monomer(bound_frag_monomer);
     auto unbound_ap = find_unbound_attachment_point(

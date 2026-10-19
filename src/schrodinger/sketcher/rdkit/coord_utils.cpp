@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include <algorithm>
 
@@ -96,6 +98,14 @@ double get_most_common_bond_length(const RDKit::ROMol& mol)
 
 void rescale_bond_length_if_needed(RDKit::ROMol& mol)
 {
+    if (rdkit_extensions::isMonomeric(mol) &&
+        std::any_of(mol.beginAtoms(), mol.endAtoms(), [](const auto* atom) {
+            return atom->hasProp(rdkit_extensions::MONOMER_ITEM_SIZE);
+        })) {
+        // Measured bead sizes mean label spacing has already been applied.
+        // Normalizing would undo that spacing and move positioned fragments.
+        return;
+    }
     auto cur_bond_length = get_most_common_bond_length(mol);
     if (cur_bond_length < BOND_LENGTH_EPSILON) {
         // If cur_bond_length is -1, then there's no conformer or no bonds in
