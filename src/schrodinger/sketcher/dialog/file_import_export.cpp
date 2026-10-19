@@ -74,7 +74,6 @@ FormatList<Format> get_import_formats()
     }
     for (const auto& [format, label] : monomeric_import_formats) {
         auto extensions = rdkit_extensions::get_seq_extensions(format);
-        // we skip any formats that don't have associated extensions
         if (!extensions.empty()) {
             import_formats.push_back({format, label, extensions});
         }
@@ -167,8 +166,14 @@ QString get_filter_name(const std::string& label,
 
 QString get_import_name_filter()
 {
-    // List every extension explicitly rather than using *.*, since the WASM
-    // file picker silently drops wildcard filters (SKETCH-2823)
+#ifdef __EMSCRIPTEN__
+    // Browser file pickers often hide the format dropdown, so offering
+    // per-format filters makes it look like only the default format is
+    // supported. Allow any file instead; unsupported files are rejected on
+    // open. Note that Qt drops wildcard filters on WASM, so this must be the
+    // only filter for the browser to fall back to showing all files.
+    return "All files (*)";
+#else
     std::vector<std::string> all_extensions;
     QStringList filters;
     for (const auto& [_, label, extensions] : get_import_formats()) {
@@ -178,6 +183,7 @@ QString get_import_name_filter()
     }
     filters.prepend(get_filter_name("All supported formats", all_extensions));
     return filters.join(";;");
+#endif
 }
 
 } // namespace sketcher
