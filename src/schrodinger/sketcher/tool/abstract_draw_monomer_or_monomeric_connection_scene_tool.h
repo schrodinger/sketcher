@@ -64,7 +64,7 @@ struct HintFragmentMonomerInfo {
     int atom_idx;
     // measured bead size in molecular coordinates, used for placement and to
     // prevent the model's first render from expanding the spacing twice
-    RDGeom::Point3D size;
+    RDGeom::Point3D size{};
 };
 
 constexpr int NEW_MONOMER_FROM_DRAG = -1;
