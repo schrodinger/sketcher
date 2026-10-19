@@ -3,6 +3,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <QStringList>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/test/checkexceptionmsg.h"
@@ -14,7 +16,8 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
 BOOST_AUTO_TEST_CASE(test_get_import_export_formats)
 {
-    BOOST_TEST(get_import_formats().size() == 12);
+    // 10 atomistic (SMARTS variants have no extensions) + 2 reaction + HELM
+    BOOST_TEST(get_import_formats().size() == 13);
     // 11 atomistic + HELM + FASTA = 13
     BOOST_TEST(get_standard_export_formats().size() == 13);
     BOOST_TEST(get_reaction_export_formats().size() == 5);
@@ -31,4 +34,29 @@ BOOST_AUTO_TEST_CASE(test_get_standard_export_formats_includes_sequence_formats)
     };
     BOOST_TEST(has_format(Format::HELM));
     BOOST_TEST(has_format(Format::FASTA));
+}
+
+BOOST_AUTO_TEST_CASE(test_get_import_formats_includes_helm)
+{
+    // SKETCH-2823: HELM files should be selectable in the import dialog
+    auto formats = get_import_formats();
+    BOOST_TEST(std::ranges::any_of(
+        formats, [](const auto& e) { return std::get<0>(e) == Format::HELM; }));
+}
+
+BOOST_AUTO_TEST_CASE(test_get_import_name_filter)
+{
+    // SKETCH-2823: The default filter must list explicit extensions; WASM
+    // file pickers drop wildcard filters like *.*, which previously left
+    // the first specific format (MDL SD) as the default
+    auto filters = get_import_name_filter().split(";;");
+    BOOST_TEST(filters.size() == get_import_formats().size() + 1);
+    auto all_supported = filters.front();
+    BOOST_TEST(all_supported.startsWith("All supported formats ("));
+    BOOST_TEST(!all_supported.contains("*.*"));
+    for (const auto& [_, label, extensions] : get_import_formats()) {
+        for (const auto& ext : extensions) {
+            BOOST_TEST(all_supported.contains(QString::fromStdString(ext)));
+        }
+    }
 }
