@@ -21,6 +21,10 @@ namespace rdkit_extensions
 // measured in scene units
 const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
+// Default width and height used by the coordinate layout until the graphics
+// item has been measured. This is also the minimum supported monomer size.
+inline constexpr double MONOMER_MINIMUM_SIZE = 0.80;
+
 /**
  * Information about a turn in a snaking or coiling chain layout.
  */
@@ -87,9 +91,7 @@ resize_monomers(RDKit::ROMol& monomer_mol,
                 const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
 /**
- * Persist sizes on monomer atoms without computing displacement. Use this for
- * first-time sizing of new monomers; resize_monomers would otherwise treat
- * the default-vs-actual size gap as a resize event.
+ * Persist sizes on monomer atoms without computing displacement.
  */
 void RDKIT_EXTENSIONS_API store_initial_monomer_sizes(
     RDKit::ROMol& monomer_mol,

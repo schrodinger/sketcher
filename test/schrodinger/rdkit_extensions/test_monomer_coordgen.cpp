@@ -6,9 +6,11 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
-#include <vector>
+#include <array>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
@@ -855,6 +857,41 @@ BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
             schrodinger::rdkit_extensions::get_position_in_coils_double(
                 static_cast<int>(i), *mol, turns);
         BOOST_CHECK_CLOSE(score, scores[i], 1e-4);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
+{
+    auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    schrodinger::rdkit_extensions::compute_monomer_mol_coords(*mol);
+
+    std::unordered_map<int, RDGeom::Point3D> undersized_monomers{
+        {0, {0.1, 0.2, 0.0}}, {1, {0.3, 0.4, 0.0}}};
+    const auto check_stored_sizes = [&]() {
+        for (const auto* atom : mol->atoms()) {
+            const auto stored_size = atom->getProp<std::array<double, 3>>(
+                schrodinger::rdkit_extensions::MONOMER_ITEM_SIZE);
+            BOOST_CHECK_EQUAL(
+                stored_size[0],
+                schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE);
+            BOOST_CHECK_EQUAL(
+                stored_size[1],
+                schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE);
+        }
+    };
+
+    schrodinger::rdkit_extensions::store_initial_monomer_sizes(
+        *mol, undersized_monomers);
+    check_stored_sizes();
+
+    const auto original_positions = mol->getConformer().getPositions();
+    schrodinger::rdkit_extensions::resize_monomers(*mol, undersized_monomers);
+    check_stored_sizes();
+    for (const auto* atom : mol->atoms()) {
+        const auto displacement =
+            mol->getConformer().getAtomPos(atom->getIdx()) -
+            original_positions[atom->getIdx()];
+        BOOST_CHECK_SMALL(displacement.length(), 1e-6);
     }
 }
 
