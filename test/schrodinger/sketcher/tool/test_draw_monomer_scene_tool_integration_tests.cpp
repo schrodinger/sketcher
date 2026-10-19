@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE test_draw_monomer_scene_tool_integration_tests
 
-#include <array>
+#include <string>
+#include <vector>
 
 #include <QPointF>
 #include <boost/test/data/test_case.hpp>
@@ -27,7 +28,7 @@ namespace sketcher
 /**
  * Copy hint coordinates, which must outlive the temporary hint molecule.
  */
-static std::array<RDGeom::Point3D, 2>
+static std::vector<RDGeom::Point3D>
 get_hint_coordinates(const MonomerToolTestFixture& fix)
 {
     for (auto* item : fix.m_scene->items()) {
@@ -36,7 +37,7 @@ get_hint_coordinates(const MonomerToolTestFixture& fix)
             dynamic_cast<MonomerHintFragmentItem*>(item->group()) != nullptr) {
             const auto& conf =
                 monomer_item->getAtom()->getOwningMol().getConformer();
-            return {conf.getAtomPos(0), conf.getAtomPos(1)};
+            return conf.getPositions();
         }
     }
     throw std::runtime_error("Expected a monomer hint");
@@ -60,6 +61,139 @@ struct LongLabelMonomerFixture {
         rdkit_extensions::MonomerDatabase::instance().resetMonomerDefinitions();
     }
 };
+
+/**
+ * Placing an independent monomer or fragment must preserve existing
+ * coordinates, including disconnected chains on either side of the placement.
+ */
+BOOST_DATA_TEST_CASE_F(
+    LongLabelMonomerFixture,
+    test_empty_space_placement_preserves_existing_coordinates,
+    boost::unit_test::data::make({"database", "smiles", "fragment_click",
+                                  "fragment_drag"}) *
+        boost::unit_test::data::make({false, true}),
+    placement_type, to_left)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{A.C}|PEPTIDE2{G.F}$$$$V2.0");
+    const auto original_positions =
+        fix.m_mol_model->getMol()->getConformer().getPositions();
+    const std::string placement(placement_type);
+    const bool is_fragment = placement.starts_with("fragment");
+    if (is_fragment) {
+        fix.setCustomNucleotideTool("R", "missingLongBase", "P");
+    } else if (placement == "smiles") {
+        fix.setCustomMonomerTool("[*:1]NCC(=O)[*:2]",
+                                 rdkit_extensions::ChainType::PEPTIDE);
+    } else {
+        fix.setAminoAcidTool(AminoAcidTool::ALA);
+        fix.m_sketcher_model->setValue(ModelKey::AMINO_ACID_SYMBOL,
+                                       QString("LongAA"));
+        process_qt_events();
+    }
+    const auto click_pos =
+        fix.getMonomerPos(0) + QPointF(to_left ? -400 : 400, 200);
+    if (placement == "fragment_drag") {
+        fix.mouseDrag(click_pos, click_pos + QPointF(100, 100));
+    } else {
+        fix.mouseClick(click_pos);
+    }
+
+    auto check_coordinates = [&]() {
+        const auto* mol = fix.m_mol_model->getMol();
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), is_fragment ? 7 : 5);
+        BOOST_TEST(mol->getNumBonds() == (is_fragment ? 4 : 2));
+        const auto& conf = mol->getConformer();
+        for (unsigned int i = 0; i < original_positions.size(); ++i) {
+            BOOST_CHECK_SMALL(
+                (conf.getAtomPos(i) - original_positions[i]).length(), 1e-6);
+        }
+        BOOST_CHECK_SMALL((conf.getAtomPos(4) - to_mol_xy(click_pos)).length(),
+                          1e-6);
+    };
+    check_coordinates();
+    const auto placed_positions =
+        fix.m_mol_model->getMol()->getConformer().getPositions();
+    fix.m_scene->updateItems(WhatChanged::MOLECULE);
+    check_coordinates();
+
+    auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
+    BOOST_REQUIRE(undo_stack != nullptr);
+    undo_stack->undo();
+    BOOST_REQUIRE_EQUAL(fix.m_mol_model->getMol()->getNumAtoms(), 4);
+    for (unsigned int i = 0; i < original_positions.size(); ++i) {
+        BOOST_CHECK_SMALL(
+            (fix.m_mol_model->getMol()->getConformer().getAtomPos(i) -
+             original_positions[i])
+                .length(),
+            1e-6);
+    }
+    undo_stack->redo();
+    check_coordinates();
+    const auto& redone_conf = fix.m_mol_model->getMol()->getConformer();
+    for (unsigned int i = 4; i < placed_positions.size(); ++i) {
+        BOOST_CHECK_SMALL(
+            (redone_conf.getAtomPos(i) - placed_positions[i]).length(), 1e-6);
+    }
+}
+
+/**
+ * Adding a wide nucleotide at either end of a chain must match its preview
+ * without moving existing monomers, including a disconnected peptide chain.
+ */
+BOOST_DATA_TEST_CASE(test_bound_fragment_preserves_existing_coordinates,
+                     boost::unit_test::data::make({false, true}), to_left)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("RNA1{[dR](A)P}|PEPTIDE1{A.C}$$$$V2.0");
+    const auto original_positions =
+        fix.m_mol_model->getMol()->getConformer().getPositions();
+    fix.setCustomNucleotideTool("dR", "missingLongBase", "P");
+    const auto start_idx = to_left ? 0 : 2;
+    const auto start_pos = fix.getMonomerPos(start_idx);
+    fix.mouseMove(start_pos);
+    const auto hint = get_hint_coordinates(fix);
+    BOOST_REQUIRE_EQUAL(hint.size(), 4);
+    fix.mouseClick(start_pos);
+
+    auto check_coordinates = [&]() {
+        const auto* mol = fix.m_mol_model->getMol();
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 8);
+        BOOST_TEST(mol->getNumBonds() == 6);
+        const auto& conf = mol->getConformer();
+        for (unsigned int i = 0; i < original_positions.size(); ++i) {
+            BOOST_CHECK_SMALL(
+                (conf.getAtomPos(i) - original_positions[i]).length(), 1e-6);
+        }
+        for (unsigned int i = 0; i < 3; ++i) {
+            BOOST_CHECK_SMALL((conf.getAtomPos(5 + i) - hint[i]).length(),
+                              1e-6);
+        }
+    };
+    check_coordinates();
+    const auto* mol = fix.m_mol_model->getMol();
+    const auto end_idx = to_left ? 7 : 5;
+    const auto start_size = get_monomer_graphics_item_size(
+        mol->getAtomWithIdx(start_idx), fix.m_scene->m_fonts,
+        *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+        *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+    const auto end_size = get_monomer_graphics_item_size(
+        mol->getAtomWithIdx(end_idx), fix.m_scene->m_fonts,
+        *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+        *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+    const auto offset = mol->getConformer().getAtomPos(end_idx) -
+                        mol->getConformer().getAtomPos(start_idx);
+    BOOST_CHECK_GE(std::abs(offset.x) - (start_size.x + end_size.x) / 2,
+                   0.7 - 1e-6);
+    fix.m_scene->updateItems(WhatChanged::MOLECULE);
+    check_coordinates();
+    auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
+    BOOST_REQUIRE(undo_stack != nullptr);
+    undo_stack->undo();
+    BOOST_REQUIRE_EQUAL(fix.m_mol_model->getMol()->getNumAtoms(), 5);
+    undo_stack->redo();
+    check_coordinates();
+}
 
 /**
  * Long labels must have the same spacing in hints, clicks, and drags.
