@@ -70,7 +70,7 @@ BOOST_DATA_TEST_CASE_F(
     LongLabelMonomerFixture,
     test_empty_space_placement_preserves_existing_coordinates,
     boost::unit_test::data::make({"database", "smiles", "fragment_click",
-                                  "fragment_drag"}) *
+                                  "fragment_drag", "fragment_drag_90"}) *
         boost::unit_test::data::make({false, true}),
     placement_type, to_left)
 {
@@ -93,8 +93,14 @@ BOOST_DATA_TEST_CASE_F(
     }
     const auto click_pos =
         fix.getMonomerPos(0) + QPointF(to_left ? -400 : 400, 200);
-    if (placement == "fragment_drag") {
-        fix.mouseDrag(click_pos, click_pos + QPointF(100, 100));
+    std::vector<RDGeom::Point3D> hint;
+    if (placement.starts_with("fragment_drag")) {
+        const auto drag_pos =
+            click_pos + QPointF(100, placement == "fragment_drag_90" ? 0 : 100);
+        fix.mousePress(click_pos);
+        fix.mouseMove(drag_pos, Qt::LeftButton);
+        hint = get_hint_coordinates(fix);
+        fix.mouseRelease(drag_pos);
     } else {
         fix.mouseClick(click_pos);
     }
@@ -110,6 +116,27 @@ BOOST_DATA_TEST_CASE_F(
         }
         BOOST_CHECK_SMALL((conf.getAtomPos(4) - to_mol_xy(click_pos)).length(),
                           1e-6);
+        if (!hint.empty()) {
+            for (unsigned int i = 0; i < 3; ++i) {
+                BOOST_CHECK_SMALL((conf.getAtomPos(4 + i) - hint[i]).length(),
+                                  1e-6);
+            }
+        }
+        if (placement == "fragment_drag_90") {
+            const auto sugar_size = get_monomer_graphics_item_size(
+                mol->getAtomWithIdx(4), fix.m_scene->m_fonts,
+                *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+            const auto base_size = get_monomer_graphics_item_size(
+                mol->getAtomWithIdx(5), fix.m_scene->m_fonts,
+                *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+            const auto offset = conf.getAtomPos(5) - conf.getAtomPos(4);
+            BOOST_CHECK_SMALL(offset.y, 1e-6);
+            BOOST_CHECK_GE(std::abs(offset.x) -
+                               (sugar_size.x + base_size.x) / 2,
+                           0.7 - 1e-6);
+        }
     };
     check_coordinates();
     const auto placed_positions =

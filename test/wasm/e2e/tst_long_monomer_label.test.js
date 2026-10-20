@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { clickPopupTool } from './e2e_helpers.js';
+import { clickPopupTool, holdPopup, waitAtoms } from './e2e_helpers.js';
 import { Sketcher } from './sketcher/wrappers/sketcher.js';
 import {
   clickWidget,
@@ -35,6 +35,57 @@ async function monomerCenters(sk) {
 }
 
 test.describe('SKETCH-2911 long monomer labels', () => {
+  test('horizontal nucleotide drag leaves a visible gap beside a wide base', async ({ page }) => {
+    const sk = new Sketcher(page);
+    await sk.open();
+
+    await test.step('Choose a custom nucleotide with a wide base label', async () => {
+      await clickWidget(page, 'monomeric_btn');
+      await clickWidget(page, 'nucleic_monomer_btn');
+      await clickWidget(page, 'na_custom_nt_btn');
+      await holdPopup(page, 'na_custom_nt_btn');
+      await clickWidget(page, 'base_le');
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.type('missingLongBase');
+      await expect
+        .poll(async () => (await widgetState(page, 'base_le')).text)
+        .toBe('missingLongBase');
+      await page.keyboard.press('Enter');
+      await page.mouse.up();
+    });
+
+    const start = await drawingAreaCenter(page);
+    await test.step('Drag right to rotate the nucleotide by 90 degrees', async () => {
+      // The nucleotide's base starts below its sugar and follows the drag.
+      await mouseDrag(page, start, { x: start.x + 100, y: start.y });
+    });
+
+    const atoms = await waitAtoms(page, 3);
+    expect(atoms.map((atom) => atom.label).sort()).toEqual(['P', 'R', 'missingLongBase']);
+    const sugar = atoms.find((atom) => atom.label === 'R');
+    const base = atoms.find((atom) => atom.label === 'missingLongBase');
+
+    await test.step('The rendered labels are side by side with a visible gap', async () => {
+      expect(
+        Math.abs(base.centerY - sugar.centerY),
+        'base aligns horizontally with sugar',
+      ).toBeLessThanOrEqual(1);
+      expect(base.width, 'the long base label is rendered at its full width').toBeGreaterThan(
+        sugar.width * 2,
+      );
+      // Compare measured bead edges so default center spacing cannot hide an
+      // overlap. A small pixel margin tolerates integer rounding in the bridge.
+      expect(base.x - (sugar.x + sugar.width), 'gap between sugar and base labels').toBeGreaterThan(
+        1,
+      );
+    });
+
+    await test.step('The sugar remains anchored at the mouse press', async () => {
+      expect(Math.abs(sugar.centerX - start.x), 'sugar x').toBeLessThanOrEqual(1);
+      expect(Math.abs(sugar.centerY - start.y), 'sugar y').toBeLessThanOrEqual(1);
+    });
+  });
+
   for (const gesture of ['click', 'drag']) {
     test(`${gesture} adds long-label monomers without moving existing chains`, async ({ page }) => {
       const sk = new Sketcher(page);
