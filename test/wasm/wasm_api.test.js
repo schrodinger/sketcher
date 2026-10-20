@@ -364,19 +364,35 @@ test.describe('Custom Monomer DB', () => {
           AUTHOR: 'test',
         })),
       );
-      let ticks = 0;
-      const timer = setInterval(() => ++ticks, 10);
+      const started = performance.now();
+      let lastTick = started;
+      let maxTickInterval = 0;
+      const recordTick = () => {
+        const now = performance.now();
+        maxTickInterval = Math.max(maxTickInterval, now - lastTick);
+        lastTick = now;
+      };
+      const timer = setInterval(recordTick, 10);
       try {
         const pending = Module.sketcher_load_custom_monomers(json);
         const isPromise = pending instanceof Promise;
         const imported = await pending;
-        return { isPromise, ticks, succeeded: imported.succeeded.length };
+        // Include any blocking work between the last tick and import completion.
+        recordTick();
+        return {
+          isPromise,
+          duration: lastTick - started,
+          maxTickInterval,
+          succeeded: imported.succeeded.length,
+        };
       } finally {
         clearInterval(timer);
       }
     });
     expect(result.isPromise).toBe(true);
-    expect(result.ticks).toBeGreaterThan(1);
+    // Require a meaningful observation window and allow some timer scheduling jitter.
+    expect(result.duration).toBeGreaterThanOrEqual(100);
+    expect(result.maxTickInterval).toBeLessThanOrEqual(50);
     expect(result.succeeded).toBe(10000);
   });
 
@@ -394,7 +410,15 @@ test.describe('Custom Monomer DB', () => {
     expect(result).toEqual(['first', 'invalid', 'last']);
   });
 
-  test('each import terminates its worker before settling', async ({ page }) => {
+  test('imports share compiled code and terminate each worker before settling', async ({
+    page,
+  }) => {
+    let binaryRequests = 0;
+    page.context().on('request', (request) => {
+      if (request.url().includes('MonomerLoader.wasm')) {
+        ++binaryRequests;
+      }
+    });
     const result = await page.evaluate(async () => {
       const NativeWorker = window.Worker;
       const workers = [];
@@ -407,6 +431,10 @@ test.describe('Custom Monomer DB', () => {
         terminate() {
           this.terminated = true;
           super.terminate();
+        }
+        postMessage(message) {
+          this.receivedCompiledModule = message.compiledModule instanceof WebAssembly.Module;
+          super.postMessage(message);
         }
       };
       try {
@@ -424,6 +452,7 @@ test.describe('Custom Monomer DB', () => {
           terminatedAfterSuccess,
           terminatedAfterFailure,
           allTerminated: workers.every((worker) => worker.terminated),
+          receivedCompiledModule: workers.map((worker) => worker.receivedCompiledModule),
         };
       } finally {
         window.Worker = NativeWorker;
@@ -434,6 +463,8 @@ test.describe('Custom Monomer DB', () => {
       terminatedAfterSuccess: true,
       terminatedAfterFailure: true,
       allTerminated: true,
+      receivedCompiledModule: [false, true, true],
     });
+    expect(binaryRequests).toBe(1);
   });
 });

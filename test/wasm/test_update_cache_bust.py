@@ -22,7 +22,9 @@ class CacheBustTest(unittest.TestCase):
                 "Sketcher.js": "'Sketcher.wasm'; 'custom_monomers.worker.js'",
                 "MonomerLoader.wasm": "worker wasm",
                 "MonomerLoader.js": "'MonomerLoader.wasm'",
-                "custom_monomers.worker.js": "importScripts('MonomerLoader.js')",
+                "custom_monomers.worker.js": (
+                    "importScripts('MonomerLoader.js'); fetch('MonomerLoader.wasm')"
+                ),
                 "qtloader.js": "qt loader",
                 "wasm_shell.html": "'Sketcher.js'; 'qtloader.js'",
         }.items():
@@ -48,6 +50,10 @@ class CacheBustTest(unittest.TestCase):
                 "wasm_shell.html"
         ]:
             self.assertIn(b"?cache_bust=", previous[name])
+        worker = previous["custom_monomers.worker.js"].decode()
+        self.assertIn(
+            "MonomerLoader.wasm?cache_bust=" +
+            CACHE_BUST.md5(self.root / "MonomerLoader.wasm"), worker)
 
     def test_worker_change_invalidates_main_module_and_shell(self):
         self.update()

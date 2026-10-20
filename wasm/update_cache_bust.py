@@ -37,11 +37,12 @@ def main():
     wasm_dir = Path(args.wasm_dir)
 
     # Propagate worker changes through its script, the main module, and shell.
+    worker_wasm_hash = md5(wasm_dir / "MonomerLoader.wasm")
     worker_module = wasm_dir / "MonomerLoader.js"
-    update_reference(worker_module, "MonomerLoader.wasm",
-                     md5(wasm_dir / "MonomerLoader.wasm"))
+    update_reference(worker_module, "MonomerLoader.wasm", worker_wasm_hash)
     worker = wasm_dir / "custom_monomers.worker.js"
     update_reference(worker, "MonomerLoader.js", md5(worker_module))
+    update_reference(worker, "MonomerLoader.wasm", worker_wasm_hash)
 
     # Hash the .wasm file and update references in the .js file
     wasm_hash = md5(wasm_dir / f"{args.app_target}.wasm")
