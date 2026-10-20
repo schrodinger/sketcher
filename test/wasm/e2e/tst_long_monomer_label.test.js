@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { clickPopupTool, holdPopup, waitAtoms } from './e2e_helpers.js';
+import { clickPopupTool, holdPopup, pasteText, scene, waitAtoms } from './e2e_helpers.js';
+import { loadDatabase } from './monomer_helpers.js';
 import { Sketcher } from './sketcher/wrappers/sketcher.js';
 import {
   clickWidget,
@@ -35,6 +37,58 @@ async function monomerCenters(sk) {
 }
 
 test.describe('SKETCH-2911 long monomer labels', () => {
+  test('imported branched peptide has no overlapping monomer labels', async ({ page }) => {
+    test.setTimeout(90_000);
+    const fixture = JSON.parse(
+      await readFile(
+        new URL('../../testfiles/long_label_branched_peptide.json', import.meta.url),
+        'utf8',
+      ),
+    );
+    const sk = new Sketcher(page);
+    await sk.open();
+
+    await test.step('Load the ChEMBL database and import the shared HELM fixture', async () => {
+      await loadDatabase(page, 'chembl_monomers_no_id.json');
+      await clickWidget(page, 'monomeric_btn');
+      await pasteText(page, fixture.helm);
+      await waitAtoms(page, fixture.monomer_count);
+    });
+
+    const state = await scene(page);
+    await test.step('All expected monomers and connections were imported', async () => {
+      expect(state.atoms).toHaveLength(fixture.monomer_count);
+      expect(state.connectors).toHaveLength(fixture.bond_count);
+      const counts = {};
+      for (const atom of state.atoms) {
+        counts[atom.label] = (counts[atom.label] || 0) + 1;
+      }
+      expect(counts).toEqual(fixture.monomer_counts);
+    });
+
+    await test.step('Every pair of rendered monomer rectangles is separate', async () => {
+      const overlaps = [];
+      for (let i = 0; i < state.atoms.length; i += 1) {
+        const first = state.atoms[i];
+        for (const second of state.atoms.slice(i + 1)) {
+          const overlapX =
+            Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x);
+          const overlapY =
+            Math.min(first.y + first.height, second.y + second.height) -
+            Math.max(first.y, second.y);
+          // The bridge rounds scene rectangles to integer viewport pixels.
+          if (overlapX > 1 && overlapY > 1) {
+            overlaps.push(
+              `${first.index} (${first.label}) and ${second.index} (${second.label}): ` +
+                `${overlapX} x ${overlapY} pixel overlap`,
+            );
+          }
+        }
+      }
+      expect(overlaps, 'overlapping monomer indices and labels').toEqual([]);
+    });
+  });
+
   test('horizontal nucleotide drag leaves a visible gap beside a wide base', async ({ page }) => {
     const sk = new Sketcher(page);
     await sk.open();
