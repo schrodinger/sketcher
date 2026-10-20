@@ -1,4 +1,8 @@
 import { expect } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
 /**
  * Navigate to the sketcher page and wait for the WASM module to be fully
@@ -88,7 +92,7 @@ async function callBridge(page, name, arg) {
  *   combo box's current item, or a line edit's or spin box's contents — and a
  *   button also reports "checked" and "toolTip".
  */
-async function getRect(page, selector) {
+export async function getRect(page, selector) {
   const encoded = await callBridge(page, '_sketcher_get_rect', selector);
   // Qt/WASM can yield an empty result for one browser turn while it closes a
   // modal or lays out its replacement. Treat that as temporarily unavailable
@@ -189,11 +193,15 @@ export async function getExportedHelm(page) {
 }
 
 /**
- * Select all items on the canvas via Cmd+A / Ctrl+A.
+ * Select all items on the canvas and wait for the selection controls to
+ * reflect the completed selection.
  */
 export async function selectAll(page) {
-  await focusCanvas(page);
-  await page.keyboard.press('ControlOrMeta+a');
+  await clickWidget(page, 'select_all_btn');
+  await expect.poll(async () => (await widgetState(page, 'select_all_btn')).enabled).toBe(false);
+  await expect
+    .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
+    .toBe(true);
 }
 
 /**
@@ -367,7 +375,7 @@ export async function mouseDrag(
  * @param {import('@playwright/test').Page} page
  * @param {string} selector - see getRect
  */
-async function waitForClickable(page, selector) {
+export async function waitForClickable(page, selector) {
   let rect;
   await expect
     .poll(
@@ -392,7 +400,7 @@ async function waitForClickable(page, selector) {
  * @param {string} selector - see getRect
  * @param {object} [options] - see mouseClick
  */
-async function click(page, selector, options) {
+export async function clickSelector(page, selector, options) {
   const rect = await waitForClickable(page, selector);
   await mouseClick(page, rect.x + rect.width / 2, rect.y + rect.height / 2, options);
 }
@@ -408,7 +416,7 @@ async function click(page, selector, options) {
  * @param {object} [options] - see mouseClick
  */
 export async function clickWidget(page, name, options) {
-  await click(page, `widget:${name}`, options);
+  await clickSelector(page, `widget:${name}`, options);
 }
 
 // ToolButtonWithPopup::m_popup_delay is 250 ms, and releasing before it elapses
@@ -469,15 +477,15 @@ export async function clickPopupTool(page, name) {
  * @param {object} [options] - see mouseClick
  */
 export async function clickItem(page, kind, index, options) {
-  await click(page, `${kind}:${index}`, options);
+  await clickSelector(page, `${kind}:${index}`, options);
 }
 
 /**
  * Move the pointer over whatever a selector resolves to.
  *
  * Every selector kind reports "enabled", not just a button, so this waits for an
- * enabled target the way click() does — its callers hover a menu row to open the
- * submenu underneath it, and a disabled row has none to open.
+ * enabled target the way clickSelector() does — its callers hover a menu row to
+ * open the submenu underneath it, and a disabled row has none to open.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} selector - see getRect
@@ -523,7 +531,7 @@ export async function contextMenuAction(page, selector, ...path) {
       for (const label of path.slice(0, -1)) {
         await hover(page, `menu:${label}`);
       }
-      await click(page, `menu:${path.at(-1)}`);
+      await clickSelector(page, `menu:${path.at(-1)}`);
       return;
     } catch (error) {
       lastError = error;
@@ -614,4 +622,232 @@ export async function drawElement(page, element) {
 export async function drawBond(page) {
   const center = await getDrawingAreaCenter(page);
   await mouseDrag(page, center, { x: center.x + 100, y: center.y });
+}
+
+export async function openSketcher(page) {
+  // The wrapper's WASM adapter imports these helpers, so load it on demand.
+  const { Sketcher } = await import('./sketcher/wrappers/sketcher.js');
+  const sk = new Sketcher(page);
+  await sk.open();
+  await expect
+    .poll(() => page.evaluate(() => typeof Module._sketcher_inspect_scene))
+    .toBe('function');
+  return sk;
+}
+
+export const center = (rect) => ({
+  x: rect.centerX ?? rect.x + rect.width / 2,
+  y: rect.centerY ?? rect.y + rect.height / 2,
+});
+
+// Inspect the foreground scene, including a modal editor, without mutating it.
+export async function scene(page) {
+  let encoded;
+  await expect
+    .poll(async () => {
+      encoded = await page.evaluate(async () => await Module._sketcher_inspect_scene());
+      // Like getRect, wait through the empty result Qt can return while an
+      // asynchronous import or dialog transition is still completing.
+      return typeof encoded === 'string' && encoded.trim() !== '';
+    })
+    .toBe(true);
+  const state = JSON.parse(encoded);
+  state.atoms.sort((a, b) => a.index - b.index);
+  return state;
+}
+
+export async function waitAtoms(page, count) {
+  await expect.poll(async () => (await scene(page)).atoms.length).toBe(count);
+  return (await scene(page)).atoms;
+}
+
+export async function point(page, index) {
+  const atom = (await scene(page)).atoms.find((item) => item.index === index);
+  expect(atom, `visible atom ${index}`).toBeTruthy();
+  return center(atom);
+}
+
+export async function canvasPoint(page, dx = 0, dy = 0) {
+  const view = await requireRect(page, 'widget:view');
+  return { x: view.x + view.width / 2 + dx, y: view.y + view.height / 2 + dy };
+}
+
+export async function place(page, dx = 0, dy = 0) {
+  const target = await canvasPoint(page, dx, dy);
+  await mouseClick(page, target.x, target.y);
+}
+
+export async function dialogTitle(page) {
+  return (await getRect(page, 'dialog:title'))?.text ?? null;
+}
+
+export async function expectDialog(page, title, timeout = 5000) {
+  await expect.poll(() => dialogTitle(page), { timeout }).toBe(title);
+}
+
+export async function closeDialog(page, button = 'OK') {
+  await clickSelector(page, `dialog:${button}`);
+}
+
+export async function pasteText(page, text) {
+  const { Sketcher } = await import('./sketcher/wrappers/sketcher.js');
+  // Reuse the existing real Import-menu and clipboard workflow. Confirm via
+  // the foreground dialog's measured OK button, including in a nested editor.
+  await new Sketcher(page).import_menu('paste_in_text', text, false);
+  await expect.poll(async () => (await widgetState(page, 'structure_text_edit')).text).toBe(text);
+  await closeDialog(page);
+}
+
+export async function replaceEditor(page, smiles) {
+  if ((await scene(page)).atoms.length > 0) await clear(page);
+  await pasteText(page, smiles);
+  await clickWidget(page, 'fit_btn');
+}
+
+export async function holdPopup(page, button) {
+  const target = center(await waitForClickable(page, `widget:${button}`));
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  // ToolButtonWithPopup uses a 250 ms timer; this wait is the actual gesture.
+  await page.waitForTimeout(POPUP_HOLD_MS);
+}
+
+export async function hoverAtom(page, index) {
+  const target = await point(page, index);
+  // A placement can leave the pointer at this exact coordinate. Leave and
+  // re-enter so Qt receives a hover event for the newly created item.
+  await page.mouse.move(1100, 40);
+  await page.mouse.move(target.x, target.y, { steps: 4 });
+}
+
+export async function undo(page) {
+  await clickWidget(page, 'undo_btn');
+}
+
+export async function redo(page) {
+  await clickWidget(page, 'redo_btn');
+}
+
+export async function clear(page) {
+  await clickWidget(page, 'clear_btn');
+  await waitAtoms(page, 0);
+}
+
+export async function moveAtom(page, index, dx, dy) {
+  if (!(await widgetState(page, 'select_tool_btn')).checked) {
+    await clickWidget(page, 'select_tool_btn');
+  }
+  const target = await point(page, index);
+  await mouseClick(page, target.x, target.y);
+  await clickWidget(page, 'move_rotate_btn');
+  await mouseDrag(page, target, { x: target.x + dx, y: target.y + dy });
+  await clickWidget(page, 'clear_selection_btn');
+  await clickWidget(page, 'select_tool_btn');
+}
+
+export async function popupInfo(page, button) {
+  await holdPopup(page, button);
+  try {
+    let popup;
+    await expect
+      .poll(async () => {
+        popup = (await scene(page)).popup;
+        return popup.buttons?.length ?? 0;
+      })
+      .toBeGreaterThan(0);
+    popup.buttons.sort((a, b) => a.y - b.y || a.x - b.x);
+    return popup;
+  } finally {
+    await page.mouse.up();
+  }
+}
+
+export async function popupButtons(page, button) {
+  return (await popupInfo(page, button)).buttons;
+}
+
+export async function dismissPopup(page) {
+  await page.mouse.up();
+  const view = await requireRect(page, 'widget:view');
+  await mouseClick(page, view.x + view.width / 2, view.y - 10);
+}
+
+export async function choosePopup(page, button, symbol, { scroll = false } = {}) {
+  await holdPopup(page, button);
+  try {
+    let target;
+    await expect
+      .poll(
+        async () => {
+          const popup = (await scene(page)).popup;
+          target = popup.buttons?.find((item) => item.text === symbol);
+          if (!target) return false;
+          const pos = center(target);
+          const inside =
+            pos.y > popup.y &&
+            pos.y < popup.y + popup.height &&
+            pos.x > popup.x &&
+            pos.x < popup.x + popup.width;
+          if (!inside && scroll) {
+            await page.mouse.move(popup.x + popup.width / 2, popup.y + popup.height / 2);
+            await page.mouse.wheel(0, pos.y < popup.y ? -900 : 900);
+          }
+          return inside;
+        },
+        { timeout: 15000, message: `${button} contains reachable ${symbol}` },
+      )
+      .toBe(true);
+    const pos = center(target);
+    await mouseClick(page, pos.x, pos.y);
+  } finally {
+    await page.mouse.up();
+  }
+}
+
+export async function screenshotRegion(page, name, rect) {
+  await expect(page).toHaveScreenshot(name, {
+    clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    maxDiffPixelRatio: 0.002,
+  });
+}
+
+export async function screenshotView(page, name) {
+  await screenshotRegion(page, name, await requireRect(page, 'widget:view'));
+}
+
+export async function expectCursor(page, name) {
+  const pos = await canvasPoint(page);
+  await page.mouse.move(pos.x, pos.y);
+  let base64;
+  await expect
+    .poll(async () => {
+      base64 = await page.evaluate(() => Module._sketcher_get_cursor_png());
+      return base64.length;
+    })
+    .toBeGreaterThan(0);
+  expect(Buffer.from(base64, 'base64')).toMatchSnapshot(name, { maxDiffPixelRatio: 0.002 });
+}
+
+export async function relativeLayout(page, order) {
+  const atoms = (await scene(page)).atoms;
+  const ordered = order ? order.map((index) => atoms.find((atom) => atom.index === index)) : atoms;
+  const origin = ordered[0];
+  return ordered.map((atom) => ({
+    x: atom.sceneX - origin.sceneX,
+    y: atom.sceneY - origin.sceneY,
+  }));
+}
+
+export async function expectLayout(page, expected, order) {
+  await expect
+    .poll(async () => {
+      const actual = await relativeLayout(page, order);
+      if (actual.length !== expected.length) return Infinity;
+      return Math.max(
+        ...actual.map((pos, index) =>
+          Math.hypot(pos.x - expected[index].x, pos.y - expected[index].y),
+        ),
+      );
+    })
+    .toBeLessThan(0.1);
 }

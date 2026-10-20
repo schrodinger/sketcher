@@ -44,28 +44,48 @@
 #include <QAbstractSpinBox>
 #include <QAction>
 #include <QApplication>
+#include <QBuffer>
+#include <QByteArray>
 #include <QComboBox>
+#include <QCursor>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsView>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QJsonObject>
+#include <QIODevice>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLineF>
 #include <QList>
 #include <QMenu>
+#include <QPushButton>
 #include <QPoint>
+#include <QPainterPath>
+#include <QPlainTextEdit>
+#include <QPixmap>
 #include <QRect>
+#include <QRectF>
 #include <QSize>
 #include <QString>
+#include <QTextEdit>
 #include <QWidget>
 
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_hint_fragment_item.h"
+#include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/widget/tool_button_with_popup.h"
@@ -228,6 +248,16 @@ QPoint map_to_sketcher(const QWidget& widget, const SketcherWidget& sketcher,
 
 QGraphicsView& require_view(SketcherWidget& sketcher)
 {
+    // The monomer editor contains a second Sketcher. Resolve scene targets in
+    // the foreground editor, retaining the outer widget as coordinate origin.
+    if (auto* modal = QApplication::activeModalWidget()) {
+        if (auto* editor = modal->findChild<SketcherWidget*>()) {
+            auto* view = editor->findChild<QGraphicsView*>("view");
+            if (view != nullptr && view->isVisible()) {
+                return *view;
+            }
+        }
+    }
     auto* view = sketcher.findChild<QGraphicsView*>("view");
     if (view == nullptr) {
         throw std::runtime_error(
@@ -327,8 +357,34 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
         result["text"] = line_edit->text();
     } else if (auto* spin_box = qobject_cast<QAbstractSpinBox*>(widget)) {
         result["text"] = spin_box->text();
+    } else if (auto* text_edit = qobject_cast<QTextEdit*>(widget)) {
+        result["text"] = text_edit->toPlainText();
+    } else if (auto* plain_text_edit = qobject_cast<QPlainTextEdit*>(widget)) {
+        result["text"] = plain_text_edit->toPlainText();
     }
     return to_json(result);
+}
+
+/**
+ * Measure a graphics item in scene coordinates and outer-canvas coordinates.
+ */
+QJsonObject item_geometry(const QGraphicsView& view,
+                          const SketcherWidget& sketcher,
+                          const QGraphicsItem& item)
+{
+    const auto rect =
+        view.mapFromScene(item.sceneBoundingRect()).boundingRect();
+    auto result =
+        rect_json(map_to_sketcher(*view.viewport(), sketcher, rect.topLeft()),
+                  rect.size(), item.isEnabled());
+    const auto center = map_to_sketcher(*view.viewport(), sketcher,
+                                        view.mapFromScene(item.scenePos()));
+    result["centerX"] = center.x();
+    result["centerY"] = center.y();
+    result["sceneX"] = item.scenePos().x();
+    result["sceneY"] = item.scenePos().y();
+    result["tooltip"] = item.toolTip();
+    return result;
 }
 
 /**
@@ -360,11 +416,7 @@ std::string item_rect(SketcherWidget& sketcher, const AtomOrBond kind,
     if (item == nullptr) {
         return "{}";
     }
-    const QRect viewport_rect =
-        view.mapFromScene(item->sceneBoundingRect()).boundingRect();
-    return rect_to_json(
-        map_to_sketcher(*view.viewport(), sketcher, viewport_rect.topLeft()),
-        viewport_rect.size(), item->isEnabled());
+    return to_json(item_geometry(view, sketcher, *item));
 }
 
 /**
@@ -456,6 +508,39 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
     return "{}";
 }
 
+/**
+ * Locate the foreground modal or one of its standard buttons. This avoids
+ * assuming button order or fractional positions in nested dialog canvases.
+ */
+std::string dialog_rect(SketcherWidget& sketcher, const std::string& value)
+{
+    auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+    if (dialog == nullptr) {
+        return "{}";
+    }
+    QWidget* target = dialog;
+    if (value != "title") {
+        const auto standard = value == "OK"       ? QDialogButtonBox::Ok
+                              : value == "Cancel" ? QDialogButtonBox::Cancel
+                                                  : QDialogButtonBox::NoButton;
+        target = nullptr;
+        for (auto* box : dialog->findChildren<QDialogButtonBox*>()) {
+            if (auto* button = box->button(standard);
+                button != nullptr && button->isVisible()) {
+                target = button;
+                break;
+            }
+        }
+    }
+    if (target == nullptr) {
+        return "{}";
+    }
+    auto result = rect_json(map_to_sketcher(*target, sketcher, QPoint()),
+                            target->size(), target->isEnabled());
+    result["text"] = dialog->windowTitle();
+    return to_json(result);
+}
+
 } // namespace
 
 // The functions below deliberately have external linkage even though nothing
@@ -477,6 +562,8 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
  *   "atom:<index>"         an atom of the current molecule, by model index
  *   "bond:<index>"         a bond of the current molecule, by model index
  *   "menu:<name or text>"  a row of an open context menu, by objectName or text
+ *   "dialog:title"         foreground modal geometry and displayed title
+ *   "dialog:OK/Cancel"     a visible standard button in the foreground modal
  *
  * Use "widget:" to find something to click, since only a visible widget can be
  * clicked. Use "state:" to ask whether a control is checked or enabled when it
@@ -539,9 +626,240 @@ std::string sketcher_get_rect(const std::string& selector)
     if (kind == "menu") {
         return menu_rect(sketcher, value);
     }
+    if (kind == "dialog") {
+        return dialog_rect(sketcher, value);
+    }
     throw std::runtime_error(
         "playwright test bridge: unrecognized selector kind '" + kind +
-        "' (expected 'widget', 'state', 'atom', 'bond', or 'menu')");
+        "' (expected 'widget', 'state', 'atom', 'bond', 'menu', or 'dialog')");
+}
+
+/**
+ * Inspect the actual text items on hint connectors, including the shared
+ * H-bond label. A hint hides copies of its existing endpoints at their original
+ * scene positions; match those copies to the model's visible monomer items to
+ * identify the connection's owners. Return every match so overlapping monomers
+ * cannot silently attribute a hint to the wrong owner.
+ */
+static QJsonArray inspect_hint_connections(const QGraphicsView& view,
+                                           const SketcherWidget& sketcher,
+                                           const Scene& scene)
+{
+    using namespace schrodinger::sketcher;
+    QJsonArray connections;
+    const auto monomers =
+        scene.getInteractiveItems(InteractiveItemFlag::MONOMER);
+    for (const auto* item : scene.items()) {
+        const auto* hint = dynamic_cast<const MonomerHintFragmentItem*>(item);
+        if (hint == nullptr || !hint->isVisible()) {
+            continue;
+        }
+        QJsonArray owners;
+        QJsonArray labels;
+        for (const auto* child : hint->childItems()) {
+            if (const auto* label =
+                    dynamic_cast<const QGraphicsSimpleTextItem*>(child);
+                label != nullptr && label->isVisible()) {
+                auto result = item_geometry(view, sketcher, *label);
+                result["text"] = label->text();
+                labels.append(result);
+            }
+            const auto* endpoint =
+                dynamic_cast<const AbstractMonomerItem*>(child);
+            if (endpoint == nullptr || endpoint->isVisible()) {
+                continue;
+            }
+            for (const auto* monomer : monomers) {
+                if (!monomer->isVisible() ||
+                    QLineF(endpoint->scenePos(), monomer->scenePos()).length() >
+                        1e-6) {
+                    continue;
+                }
+                const auto index = static_cast<int>(
+                    static_cast<const AbstractMonomerItem*>(monomer)
+                        ->getAtom()
+                        ->getIdx());
+                if (!owners.contains(index)) {
+                    owners.append(index);
+                }
+            }
+        }
+        if (!labels.isEmpty()) {
+            connections.append(
+                QJsonObject{{"owners", owners}, {"labels", labels}});
+        }
+    }
+    return connections;
+}
+
+/**
+ * Inspect rendered scene geometry and visible hover attachments, without
+ * changing the model or creating items. Positions in scene coordinates allow
+ * layout comparisons independent of viewport fitting. Page coordinates are
+ * measured from the outer Sketcher, including for items in the modal editor.
+ */
+std::string sketcher_inspect_scene()
+{
+    using namespace schrodinger::sketcher;
+    auto& sketcher = get_sketcher_instance();
+    auto& view = require_view(sketcher);
+    auto& scene = require_scene(view);
+    QJsonArray atoms;
+    const auto atom_items =
+        scene.getInteractiveItems(InteractiveItemFlag::ATOM_OR_MONOMER);
+    for (const auto* item : atom_items) {
+        if (!item->isVisible()) {
+            continue;
+        }
+        const auto* atom =
+            static_cast<const AbstractAtomOrMonomerItem*>(item)->getAtom();
+        auto result = item_geometry(view, sketcher, *item);
+        result["index"] = static_cast<int>(atom->getIdx());
+        result["element"] = QString::fromStdString(atom->getSymbol());
+        if (const auto number =
+                schrodinger::rdkit_extensions::get_r_group_number(atom)) {
+            result["rgroup"] = static_cast<int>(*number);
+        }
+        if (dynamic_cast<const AbstractMonomerItem*>(item) != nullptr) {
+            result["label"] =
+                QString::fromStdString(get_monomer_res_name(atom));
+        }
+        if (const auto* atom_item = dynamic_cast<const AtomItem*>(item)) {
+            result["chiralityText"] = atom_item->getChiralityLabelText();
+        }
+        atoms.append(result);
+    }
+    QJsonArray attachments;
+    for (const auto* item : scene.items()) {
+        if (!item->isVisible() ||
+            item->type() != UnboundMonomericAttachmentPointItem::Type) {
+            continue;
+        }
+        const auto* attachment =
+            static_cast<const UnboundMonomericAttachmentPointItem*>(item);
+        const auto* parent =
+            dynamic_cast<const AbstractAtomOrMonomerItem*>(item->parentItem());
+        if (parent == nullptr) {
+            continue;
+        }
+        auto result = item_geometry(view, sketcher, *item);
+        const auto& point = attachment->getAttachmentPoint();
+        result["owner"] = static_cast<int>(parent->getAtom()->getIdx());
+        result["name"] = QString::fromStdString(point.model_name);
+        result["text"] = QString::fromStdString(point.display_name);
+        const auto bounds = item->boundingRect();
+        // boundingRect includes the line under the bead. Pick a point that
+        // actually belongs to the interactive hover area outside the bead.
+        QPointF hit;
+        qreal farthest = -1.0;
+        for (int row = 0; row < 9; ++row) {
+            for (int column = 0; column < 9; ++column) {
+                const auto candidate = item->mapToScene(QPointF(
+                    bounds.left() + bounds.width() * (column + 0.5) / 9.0,
+                    bounds.top() + bounds.height() * (row + 0.5) / 9.0));
+                const auto distance =
+                    QLineF(parent->scenePos(), candidate).length();
+                if (distance > farthest &&
+                    attachment->withinHoverArea(candidate)) {
+                    hit = candidate;
+                    farthest = distance;
+                }
+            }
+        }
+        const auto page_hit =
+            map_to_sketcher(*view.viewport(), sketcher, view.mapFromScene(hit));
+        result["hitX"] = page_hit.x();
+        result["hitY"] = page_hit.y();
+        attachments.append(result);
+    }
+    QJsonArray connectors;
+    for (const auto* item :
+         scene.getInteractiveItems(InteractiveItemFlag::BOND_OR_CONNECTOR)) {
+        if (!item->isVisible()) {
+            continue;
+        }
+        const auto* bond =
+            static_cast<const AbstractBondOrConnectorItem*>(item)->getBond();
+        auto result = item_geometry(view, sketcher, *item);
+        result["index"] = static_cast<int>(bond->getIdx());
+        result["start"] = static_cast<int>(bond->getBeginAtomIdx());
+        result["end"] = static_cast<int>(bond->getEndAtomIdx());
+        QJsonArray crossings;
+        const auto path = item->mapToScene(item->shape());
+        for (const auto* atom_item : atom_items) {
+            const auto index =
+                static_cast<const AbstractAtomOrMonomerItem*>(atom_item)
+                    ->getAtom()
+                    ->getIdx();
+            if (index == bond->getBeginAtomIdx() ||
+                index == bond->getEndAtomIdx()) {
+                continue;
+            }
+            // The hit shape is wider than the painted connector. Test only
+            // deep interiors of other beads; endpoint routing is checked by
+            // the visual regressions, without mistaking its halo for ink.
+            const auto rect = atom_item->boundingRect();
+            const QRectF interior(rect.center().x() - rect.width() * 0.15,
+                                  rect.center().y() - rect.height() * 0.15,
+                                  rect.width() * 0.3, rect.height() * 0.3);
+            QPainterPath interior_path;
+            interior_path.addPolygon(atom_item->mapToScene(interior));
+            if (path.intersects(interior_path)) {
+                crossings.append(static_cast<int>(index));
+            }
+        }
+        result["crossedOtherInteriors"] = crossings;
+        connectors.append(result);
+    }
+    QJsonObject popup;
+    if (auto* surface = QApplication::activePopupWidget()) {
+        popup = rect_json(map_to_sketcher(*surface, sketcher, QPoint()),
+                          surface->size(), true);
+        QJsonArray buttons;
+        for (auto* button : surface->findChildren<QAbstractButton*>()) {
+            if (!button->isVisible()) {
+                continue;
+            }
+            auto state = rect_json(map_to_sketcher(*button, sketcher, QPoint()),
+                                   button->size(), button->isEnabled());
+            state["text"] = button->text();
+            state["name"] = button->objectName();
+            state["checked"] = button->isChecked();
+            buttons.append(state);
+        }
+        popup["buttons"] = buttons;
+        if (auto* menu = qobject_cast<QMenu*>(surface)) {
+            QJsonArray actions;
+            for (const auto* action : menu->actions()) {
+                if (action->isVisible()) {
+                    actions.append(action->isSeparator()
+                                       ? QStringLiteral("<separator>")
+                                       : without_mnemonic(action->text()));
+                }
+            }
+            popup["actions"] = actions;
+        }
+    }
+    return to_json(
+        {{"atoms", atoms},
+         {"attachments", attachments},
+         {"hintConnections", inspect_hint_connections(view, sketcher, scene)},
+         {"connectors", connectors},
+         {"popup", popup}});
+}
+
+/**
+ * Return the actual View cursor image. Browser screenshots omit cursors, so
+ * cursor-hint certification compares this displayed pixmap directly instead.
+ */
+std::string sketcher_get_cursor_png()
+{
+    const auto& view = require_view(get_sketcher_instance());
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    view.cursor().pixmap().save(&buffer, "PNG");
+    return bytes.toBase64().toStdString();
 }
 
 /**
@@ -603,6 +921,8 @@ std::string sketcher_get_popup_owner(const std::string& name)
 EMSCRIPTEN_BINDINGS(sketcher_playwright_test_bridge)
 {
     emscripten::function("_sketcher_get_rect", &sketcher_get_rect);
+    emscripten::function("_sketcher_inspect_scene", &sketcher_inspect_scene);
+    emscripten::function("_sketcher_get_cursor_png", &sketcher_get_cursor_png);
     emscripten::function("_sketcher_activate_action",
                          &sketcher_activate_action);
     emscripten::function("_sketcher_get_popup_owner",
