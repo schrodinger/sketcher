@@ -58,8 +58,7 @@ test.describe('Custom menu — SKETCH-2884 / SKETCH-2886', () => {
       await clickWidget(page, tab);
       expect((await widgetState(page, 'custom_monomer_btn')).text).toBe('Custom');
       await customMenu(page);
-      // Releasing the long press must leave the menu open, not invoke the
-      // button's ordinary-click handler and obscure it with a dialog.
+      // Clicking opens the menu; a dialog opens only after choosing an action.
       expect(await dialogTitle(page)).toBe(null);
       expect((await scene(page)).popup.actions).toEqual([
         tab === 'amino_monomer_btn' ? 'Sketch Residue...' : 'Sketch Base...',
@@ -79,7 +78,7 @@ test.describe('Custom menu — SKETCH-2884 / SKETCH-2886', () => {
     });
   }
 
-  test('ordinary click uses the current tab; button appearance follows hover and activation', async ({
+  test('click opens the current tab menu; button appearance follows hover and activation', async ({
     page,
   }) => {
     const rect = await requireRect(page, 'widget:custom_monomer_btn');
@@ -93,11 +92,13 @@ test.describe('Custom menu — SKETCH-2884 / SKETCH-2886', () => {
     const pos = center(rect);
     await page.mouse.move(pos.x, pos.y);
     await screenshotRegion(page, 'custom-hover.png', rect);
-    await clickWidget(page, 'custom_monomer_btn');
+    await customMenu(page);
+    await clickSelector(page, 'menu:Sketch Residue...');
     await expectDialog(page, 'Define Custom Peptide Residue');
     await closeDialog(page, 'Cancel');
     await clickWidget(page, 'nucleic_monomer_btn');
-    await clickWidget(page, 'custom_monomer_btn');
+    await customMenu(page);
+    await clickSelector(page, 'menu:Sketch Base...');
     await expectDialog(page, 'Define Custom Nucleic Acid Base');
     await replaceEditor(page, BASE);
     await closeDialog(page);
