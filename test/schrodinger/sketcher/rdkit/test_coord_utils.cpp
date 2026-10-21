@@ -10,6 +10,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
 
 namespace schrodinger
@@ -139,6 +140,37 @@ BOOST_DATA_TEST_CASE(test_rescale_bond_length_if_needed,
     rescale_bond_length_if_needed(*mol);
     auto corrected_bond_length = get_most_common_bond_length(*mol);
     BOOST_TEST(corrected_bond_length == RDDepict::BOND_LEN);
+}
+
+/**
+ * Preparing a positioned monomer fragment must preserve its label-dependent
+ * spacing and its position, including when rescaling is requested directly.
+ */
+BOOST_DATA_TEST_CASE(test_preserve_positioned_monomer_coordinates,
+                     bdata::make({false, true}), prepare_coordinates)
+{
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    rdkit_extensions::compute2DCoords(*mol);
+    rdkit_extensions::resize_monomers(
+        *mol, {{0, {4.0, 1.0, 0.0}}, {1, {4.0, 1.0, 0.0}}});
+    for (auto& pos : mol->getConformer().getPositions()) {
+        pos += RDGeom::Point3D(10.0, -5.0, 0.0);
+    }
+    const auto original_positions = mol->getConformer().getPositions();
+    BOOST_REQUIRE_GT(get_most_common_bond_length(*mol), RDDepict::BOND_LEN);
+
+    if (prepare_coordinates) {
+        update_2d_coordinates(*mol);
+    } else {
+        rescale_bond_length_if_needed(*mol);
+    }
+
+    BOOST_REQUIRE_EQUAL(mol->getNumConformers(), 1);
+    const auto& conf = mol->getConformer();
+    for (unsigned int i = 0; i < original_positions.size(); ++i) {
+        BOOST_CHECK_SMALL((conf.getAtomPos(i) - original_positions[i]).length(),
+                          1e-6);
+    }
 }
 
 /**
