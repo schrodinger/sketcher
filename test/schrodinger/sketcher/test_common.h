@@ -125,6 +125,7 @@ class TestScene : public Scene
     using Scene::mouseMoveEvent;
     using Scene::mousePressEvent;
     using Scene::mouseReleaseEvent;
+    using Scene::updateItems;
 
     static std::shared_ptr<TestScene> getScene()
     {

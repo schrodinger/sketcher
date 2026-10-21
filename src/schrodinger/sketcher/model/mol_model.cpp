@@ -677,22 +677,45 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
     return monomer;
 }
 
+/**
+ * Store the measured size of the monomer that was just appended to the
+ * molecule.
+ */
+static void store_initial_size_for_new_monomer(
+    RDKit::ROMol& mol, const std::optional<RDGeom::Point3D>& initial_size)
+{
+    if (initial_size.has_value()) {
+        rdkit_extensions::store_initial_monomer_sizes(
+            mol, {{static_cast<int>(mol.getNumAtoms() - 1), *initial_size}});
+    }
+}
+
+/*
+ * Run rdkit_extensions::assignChains on the given molecule and then clear the
+ * structure-level HELM_MODEL flag that rdkit_extensions::assignChains sets.
+ * MolModel uses per-atom flags to identify monomeric versus atomistic atoms, so
+ * we intentionally avoid setting the structure-level flag until export.
+ */
+static void assign_chains(RDKit::RWMol& mol)
+{
+    rdkit_extensions::assignChains(mol);
+    mol.clearProp(HELM_MODEL);
+}
+
 void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords,
-                          const bool is_smiles_monomer)
+                          const bool is_smiles_monomer,
+                          std::optional<RDGeom::Point3D> initial_size)
 {
     auto chain_id = get_first_available_chain_name(m_mol, chain_type);
     auto create_atom = std::bind(create_monomer, res_name_or_smiles, chain_id,
                                  1, is_smiles_monomer);
-    auto cmd_func = [this, create_atom, coords]() {
+    auto cmd_func = [this, create_atom, coords, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
-        rdkit_extensions::assignChains(m_mol);
-        // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
-        // source of truth inside MolModel; clearing it here keeps it from
-        // leaking into export copies after monomers are removed.
-        m_mol.clearProp(HELM_MODEL);
+        store_initial_size_for_new_monomer(m_mol, initial_size);
+        assign_chains(m_mol);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
@@ -788,7 +811,8 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                const std::string_view new_monomer_ap_name,
                                const RDKit::Atom* const bound_to_monomer,
                                const std::string_view bound_to_monomer_ap_name,
-                               const bool is_smiles_monomer)
+                               const bool is_smiles_monomer,
+                               std::optional<RDGeom::Point3D> initial_size)
 {
     auto [linkage, flip_monomer_order] =
         build_linkage_string(bound_to_monomer_ap_name, new_monomer_ap_name);
@@ -823,9 +847,10 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                  res_num, is_smiles_monomer);
 
     auto cmd_func = [this, create_atom, coords, bond_start_idx, bond_end_idx,
-                     linkage, is_custom_bond]() {
+                     linkage, is_custom_bond, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
+        store_initial_size_for_new_monomer(m_mol, initial_size);
         addMonomericConnectionCommandFunc(bond_start_idx, bond_end_idx, linkage,
                                           is_custom_bond);
     };
@@ -857,9 +882,7 @@ void MolModel::addMonomericConnectionCommandFunc(const size_t bond_start_idx,
             break;
         }
     }
-    rdkit_extensions::assignChains(m_mol);
-    // see note in addMonomer about why we clear this here
-    m_mol.clearProp(HELM_MODEL);
+    assign_chains(m_mol);
 }
 
 /**
@@ -2873,6 +2896,16 @@ void MolModel::removeCommandFunc(
     }
     for (auto cur_tag : non_molecular_tags) {
         removeNonMolecularObjectCommandFunc(cur_tag);
+    }
+
+    if ((!all_atom_tags_to_delete.empty() || !bond_tags_with_atoms.empty()) &&
+        contains_monomeric_atom(m_mol)) {
+        // If we've removed any monomeric backbone connections (which can happen
+        // implicitly if we removed a monomer), then we need to split up the
+        // associated chain into two separate chains. Otherwise, a HELM export
+        // will still show the removed bond since it assumes that adjacent
+        // monomers in a chain must have a backbone connection.
+        assign_chains(m_mol);
     }
 }
 

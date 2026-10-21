@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE test_draw_monomer_scene_tool_integration_tests
 
+#include <array>
+
 #include <QPointF>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -7,9 +9,12 @@
 #include "./test_monomer_integration_tests_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_hint_fragment_item.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
@@ -18,6 +23,149 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Copy hint coordinates, which must outlive the temporary hint molecule.
+ */
+static std::array<RDGeom::Point3D, 2>
+get_hint_coordinates(const MonomerToolTestFixture& fix)
+{
+    for (auto* item : fix.m_scene->items()) {
+        if (auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item);
+            monomer_item != nullptr &&
+            dynamic_cast<MonomerHintFragmentItem*>(item->group()) != nullptr) {
+            const auto& conf =
+                monomer_item->getAtom()->getOwningMol().getConformer();
+            return {conf.getAtomPos(0), conf.getAtomPos(1)};
+        }
+    }
+    throw std::runtime_error("Expected a monomer hint");
+}
+
+struct LongLabelMonomerFixture {
+    LongLabelMonomerFixture()
+    {
+        auto& db = rdkit_extensions::MonomerDatabase::instance();
+        const auto result = db.loadMonomersFromJson(R"([
+            {"symbol":"LongAA","polymer_type":"PEPTIDE","natural_analog":"A",
+             "smiles":"C[C@H](N[H:1])C(=O)[OH:2]",
+             "name":"Long label test monomer","monomer_type":"backbone",
+             "author":"test"}
+        ])");
+        BOOST_REQUIRE(result.second.empty());
+    }
+
+    ~LongLabelMonomerFixture()
+    {
+        rdkit_extensions::MonomerDatabase::instance().resetMonomerDefinitions();
+    }
+};
+
+/**
+ * Long labels must have the same spacing in hints, clicks, and drags.
+ */
+BOOST_DATA_TEST_CASE_F(LongLabelMonomerFixture,
+                       test_long_label_hint_matches_placement,
+                       boost::unit_test::data::make({"A", "LongAA"}) *
+                           boost::unit_test::data::make({"A", "LongAA"}) *
+                           boost::unit_test::data::make({false, true}) *
+                           boost::unit_test::data::make({false, true}),
+                       start_symbol, end_symbol, via_drag, to_left)
+{
+    MonomerToolTestFixture fix;
+    const auto start_helm = std::string(start_symbol) == "A" ? "A" : "[LongAA]";
+    fix.importMolText(std::string("PEPTIDE1{") + start_helm + "}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    fix.m_sketcher_model->setValue(ModelKey::AMINO_ACID_SYMBOL,
+                                   QString(end_symbol));
+    process_qt_events();
+    const auto start_pos = fix.getMonomerPos(0);
+    fix.mouseMove(start_pos);
+    const auto* monomer_item = fix.m_scene->getGraphicsItemForAtom(
+        fix.m_mol_model->getMol()->getAtomWithIdx(0));
+    BOOST_REQUIRE(monomer_item != nullptr);
+    // Start on the nubbin outside the measured bead, including wide labels.
+    const auto ap_offset =
+        monomer_item->boundingRect().width() / 2 + UNBOUND_AP_LINE_LENGTH / 2;
+    const auto ap_pos =
+        start_pos + QPointF(to_left ? -ap_offset : ap_offset, 0);
+    fix.mouseMove(ap_pos);
+    if (via_drag) {
+        fix.mousePress(ap_pos);
+        fix.mouseMove(start_pos + QPointF(to_left ? -200 : 200, -200),
+                      Qt::LeftButton);
+    }
+    const auto hint = get_hint_coordinates(fix);
+    const auto hint_offset = hint[1] - hint[0];
+    if (via_drag) {
+        fix.mouseRelease(start_pos + QPointF(to_left ? -200 : 200, -200));
+    } else {
+        fix.mouseClick(ap_pos);
+    }
+    const auto* mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 2);
+    BOOST_REQUIRE_EQUAL(mol->getNumBonds(), 1);
+    const auto& conf = mol->getConformer();
+    BOOST_CHECK_SMALL((conf.getAtomPos(0) - to_mol_xy(start_pos)).length(),
+                      1e-6);
+    BOOST_CHECK_SMALL(
+        (conf.getAtomPos(1) - conf.getAtomPos(0) - hint_offset).length(), 1e-6);
+    // Labels must leave a visible horizontal gap even when both are wide.
+    const auto size0 = get_monomer_graphics_item_size(
+        mol->getAtomWithIdx(0), fix.m_scene->m_fonts,
+        *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+        *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+    const auto size1 = get_monomer_graphics_item_size(
+        mol->getAtomWithIdx(1), fix.m_scene->m_fonts,
+        *fix.m_sketcher_model->getAtomDisplaySettingsPtr(),
+        *fix.m_sketcher_model->getBondDisplaySettingsPtr());
+    BOOST_CHECK_GE(std::abs(hint_offset.x) - (size0.x + size1.x) / 2,
+                   0.7 - 1e-6);
+
+    // A redraw and an undo/redo cycle must retain the previewed placement.
+    fix.m_scene->updateItems(WhatChanged::MOLECULE);
+    BOOST_CHECK_SMALL(
+        (conf.getAtomPos(1) - conf.getAtomPos(0) - hint_offset).length(), 1e-6);
+    auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
+    BOOST_REQUIRE(undo_stack != nullptr);
+    const auto expected_undo_text =
+        via_drag ? "Add monomeric connection" : "Add bound monomer";
+    BOOST_TEST(undo_stack->undoText().toStdString() == expected_undo_text);
+    undo_stack->undo();
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 1);
+    BOOST_TEST(undo_stack->redoText().toStdString() == expected_undo_text);
+    undo_stack->redo();
+    const auto& redone_conf = fix.m_mol_model->getMol()->getConformer();
+    BOOST_CHECK_SMALL(
+        (redone_conf.getAtomPos(1) - redone_conf.getAtomPos(0) - hint_offset)
+            .length(),
+        1e-6);
+}
+
+/**
+ * Verify that dragging from empty space creates two long-label monomers at
+ * their previewed coordinates, without expanding their spacing again when
+ * their graphics items are first measured on insertion into the model.
+ */
+BOOST_FIXTURE_TEST_CASE(test_long_label_drag_from_empty_space,
+                        LongLabelMonomerFixture)
+{
+    MonomerToolTestFixture fix;
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    fix.m_sketcher_model->setValue(ModelKey::AMINO_ACID_SYMBOL,
+                                   QString("LongAA"));
+    process_qt_events();
+    fix.mousePress({100, 100});
+    fix.mouseMove({300, 100}, Qt::LeftButton);
+    const auto hint = get_hint_coordinates(fix);
+    fix.mouseRelease({300, 100});
+    const auto* mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 2);
+    const auto& conf = mol->getConformer();
+    for (unsigned int i = 0; i < 2; ++i) {
+        BOOST_CHECK_SMALL((conf.getAtomPos(i) - hint[i]).length(), 1e-6);
+    }
+}
 
 /**
  * Dragging from empty space or an existing monomer must commit custom SMILES

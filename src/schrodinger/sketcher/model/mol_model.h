@@ -411,11 +411,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param coords The coordinates for the new monomer
      * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
      * a SMILES string
+     * @param initial_size Optional measured size in molecular coordinates, if
+     * coords already account for the monomer's label size.
      */
     void addMonomer(const std::string_view res_name_or_smiles,
                     const rdkit_extensions::ChainType chain_type,
                     const RDGeom::Point3D& coords,
-                    bool is_smiles_monomer = false);
+                    bool is_smiles_monomer = false,
+                    std::optional<RDGeom::Point3D> initial_size = std::nullopt);
 
     /**
      * Undoably add an atom that represents a monomer, and add a connection
@@ -435,14 +438,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * attachment point used for the connection
      * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
      * a SMILES string
+     * @param initial_size Optional measured size in molecular coordinates, if
+     * coords already account for the monomer's label size.
      */
-    void addBoundMonomer(const std::string_view res_name_or_smiles,
-                         const rdkit_extensions::ChainType chain_type,
-                         const RDGeom::Point3D& coords,
-                         const std::string_view new_monomer_ap_name,
-                         const RDKit::Atom* const bound_to_monomer,
-                         const std::string_view bound_to_monomer_ap_name,
-                         bool is_smiles_monomer = false);
+    void
+    addBoundMonomer(const std::string_view res_name_or_smiles,
+                    const rdkit_extensions::ChainType chain_type,
+                    const RDGeom::Point3D& coords,
+                    const std::string_view new_monomer_ap_name,
+                    const RDKit::Atom* const bound_to_monomer,
+                    const std::string_view bound_to_monomer_ap_name,
+                    bool is_smiles_monomer = false,
+                    std::optional<RDGeom::Point3D> initial_size = std::nullopt);
 
     /**
      * Undoably add a connection between two existing monomers
@@ -1001,9 +1008,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
     /**
-     * Persist sizes for monomers that have never been sized before, without
-     * triggering resize_monomers' displacement. Called by Scene on newly-added
-     * monomers so existing ones don't get pushed around.
+     * Persist monomer sizes without moving any monomers.
      */
     void storeInitialMonomerSizes(
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);

@@ -50,18 +50,6 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
-// empty space gap between a monomer and the one following it in the chain. This
-// will be the length of the visibile bond line connecting the two.
-constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
-// when a monomer size is not specified or its value is lower than this, this
-// value is used as the minimum size
-constexpr double MONOMER_MINIMUM_SIZE = 0.80;
-
-// total distance from the center of one monomer to the center of the following
-// in the chain
-constexpr double MONOMER_BOND_LENGTH =
-    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
-
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
@@ -2584,7 +2572,8 @@ static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
  */
 static void clear_layout_props(RDKit::ROMol& monomer_mol)
 {
-    std::vector<std::string> layout_props{BOND_TO, ORIGINAL_INDEX};
+    std::vector<std::string> layout_props{BOND_TO, ORIGINAL_INDEX,
+                                          MONOMER_ITEM_SIZE};
     for (auto monomer : monomer_mol.atoms()) {
         for (auto prop : layout_props) {
             monomer->clearProp(prop);
@@ -2871,6 +2860,56 @@ inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
     return {stored[0], stored[1], stored[2]};
 }
 
+/**
+ * Return the effective size used by the layout. Graphics items can measure
+ * slightly smaller than the default bead because of platform-specific font
+ * metrics, but that must not contract the coordinate layout below its
+ * supported minimum.
+ */
+inline RDGeom::Point3D clamp_monomer_size(const RDGeom::Point3D& size)
+{
+    return {std::max(size.x, MONOMER_MINIMUM_SIZE),
+            std::max(size.y, MONOMER_MINIMUM_SIZE), size.z};
+}
+
+// Monomers in the same row/column move together. Outside that row/column,
+// each endpoint contributes half of its change in size to the spacing.
+static double get_axis_resize_displacement(double offset, double size_delta)
+{
+    if (offset > MONOMER_MINIMUM_SIZE) {
+        return size_delta / 2.0;
+    }
+    if (offset < -MONOMER_MINIMUM_SIZE) {
+        return -size_delta / 2.0;
+    }
+    return 0.0;
+}
+
+RDGeom::Point3D
+get_monomer_connection_offset(const RDGeom::Point3D& default_offset,
+                              const RDGeom::Point3D& start_size,
+                              const RDGeom::Point3D& end_size)
+{
+    const auto delta =
+        clamp_monomer_size(start_size) + clamp_monomer_size(end_size) -
+        RDGeom::Point3D(2 * MONOMER_MINIMUM_SIZE, 2 * MONOMER_MINIMUM_SIZE, 0);
+    return default_offset +
+           RDGeom::Point3D(
+               get_axis_resize_displacement(default_offset.x, delta.x),
+               get_axis_resize_displacement(default_offset.y, delta.y), 0);
+}
+
+std::unordered_map<int, RDGeom::Point3D> clamp_monomer_sizes(
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
+{
+    std::unordered_map<int, RDGeom::Point3D> clamped_sizes;
+    clamped_sizes.reserve(monomer_sizes.size());
+    for (const auto& [index, size] : monomer_sizes) {
+        clamped_sizes.emplace(index, clamp_monomer_size(size));
+    }
+    return clamped_sizes;
+}
+
 struct RingResizeInfo {
     std::vector<std::vector<int>> rings; // list of resizeable rings
     std::unordered_map<int, std::set<int>>
@@ -3048,15 +3087,10 @@ compute_linear_displacements(const RDKit::ROMol& mol,
 
         const double max_delta = max_per_cluster.at(cluster);
 
-        if (pos > ref + MONOMER_MINIMUM_SIZE) {
+        if (std::abs(pos - ref) > MONOMER_MINIMUM_SIZE) {
             used_clusters.insert(cluster);
-            return max_delta / 2.0;
         }
-        if (pos < ref - MONOMER_MINIMUM_SIZE) {
-            used_clusters.insert(cluster);
-            return -max_delta / 2.0;
-        }
-        return 0.0;
+        return get_axis_resize_displacement(pos - ref, max_delta);
     };
 
     /**
@@ -3105,6 +3139,23 @@ compute_linear_displacements(const RDKit::ROMol& mol,
 
         for (auto atom_idx : ring) {
             displacements[atom_idx] = ring_disp;
+        }
+    }
+
+    // Branch monomers (for example, nucleotide bases) must follow their
+    // backbone anchor as a rigid unit. Their label sizes still contribute to
+    // the displacement of surrounding monomers, but must not stretch the
+    // branch bond itself.
+    for (const auto* atom : mol.atoms()) {
+        if (!atom->getProp<bool>(BRANCH_MONOMER)) {
+            continue;
+        }
+        for (const auto* neighbor : mol.atomNeighbors(atom)) {
+            if (!neighbor->getProp<bool>(BRANCH_MONOMER)) {
+                displacements[atom->getIdx()] =
+                    displacements[neighbor->getIdx()];
+                break;
+            }
         }
     }
     return displacements;
@@ -3237,7 +3288,7 @@ void store_initial_monomer_sizes(
     RDKit::ROMol& mol,
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
-    update_monomer_sizes(mol, monomer_sizes);
+    update_monomer_sizes(mol, clamp_monomer_sizes(monomer_sizes));
 }
 
 bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
@@ -3344,30 +3395,18 @@ void resize_monomers(
         return;
     }
 
-    // callers must call store_initial_monomer_sizes first on any
-    // monomer that's never been sized. Otherwise the default-vs-actual size
-    // gap shows up here as a phantom resize and shifts neighbors.
-#ifndef NDEBUG
-    for (const auto& [idx, _] : monomer_sizes) {
-        assert(mol.getAtomWithIdx(idx)->hasProp(MONOMER_ITEM_SIZE) &&
-               "resize_monomers called on monomer without prior "
-               "store_initial_monomer_sizes");
-    }
-#endif
+    const auto clamped_monomer_sizes = clamp_monomer_sizes(monomer_sizes);
 
     // override ring info to ensure rings are fully perceived.
     compute_full_ring_info(mol);
 
     auto ring_resize_info = compute_ring_info_for_resize(mol);
 
-    auto linear_resize_data =
-        collect_linear_resize_data(mol, monomer_sizes, ring_resize_info);
+    auto linear_resize_data = collect_linear_resize_data(
+        mol, clamped_monomer_sizes, ring_resize_info);
 
     auto ring_resize_data =
-        collect_ring_resize_data(mol, monomer_sizes, ring_resize_info);
-    if (linear_resize_data.empty() && ring_resize_data.empty()) {
-        return;
-    }
+        collect_ring_resize_data(mol, clamped_monomer_sizes, ring_resize_info);
 
     // compute displacements caused by monomers in chains
     auto linear_displacements =
@@ -3382,7 +3421,7 @@ void resize_monomers(
     apply_displacements(mol, ring_displacements);
 
     // persist new sizes
-    update_monomer_sizes(mol, monomer_sizes);
+    update_monomer_sizes(mol, clamped_monomer_sizes);
 
     // reset ring info to avoid leaking "internal" perception of rings
     mol.getRingInfo()->reset();
