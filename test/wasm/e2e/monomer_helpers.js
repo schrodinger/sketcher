@@ -8,7 +8,6 @@ import {
   dialogTitle,
   expectDialog,
   getRect,
-  holdPopup,
   hoverAtom,
   mouseDrag,
   openSketcher,
@@ -31,8 +30,7 @@ export async function openMonomerSketcher(page) {
 }
 
 export async function customMenu(page) {
-  await holdPopup(page, 'custom_monomer_btn');
-  await page.mouse.up();
+  await clickWidget(page, 'custom_monomer_btn');
   await expect.poll(async () => Boolean(await getRect(page, 'menu:Draw Structure...'))).toBe(true);
 }
 
