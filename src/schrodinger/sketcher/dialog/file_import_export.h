@@ -69,5 +69,10 @@ SKETCHER_API std::string get_file_text(const std::string& file_path);
 SKETCHER_API QString get_filter_name(
     const std::string& label, const std::vector<std::string>& extensions);
 
+/**
+ * @return name filter to use for the import file dialog
+ */
+SKETCHER_API QString get_import_name_filter();
+
 } // namespace sketcher
 } // namespace schrodinger
