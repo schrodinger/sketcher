@@ -3065,12 +3065,14 @@ compute_linear_displacements(const RDKit::ROMol& mol,
      */
     std::unordered_map<unsigned int, double> max_dx_per_cluster;
     std::unordered_map<unsigned int, double> max_dy_per_cluster;
+    std::vector<double> width_deltas(num_atoms, 0.0);
 
     for (const auto& r : resize_data) {
         max_dx_per_cluster[r.x_cluster] =
             std::max(max_dx_per_cluster[r.x_cluster], r.delta.x);
         max_dy_per_cluster[r.y_cluster] =
             std::max(max_dy_per_cluster[r.y_cluster], r.delta.y);
+        width_deltas[r.index] = r.delta.x;
     }
 
     /**
@@ -3142,18 +3144,24 @@ compute_linear_displacements(const RDKit::ROMol& mol,
         }
     }
 
-    // Branch monomers (for example, nucleotide bases) must follow their
-    // backbone anchor as a rigid unit. Their label sizes still contribute to
-    // the displacement of surrounding monomers, but must not stretch the
-    // branch bond itself.
+    // Branch monomers (for example, nucleotide bases) follow their backbone
+    // anchor, preserving the canonical vertical spacing. Only their own and
+    // their anchor's width changes should stretch a rotated branch
+    // horizontally.
     for (const auto* atom : mol.atoms()) {
         if (!atom->getProp<bool>(BRANCH_MONOMER)) {
             continue;
         }
         for (const auto* neighbor : mol.atomNeighbors(atom)) {
             if (!neighbor->getProp<bool>(BRANCH_MONOMER)) {
+                const auto offset = conformer.getAtomPos(atom->getIdx()) -
+                                    conformer.getAtomPos(neighbor->getIdx());
+                const auto x_displacement = get_axis_resize_displacement(
+                    offset.x, width_deltas[atom->getIdx()] +
+                                  width_deltas[neighbor->getIdx()]);
                 displacements[atom->getIdx()] =
-                    displacements[neighbor->getIdx()];
+                    displacements[neighbor->getIdx()] +
+                    RDGeom::Point3D(x_displacement, 0, 0);
                 break;
             }
         }
