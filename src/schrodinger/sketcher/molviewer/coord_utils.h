@@ -7,6 +7,7 @@
 #include <QPainterPath>
 #include <QPointF>
 
+#include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 
@@ -26,6 +27,14 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Convert a monomer attachment-point direction to a vector in Qt scene
+ * coordinates. Diagonal vectors have components of magnitude one and are
+ * therefore longer than cardinal vectors.
+ */
+SKETCHER_API QPointF
+direction_to_qt_vector(rdkit_extensions::Direction direction);
 
 /**
  * If the given molecule has coordinates, center it on the origin. Otherwise do

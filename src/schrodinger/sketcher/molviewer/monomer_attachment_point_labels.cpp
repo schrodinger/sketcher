@@ -97,37 +97,39 @@ static void position_ap_label_rect(
 }
 
 /**
- * Position the given rectangle to label a monomer's attachment point, assuming
- * that the attachment point connection is drawn either above or below the
- * monomer using an arrowhead. See `prep_attachment_point_name` for parameter
- * documentation.
+ * Position the given rectangle next to an attachment point arrowhead. The
+ * arrowhead may be on a cardinal side or a corner of the monomer. See
+ * `prep_attachment_point_name` for parameter documentation.
  */
 static void position_ap_label_rect_next_to_arrowhead(
     QRectF& ap_label_rect, const QGraphicsItem* monomer_item,
-    const RDGeom::Point3D& monomer_coords, const RDGeom::Point3D& bound_coords)
+    const RDKit::Atom* monomer, const RDKit::Atom* bound_monomer,
+    const bool is_secondary_connection, const RDGeom::Point3D& bound_coords)
 {
-    auto monomer_qcoords = to_scene_xy(monomer_coords);
     auto bound_qcoords = to_scene_xy(bound_coords);
-
     auto arrowhead_offset =
-        get_monomer_arrowhead_offset(*monomer_item, bound_qcoords);
-    auto label_vertical_offset =
-        monomer_item->boundingRect().height() / 2 +
-        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL;
-    if (arrowhead_offset > 0) {
-        ap_label_rect.moveBottom(-label_vertical_offset);
-    } else {
-        ap_label_rect.moveTop(label_vertical_offset);
-    }
+        get_monomer_arrowhead_offset(*monomer_item, bound_qcoords, monomer,
+                                     bound_monomer, is_secondary_connection);
 
-    auto label_horizontal_offset =
-        MONOMER_CONNECTOR_ARROWHEAD_RADIUS +
-        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL;
-    auto angle = QLineF(monomer_qcoords, bound_qcoords).angle();
-    if (angle < 90 || angle >= 270) {
-        ap_label_rect.moveRight(-label_horizontal_offset);
-    } else {
-        ap_label_rect.moveLeft(label_horizontal_offset);
+    // Use the connection line to choose the label side. The reverse call for
+    // the other endpoint reverses this normal, keeping the two attachment-point
+    // labels on opposite sides of the connector even when both arrowheads use
+    // the same side of their monomers.
+    const auto connection_vector = bound_qcoords - monomer_item->pos();
+    QLineF normal(QPointF(),
+                  QPointF(-connection_vector.y(), connection_vector.x()));
+    auto normal_length = normal.length();
+    if (!qFuzzyIsNull(normal_length)) {
+        auto unit_x = normal.dx() / normal_length;
+        auto unit_y = normal.dy() / normal_length;
+        auto label_half_extent = qAbs(unit_x) * ap_label_rect.width() / 2 +
+                                 qAbs(unit_y) * ap_label_rect.height() / 2;
+        auto spacing =
+            MONOMER_CONNECTOR_ARROWHEAD_RADIUS +
+            MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL +
+            label_half_extent;
+        normal.setLength(spacing);
+        ap_label_rect.moveCenter(arrowhead_offset + normal.p2());
     }
 
     ap_label_rect.translate(monomer_item->pos());
@@ -229,8 +231,9 @@ QGraphicsItem* create_label_for_bound_attachment_point(
     } else {
         // this connection is drawn with an arrowhead, so position the label
         // next to the arrowhead
-        position_ap_label_rect_next_to_arrowhead(ap_label_rect, monomer_item,
-                                                 monomer_coords, bound_coords);
+        position_ap_label_rect_next_to_arrowhead(
+            ap_label_rect, monomer_item, monomer, bound_monomer,
+            is_secondary_connection, bound_coords);
     }
     return create_attachment_point_label(ap_qname, ap_label_rect, fonts, color);
 }

@@ -12,6 +12,7 @@ import {
   relativeLayout,
   requireRect,
   scene,
+  screenshotView,
   undo,
   waitAtoms,
 } from './e2e_helpers.js';
@@ -231,3 +232,50 @@ for (const offset of [0, 1]) {
     await expectLayout(page, expected, order);
   });
 }
+
+test('SKETCH-2822: intrachain connectors avoid bead interiors before and after dragging and image export', async ({
+  page,
+}) => {
+  const sk = new (await import('./sketcher/wrappers/sketcher.js')).Sketcher(page);
+  const helm = 'PEPTIDE1{A.K.A.E.G}$PEPTIDE1,PEPTIDE1,2:R3-4:R3$$$V2.0';
+  await pasteText(page, helm);
+  await clickWidget(page, 'fit_btn');
+  await page.mouse.move(1100, 40);
+  expect((await scene(page)).connectors).toHaveLength(5);
+  for (const connector of (await scene(page)).connectors) {
+    expect(
+      connector.crossedOtherInteriors,
+      `connector ${connector.index} passes through a bead`,
+    ).toEqual([]);
+  }
+  await screenshotView(page, 'intrachain-link.png');
+  const before = await relativeLayout(page);
+  await moveAtom(page, 3, 35, 65);
+  const after = await relativeLayout(page);
+  expect(Math.hypot(after[3].x - before[3].x, after[3].y - before[3].y)).toBeGreaterThan(1);
+  await page.mouse.move(1100, 40);
+  for (const connector of (await scene(page)).connectors) {
+    expect(connector.crossedOtherInteriors).toEqual([]);
+  }
+  expect(await getExportedHelm(page)).toBe(helm);
+  await screenshotView(page, 'intrachain-link-after-drag.png');
+  const download = await sk.save_image();
+  const png = Buffer.from(download.contentBase64, 'base64');
+  expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  expect(png).toMatchSnapshot('intrachain-link-export.png', { maxDiffPixelRatio: 0.002 });
+});
+
+test('SKETCH-2822: an occupied side uses a corner while preserving the backbone', async ({
+  page,
+}) => {
+  // Adjacent residues carry a backbone and a second R3-R3 link. These share a
+  // single RDKit bond, but must have two independently rendered connectors.
+  await pasteText(page, 'PEPTIDE1{K.E}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0');
+  await clickWidget(page, 'fit_btn');
+  await page.mouse.move(1100, 40);
+  const state = await scene(page);
+  expect(state.connectors).toHaveLength(2);
+  expect(new Set(state.connectors.map((item) => item.index)).size).toBe(1);
+  for (const connector of state.connectors) expect(connector.crossedOtherInteriors).toEqual([]);
+  await screenshotView(page, 'adjacent-backbone-and-sidechain.png');
+});

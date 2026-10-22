@@ -65,9 +65,11 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QPoint>
+#include <QPainterPath>
 #include <QPlainTextEdit>
 #include <QPixmap>
 #include <QRect>
+#include <QRectF>
 #include <QSize>
 #include <QString>
 #include <QTextEdit>
@@ -811,6 +813,31 @@ std::string sketcher_inspect_scene()
                                                    view.mapFromScene(midpoint));
         result["hitX"] = page_midpoint.x();
         result["hitY"] = page_midpoint.y();
+        QJsonArray crossings;
+        const auto path = item->mapToScene(item->shape());
+        for (const auto* atom_item : atom_items) {
+            const auto index =
+                static_cast<const AbstractAtomOrMonomerItem*>(atom_item)
+                    ->getAtom()
+                    ->getIdx();
+            if (index == bond->getBeginAtomIdx() ||
+                index == bond->getEndAtomIdx()) {
+                continue;
+            }
+            // The hit shape is wider than the painted connector. Test only
+            // deep interiors of other beads; endpoint routing is checked by
+            // the visual regressions, without mistaking its halo for ink.
+            const auto rect = atom_item->boundingRect();
+            const QRectF interior(rect.center().x() - rect.width() * 0.15,
+                                  rect.center().y() - rect.height() * 0.15,
+                                  rect.width() * 0.3, rect.height() * 0.3);
+            QPainterPath interior_path;
+            interior_path.addPolygon(atom_item->mapToScene(interior));
+            if (path.intersects(interior_path)) {
+                crossings.append(static_cast<int>(index));
+            }
+        }
+        result["crossedOtherInteriors"] = crossings;
         connectors.append(result);
     }
     QJsonArray attachment_labels;

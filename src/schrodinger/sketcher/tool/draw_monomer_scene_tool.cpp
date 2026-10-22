@@ -90,9 +90,10 @@ void DrawMonomerSceneTool::onLeftButtonClick(
 
     if (item == nullptr) {
         // the click was on empty space, so create a new monomer here
-        auto mol_pos = to_mol_xy(scene_pos);
-        m_mol_model->addMonomer(m_res_name, m_chain_type, mol_pos,
-                                m_is_smiles_monomer);
+        auto monomer_info =
+            createHintFragmentMonomerInfoForHintFromEmptySpace(scene_pos);
+        m_mol_model->addMonomer(m_res_name, m_chain_type, monomer_info.pos,
+                                m_is_smiles_monomer, monomer_info.size);
     } else {
         auto [monomer, monomer_type] = get_monomer_and_type(item);
         std::optional<UnboundAttachmentPoint> clicked_ap;

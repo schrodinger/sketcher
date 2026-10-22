@@ -1,3 +1,0 @@
-REPOSITORY = 'sketcher'
-REVIEWBOARD_URL = "https://reviewboard.schrodinger.com"
-TRACKING_BRANCH = 'origin/2026-4'

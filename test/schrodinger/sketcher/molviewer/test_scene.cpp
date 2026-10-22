@@ -1,11 +1,18 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
+#include <cmath>
+#include <map>
+#include <string>
+#include <vector>
+
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QCoreApplication>
 #include <QFile>
 #include <QGraphicsSceneDragDropEvent>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMimeData>
 #include <QRectF>
 #include <QSignalSpy>
@@ -15,11 +22,15 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
@@ -29,6 +40,120 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Wide branch labels must not overlap any other monomer after HELM import,
+ * redraw, or repeated cleanup, including near the intrachain connection. The
+ * branched peptide backbone is predominantly vertical, with horizontal
+ * branches. Changes in coordinate generation may trigger the orientation sanity
+ * check to fail, which doesn't necessarily indicate a bug: the HELM string may
+ * need updating if it no longer produces a vertical branched chain.
+ */
+BOOST_AUTO_TEST_CASE(test_long_label_branched_peptide_has_no_overlaps)
+{
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    auto& db = rdkit_extensions::MonomerDatabase::instance();
+    const auto loaded = db.loadMonomersFromJson(
+        read_testfile("../wasm/e2e/fixtures/chembl_monomers_no_id.json"));
+    BOOST_REQUIRE(loaded.second.empty());
+
+    const auto document = QJsonDocument::fromJson(QByteArray::fromStdString(
+        read_testfile("long_label_branched_peptide.json")));
+    BOOST_REQUIRE(document.isObject());
+    const auto fixture = document.object();
+    const auto expected_counts = fixture["monomer_counts"].toObject();
+    for (auto it = expected_counts.begin(); it != expected_counts.end(); ++it) {
+        BOOST_REQUIRE(db.getMonomerSmiles(it.key().toStdString(),
+                                          rdkit_extensions::ChainType::PEPTIDE)
+                          .has_value());
+    }
+
+    auto scene = TestScene::getScene();
+    auto* model = scene->m_mol_model;
+    import_mol_text(model, fixture["helm"].toString().toStdString(),
+                    Format::HELM);
+
+    const auto check_layout = [&]() {
+        QCoreApplication::processEvents();
+        const auto* mol = model->getMol();
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(),
+                            fixture["monomer_count"].toInt());
+        BOOST_REQUIRE_EQUAL(mol->getNumBonds(), fixture["bond_count"].toInt());
+        std::map<std::string, int> counts;
+        std::vector<QRectF> bounds;
+        for (const auto* atom : mol->atoms()) {
+            ++counts[get_monomer_res_name(atom)];
+            const auto* item = dynamic_cast<const AbstractMonomerItem*>(
+                scene->getGraphicsItemForAtom(atom));
+            BOOST_REQUIRE(item != nullptr);
+            bounds.push_back(item->sceneBoundingRect());
+        }
+        BOOST_REQUIRE_EQUAL(counts.size(), expected_counts.size());
+        for (auto it = expected_counts.begin(); it != expected_counts.end();
+             ++it) {
+            BOOST_CHECK_EQUAL(counts[it.key().toStdString()],
+                              it.value().toInt());
+        }
+        unsigned int backbone_bonds = 0;
+        unsigned int vertical_backbone_bonds = 0;
+        const auto& conf = mol->getConformer();
+        for (const auto* bond : mol->bonds()) {
+            if (bond->getBeginAtom()->getProp<bool>(BRANCH_MONOMER) ||
+                bond->getEndAtom()->getProp<bool>(BRANCH_MONOMER)) {
+                continue;
+            }
+            ++backbone_bonds;
+            const auto offset = conf.getAtomPos(bond->getEndAtomIdx()) -
+                                conf.getAtomPos(bond->getBeginAtomIdx());
+            if (std::abs(offset.x) < 1e-6 && std::abs(offset.y) > 1e-6) {
+                ++vertical_backbone_bonds;
+            }
+        }
+        // The terminal ring also contributes nonvertical backbone bonds.
+        BOOST_REQUIRE_MESSAGE(
+            vertical_backbone_bonds * 2 > backbone_bonds,
+            "Expected a vertical branched peptide backbone, but only "
+                << vertical_backbone_bonds << " of " << backbone_bonds
+                << " backbone bonds are vertical. This does not necessarily "
+                   "indicate a bug: coordinate generation may have changed. "
+                   "The HELM string in long_label_branched_peptide.json may "
+                   "need updating to produce a vertical branched chain.");
+        for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+            for (unsigned int j = i + 1; j < mol->getNumAtoms(); ++j) {
+                BOOST_CHECK_MESSAGE(
+                    !bounds[i].intersects(bounds[j]),
+                    "Overlapping monomers "
+                        << i << " ("
+                        << get_monomer_res_name(mol->getAtomWithIdx(i))
+                        << ") and " << j << " ("
+                        << get_monomer_res_name(mol->getAtomWithIdx(j)) << ")");
+            }
+        }
+    };
+    BOOST_TEST_CONTEXT("initial import")
+    {
+        check_layout();
+    }
+    scene->updateItems(WhatChanged::MOLECULE);
+    BOOST_TEST_CONTEXT("redraw")
+    {
+        check_layout();
+    }
+    model->selectAll();
+    for (int pass = 0; pass < 2; ++pass) {
+        model->cleanUpSelection();
+        BOOST_TEST_CONTEXT("cleanup pass " << pass)
+        {
+            check_layout();
+        }
+    }
+}
 
 void count_visible_atoms(const std::shared_ptr<Scene> test_scene,
                          unsigned& num_visible_atoms,

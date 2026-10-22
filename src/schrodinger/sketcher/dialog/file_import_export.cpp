@@ -3,6 +3,8 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
+#include <QStringList>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/image_generation.h"
@@ -55,6 +57,7 @@ FormatList<Format> get_import_formats()
 
     auto mol_import_formats = get_mol_import_formats();
     auto rxn_import_formats = get_reaction_import_formats();
+    auto monomeric_import_formats = get_monomoric_import_formats();
 
     FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {
@@ -68,6 +71,12 @@ FormatList<Format> get_import_formats()
     for (const auto& [format, label] : rxn_import_formats) {
         auto extensions = rdkit_extensions::get_rxn_extensions(format);
         import_formats.push_back({format, label, extensions});
+    }
+    for (const auto& [format, label] : monomeric_import_formats) {
+        auto extensions = rdkit_extensions::get_seq_extensions(format);
+        if (!extensions.empty()) {
+            import_formats.push_back({format, label, extensions});
+        }
     }
     return import_formats;
 }
@@ -153,6 +162,28 @@ QString get_filter_name(const std::string& label,
                         const std::vector<std::string>& extensions)
 {
     return fmt::format("{} (*{})", label, fmt::join(extensions, " *")).c_str();
+}
+
+QString get_import_name_filter()
+{
+#ifdef __EMSCRIPTEN__
+    // Browser file pickers often hide the format dropdown, so offering
+    // per-format filters makes it look like only the default format is
+    // supported. Allow any file instead; unsupported files are rejected on
+    // open. Note that Qt drops wildcard filters on WASM, so this must be the
+    // only filter for the browser to fall back to showing all files.
+    return "All files (*)";
+#else
+    std::vector<std::string> all_extensions;
+    QStringList filters;
+    for (const auto& [_, label, extensions] : get_import_formats()) {
+        all_extensions.insert(all_extensions.end(), extensions.begin(),
+                              extensions.end());
+        filters.append(get_filter_name(label, extensions));
+    }
+    filters.prepend(get_filter_name("All supported formats", all_extensions));
+    return filters.join(";;");
+#endif
 }
 
 } // namespace sketcher

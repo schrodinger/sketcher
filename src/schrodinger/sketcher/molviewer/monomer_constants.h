@@ -120,7 +120,7 @@ const std::unordered_map<std::string, QColor> NUCLEIC_ACID_COLOR_BY_RES_NAME{
 };
 
 const std::string SMILES_PLACEHOLDER_TEXT = "***";
-const qsizetype MAX_MONOMER_LABEL_LENGTH = 6;
+const qsizetype MAX_MONOMER_LABEL_LENGTH = 5;
 
 const QColor DEFAULT_AA_BACKGROUND_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::OTHER);
@@ -268,7 +268,7 @@ const QColor H_BOND_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 const QColor NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 const QColor CHEM_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 
-const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
+const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 4.8;
 
 // colors for the non-hovered attachment points of the hovered monomer when
 // doing a click-and-drag with the monomer scene tools

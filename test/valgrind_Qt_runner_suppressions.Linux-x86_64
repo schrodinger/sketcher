@@ -579,3 +579,92 @@
    fun:_ZN11QThreadPool5startEP9QRunnablei
    fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
 }
+# Qt raster fills can omit QThreadPoolPrivate::startThread from the reported
+# stack. Keep separate solid-color and gradient variants rather than using
+# an unbounded frame wildcard: only glibc TLS allocations made by these Qt
+# paint paths should be suppressed, not allocations in Sketcher paint code.
+{
+   Qt solid raster paint thread pool TLS - inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
+}
+{
+   Qt gradient raster paint thread pool TLS - inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
+# Additional paint-thread TLS paths with startThread present in the stack.
+# Keep the glibc TLS allocation and Qt blending frames explicit so these rules
+# do not suppress allocations in Sketcher code or unrelated thread pools.
+{
+   Qt gradient raster paint thread pool TLS - non-inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
+{
+   Qt ARGB raster paint thread pool TLS - non-inlined startThread
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL16blend_color_argbiPK11QT_FT_Span_Pv
+}
+# Qt 6.7.3 owns and deletes the GUI paint pool during QCoreApplication teardown.
+# Its Unix QThread::wait() can finish before destroy_current_thread_data()
+# releases the pthread's reference. The reported loss is consistent with this
+# process-exit race. This definite new allocation needs its own suppression.
+# Restrict it to the observed Qt Fusion scrollbar gradient-fill call chain;
+# application-created threads and other definite leaks must remain visible.
+{
+   Qt Fusion scrollbar paint worker data - shutdown leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN7QThreadC1EP7QObject
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+   fun:_ZL19fillRect_normalizedRK5QRectP9QSpanDataP25QRasterPaintEnginePrivate.isra.0
+   fun:_ZN8QPainter8fillRectERK5QRectRK6QBrush
+   fun:_ZNK12QFusionStyle18drawComplexControlEN6QStyle14ComplexControlEPK19QStyleOptionComplexP8QPainterPK7QWidget
+   fun:_ZNK16QStyleSheetStyle18drawComplexControlEN6QStyle14ComplexControlEPK19QStyleOptionComplexP8QPainterPK7QWidget
+   fun:_ZN10QScrollBar10paintEventEP11QPaintEvent
+}

@@ -479,6 +479,7 @@ const CONTEXT_MENU_NAMES = {
 
 const IMPORT_MENU_NAMES = {
   import_from_file: 'Import from File...',
+  load_monomer_database: 'Load Monomer Database...',
   paste_in_text: 'Paste in Text...',
   replace_current_content: 'Replace Current Content',
 };
@@ -1373,7 +1374,8 @@ export class Sketcher {
     // lookup can overlap it in unoptimized local artifacts and abort the app.
     // A fresh Sketcher/import dialog has no popup to clean up at this point.
     const menuItem = IMPORT_MENU_NAMES[button] || button;
-    if (button === 'import_from_file' && text !== null) {
+    const fileImport = ['import_from_file', 'load_monomer_database'].includes(button);
+    if (fileImport && text !== null) {
       await setFilePickerResult(this.page, String(text));
     }
     const importRows = {
@@ -1418,7 +1420,7 @@ export class Sketcher {
       await this.page.waitForTimeout(100);
     }
 
-    if (button === 'import_from_file' && text !== null) {
+    if (fileImport && text !== null) {
       await this.page.waitForTimeout(100);
       return;
     }
