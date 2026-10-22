@@ -899,22 +899,24 @@ BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
  * Verify that calculating the connection offset matches the results of resizing
  * a two-monomer molecule.  Check this for all eight cardinal and diagonal
  * directions for a variety of monomer widths, including widths below the
- * minimum bead size. Confirm that repeating the resize leaves the coordinates
- * unchanged.
+ * minimum bead size, for both backbone and branch connections. Confirm that
+ * repeating the resize leaves the coordinates unchanged.
  */
 BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
                      bdata::make({-1.0, 0.0, 1.0}) *
                          bdata::make({-1.0, 0.0, 1.0}) *
                          bdata::make({0.1, 0.8, 4.0}) *
-                         bdata::make({0.1, 0.8, 2.0}),
-                     dx, dy, start_width, end_width)
+                         bdata::make({0.1, 0.8, 2.0}) *
+                         bdata::make({false, true}),
+                     dx, dy, start_width, end_width, is_branch)
 {
     if (dx == 0 && dy == 0) {
         // skip the test case where the monomers would be on top of each other
         return;
     }
     using namespace schrodinger::rdkit_extensions;
-    auto mol = helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    auto mol = helm_to_rdkit(is_branch ? "RNA1{R(A)}$$$$V2.0"
+                                       : "PEPTIDE1{A.C}$$$$V2.0");
     compute_monomer_mol_coords(*mol);
     const RDGeom::Point3D offset(dx * 1.5, dy * 1.5, 0);
     auto& conf = mol->getConformer();
