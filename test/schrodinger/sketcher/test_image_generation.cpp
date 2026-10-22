@@ -4,8 +4,14 @@
 
 #define BOOST_TEST_MODULE sketcher_image_generation
 
+#include <algorithm>
+#include <vector>
+
 #include <rdkit/GraphMol/GraphMol.h>
+#include <QGraphicsItem>
+#include <QGraphicsSimpleTextItem>
 #include <QList>
+#include <QLineF>
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>
 #include <boost/test/tools/floating_point_comparison.hpp>
@@ -16,6 +22,11 @@
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
+#include "shared_test_helpers.h"
 #include "test_common.h"
 
 using boost::unit_test::framework::current_test_case;
@@ -80,28 +91,131 @@ BOOST_AUTO_TEST_CASE(test_image_gen_unknown_monomer)
     BOOST_TEST(!get_qimage(helm, opts).isNull());
 }
 
+/**
+ * Check actual bead bounds and model backbone clearance for a horizontal
+ * peptide. Return its edge-to-edge gaps for comparison across label sizes.
+ */
+static std::vector<qreal> check_peptide_geometry(const TestScene& scene)
+{
+    const auto mol = scene.m_mol_model->getMol();
+    const auto& conformer = mol->getConformer();
+    std::vector<QRectF> bounds;
+    for (const auto* atom : mol->atoms()) {
+        const auto* item = scene.getGraphicsItemForAtom(atom);
+        BOOST_CHECK_SMALL(
+            QLineF(item->scenePos(),
+                   to_scene_xy(conformer.getAtomPos(atom->getIdx())))
+                .length(),
+            1e-6);
+        bounds.push_back(item->sceneBoundingRect());
+    }
+    for (size_t i = 0; i < bounds.size(); ++i) {
+        for (size_t j = i + 1; j < bounds.size(); ++j) {
+            BOOST_TEST_CONTEXT("beads " << i << " and " << j)
+            {
+                BOOST_CHECK(!bounds[i].intersects(bounds[j]));
+            }
+        }
+    }
+
+    std::vector<qreal> gaps;
+    const auto connectors =
+        scene.getInteractiveItems(InteractiveItemFlag::MONOMER_CONNECTOR);
+    BOOST_REQUIRE_EQUAL(connectors.size(), mol->getNumBonds());
+    for (const auto* item : connectors) {
+        const auto* connector =
+            static_cast<const AbstractBondOrConnectorItem*>(item);
+        const auto* bond = connector->getBond();
+        const auto& start = bounds[bond->getBeginAtomIdx()];
+        const auto& end = bounds[bond->getEndAtomIdx()];
+        const QLineF line(
+            to_scene_xy(conformer.getAtomPos(bond->getBeginAtomIdx())),
+            to_scene_xy(conformer.getAtomPos(bond->getEndAtomIdx())));
+        BOOST_CHECK_SMALL(line.dy(), 1e-6);
+        const auto gap = std::max(start.left(), end.left()) -
+                         std::min(start.right(), end.right());
+        BOOST_CHECK_GT(gap, std::min(start.height(), end.height()) * 0.25);
+        gaps.push_back(gap);
+
+        // The hover tool uses this same factory. Inspect actual text items so
+        // sufficient connector length alone cannot hide an AP label collision.
+        auto labels = create_attachment_point_labels_for_connector(
+            bond, false, BOUND_AP_LABEL_COLOR, scene.m_fonts, &scene);
+        BOOST_CHECK_EQUAL(labels.size(), 2);
+        for (const auto* label : labels) {
+            const auto rect = get_label_ink_rect(
+                *static_cast<const QGraphicsSimpleTextItem*>(label));
+            for (const auto& bead : bounds) {
+                BOOST_CHECK(!rect.intersects(bead));
+            }
+        }
+        if (labels.size() == 2) {
+            BOOST_CHECK(
+                !get_label_ink_rect(
+                     *static_cast<const QGraphicsSimpleTextItem*>(labels[0]))
+                     .intersects(get_label_ink_rect(
+                         *static_cast<const QGraphicsSimpleTextItem*>(
+                             labels[1]))));
+        }
+        qDeleteAll(labels);
+    }
+    std::sort(gaps.begin(), gaps.end());
+    return gaps;
+}
+
 BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
 {
-    // An inline monomer keeps this test independent of the external monomer
-    // database while still producing a bead wider than the default size.
+    // Inline monomers avoid dependence on an external monomer database.
     const std::string inline_monomer = "[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]";
-    const std::string helm =
-        "PEPTIDE1{" + inline_monomer + "." + inline_monomer + "}$$$$V2.0";
-    auto scene = TestScene::getScene();
-    import_mol_text(scene->m_mol_model, helm);
-
-    const auto get_first_bond_length = [&]() {
-        const auto& conformer = scene->m_mol_model->getMol()->getConformer();
-        return (conformer.getAtomPos(0) - conformer.getAtomPos(1)).length();
-    };
-    BOOST_TEST(get_first_bond_length() >
-               2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
-
-    // Coordinate regeneration starts from the default layout, so it must
-    // reapply the measured label sizes rather than treating them as current.
-    scene->m_mol_model->regenerateCoordinates();
-    BOOST_TEST(get_first_bond_length() >
-               2 * rdkit_extensions::MONOMER_MINIMUM_SIZE);
+    std::vector<qreal> standard_gaps;
+    for (int long_count : {0, 1, 2}) {
+        BOOST_TEST_CONTEXT("long label count " << long_count)
+        {
+            std::string helm = "PEPTIDE1{A.";
+            for (int i = 0; i < 2; ++i) {
+                helm += (i < long_count ? inline_monomer : "A") + ".";
+            }
+            helm += "A.A}$$$$V2.0";
+            auto scene = TestScene::getScene();
+            import_mol_text(scene->m_mol_model, helm);
+            BOOST_REQUIRE_EQUAL(scene->m_mol_model->getMol()->getNumAtoms(), 5);
+            const auto exported = get_mol_text(scene->m_mol_model,
+                                               rdkit_extensions::Format::HELM);
+            for (int cleanup_count : {0, 1, 2}) {
+                BOOST_TEST_CONTEXT("cleanup count " << cleanup_count)
+                {
+                    const auto previous = scene->m_mol_model->getMol()
+                                              ->getConformer()
+                                              .getPositions();
+                    if (cleanup_count > 0) {
+                        scene->m_mol_model->regenerateCoordinates();
+                    }
+                    const auto gaps = check_peptide_geometry(*scene);
+                    if (long_count == 0 && cleanup_count == 0) {
+                        standard_gaps = gaps;
+                    }
+                    BOOST_REQUIRE_EQUAL(gaps.size(), standard_gaps.size());
+                    for (size_t i = 0; i < gaps.size(); ++i) {
+                        BOOST_CHECK_GT(gaps[i], standard_gaps[i] * 0.8);
+                        BOOST_CHECK_LT(gaps[i], standard_gaps[i] * 1.2);
+                    }
+                    BOOST_CHECK_EQUAL(
+                        get_mol_text(scene->m_mol_model,
+                                     rdkit_extensions::Format::HELM),
+                        exported);
+                    if (cleanup_count == 2) {
+                        const auto& current = scene->m_mol_model->getMol()
+                                                  ->getConformer()
+                                                  .getPositions();
+                        for (size_t i = 0; i < current.size(); ++i) {
+                            BOOST_CHECK_SMALL(
+                                (current[i] - previous[i]).length(), 1e-6);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)
