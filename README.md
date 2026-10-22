@@ -2,7 +2,7 @@
 
 [![latest release](https://img.shields.io/github/v/release/schrodinger/sketcher)](https://github.com/schrodinger/sketcher/releases)
 [![nightly build](https://img.shields.io/github/actions/workflow/status/schrodinger/sketcher/nightly-build.yml?branch=main&label=nightly%20build)](https://github.com/schrodinger/sketcher/actions/workflows/nightly-build.yml)
-[![try it live](https://img.shields.io/badge/try%20it-live-blue)](https://schrodinger.github.io/sketcher/)
+[![try it live](https://img.shields.io/badge/try%20it-live-blue)](https://www.schrodinger.com/2dsketcher)
 
 The Schrödinger Sketcher is an open-source application for drawing and editing chemical structures. Sketcher is entirely built on the RDKit open source toolkit, which serves as its underlying chemical model. It provides a user-friendly interface for creating molecules, reactions, and other chemical diagrams, which can be used independently or integrated into other cheminformatics workflows.
 
