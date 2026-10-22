@@ -53,7 +53,7 @@ void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
         throw std::runtime_error("The popup widget has already been set.");
     }
     m_popup_wdg = popup_wdg;
-    clear_button_state_on_popup_hide(this, popup_wdg);
+    configure_button_popup(this, popup_wdg);
 
     updateStyle();
 }

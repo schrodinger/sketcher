@@ -30,7 +30,7 @@ CustomMonomerButton::CustomMonomerButton(QWidget* parent) : QToolButton(parent)
     setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
 
     m_menu = new QMenu(this);
-    clear_button_state_on_popup_hide(this, m_menu);
+    configure_button_popup(this, m_menu);
     m_monomer_action = m_menu->addAction(QString());
     m_menu->addSeparator();
     auto* chem_action = m_menu->addAction(SKETCH_CHEM_TEXT);
