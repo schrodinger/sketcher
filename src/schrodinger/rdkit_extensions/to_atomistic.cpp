@@ -12,6 +12,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/json.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <fmt/format.h>
 
@@ -191,7 +192,7 @@ boost::json::value parseRGroups(const std::string& rgroups)
     boost::json::value json_rgroups;
     try {
         json_rgroups = boost::json::parse(rgroups);
-    } catch (const boost::json::system_error& e) {
+    } catch (const boost::system::system_error& e) {
         throw std::runtime_error(
             fmt::format("Invalid RGROUPS JSON: {}", e.what()));
     }
