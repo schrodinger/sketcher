@@ -12,7 +12,6 @@
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
 
 class QAbstractButton;
-class QAction;
 class QWidget;
 
 namespace Ui
@@ -81,17 +80,6 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onAminoAcidClicked(QAbstractButton* button);
 
     /**
-     * Open the dialog for sketching a custom monomer of the specified type.
-     */
-    void sketchCustomMonomer(rdkit_extensions::ChainType chain_type);
-
-    /**
-     * Update the first custom-monomer menu action for the active monomer tab.
-     */
-    void
-    setCustomMonomerActionChainType(rdkit_extensions::ChainType chain_type);
-
-    /**
      * Respond the the user clicking OK in the custom monomer dialog
      * @param smiles A SMILES string representing the sketched monomer
      * @param monomer_type The monomer type that the user selected in the dialog
@@ -120,8 +108,6 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onConnectionButtonClicked(int button_id);
 
   private:
-    QAction* m_custom_monomer_action = nullptr;
-    rdkit_extensions::ChainType m_custom_monomer_chain_type;
     boost::signals2::scoped_connection m_database_connection;
 };
 

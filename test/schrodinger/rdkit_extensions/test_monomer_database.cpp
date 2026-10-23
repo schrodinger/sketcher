@@ -495,3 +495,55 @@ BOOST_AUTO_TEST_CASE(TestDNInsertionLogs)
             "Monomer definition 4: Could not canonicalize monomer SMILES."),
         0);
 }
+
+BOOST_AUTO_TEST_CASE(TestMultiAtomLGCanonicalization)
+{
+    struct ResetMonomerDatabase {
+        ~ResetMonomerDatabase()
+        {
+            MonomerDatabase::instance().resetMonomerDefinitions();
+        }
+    } reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "TriC",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "CC[CH2:4]CC(=O)[OH:1]",
+            "core_smiles": "*CC(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*CCC |$_R4;;;$|\"}",
+            "name": "Propane",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "PRP"
+        },
+        {
+            "symbol": "NoCore",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "CC[OH:1]",
+            "name": "Ethanol",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "ETH"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    const auto monomer_info =
+        monomer_db.getMonomerInfo("TriC", ChainType::PEPTIDE);
+    BOOST_REQUIRE(monomer_info.smiles.has_value());
+    BOOST_CHECK_EQUAL(*monomer_info.smiles, "CC[CH2:4]CC(=O)[OH:1]");
+    BOOST_REQUIRE(monomer_info.core_smiles.has_value());
+    BOOST_CHECK_EQUAL(*monomer_info.core_smiles, "*CC(*)=O |$_R4;;;_R1;$|");
+
+    const auto no_core_info =
+        monomer_db.getMonomerInfo("NoCore", ChainType::PEPTIDE);
+    BOOST_REQUIRE(no_core_info.smiles.has_value());
+    BOOST_CHECK_EQUAL(*no_core_info.smiles, "CC[OH:1]");
+    BOOST_REQUIRE(no_core_info.core_smiles.has_value());
+    BOOST_CHECK_EQUAL(*no_core_info.core_smiles, "CC");
+}

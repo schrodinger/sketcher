@@ -16,12 +16,142 @@ import {
   undo,
   waitAtoms,
 } from './e2e_helpers.js';
-import { attachment, connect, openMonomerSketcher } from './monomer_helpers.js';
+import { attachment, connect, loadDatabase, openMonomerSketcher } from './monomer_helpers.js';
+import {
+  expectConnectorLabels,
+  expectMonomerGeometry,
+  connectorClearance,
+} from './monomer_geometry_helpers.js';
+import { bicyclicPeptide, largeLabelPeptides } from './fixtures/monomer_layout_cases.js';
 
 test.beforeEach(async ({ page }) => {
   await openMonomerSketcher(page);
 });
 test.setTimeout(120_000);
+
+async function checkImportAndCleanup(page, helm, atomCount, connectorCount, checkDetails) {
+  await pasteText(page, helm);
+  await waitAtoms(page, atomCount);
+  await clickWidget(page, 'fit_btn');
+  // Do not clean up before this assertion: first-render sizing was a separate
+  // CRDGEN-434 regression from coordinate regeneration with cached sizes.
+  await expectMonomerGeometry(page, atomCount, connectorCount);
+  const exported = await getExportedHelm(page);
+  await checkDetails();
+  await clickWidget(page, 'cleanup_btn');
+  await clickWidget(page, 'fit_btn');
+  await expectMonomerGeometry(page, atomCount, connectorCount);
+  expect(await getExportedHelm(page)).toBe(exported);
+  await checkDetails();
+  const cleaned = await relativeLayout(page);
+  await clickWidget(page, 'cleanup_btn');
+  await expectLayout(page, cleaned);
+  await expectMonomerGeometry(page, atomCount, connectorCount);
+  expect(await getExportedHelm(page)).toBe(exported);
+  await checkDetails();
+}
+
+test('CRDGEN-428: bicyclic peptide beads and connectors remain separated', async ({ page }) => {
+  await checkImportAndCleanup(page, bicyclicPeptide, 21, 22, async () => {
+    const state = await scene(page);
+    // Hover all three CHEM crosslinks, including the crowded ring junctions.
+    const chem = state.atoms.find((atom) => atom.label === '***');
+    expect(chem, 'the inline CHEM linker is present').toBeDefined();
+    const peptide = state.atoms.filter((atom) => atom.index !== chem.index);
+    for (const [position, chemLabel] of [
+      [4, 'R1'],
+      [11, 'R2'],
+      [18, 'R3'],
+    ]) {
+      const cysteine = peptide[position - 1];
+      expect(cysteine.label).toBe('C');
+      const connector = state.connectors.find(
+        (item) =>
+          [item.start, item.end].includes(chem.index) &&
+          [item.start, item.end].includes(cysteine.index),
+      );
+      expect(connector, `CHEM ${chemLabel} crosslink exists`).toBeDefined();
+      await expectConnectorLabels(page, connector.index, ['S', chemLabel]);
+    }
+  });
+});
+
+test.describe('CRDGEN-434: rendered long-label spacing', () => {
+  test.beforeEach(async ({ page }) => {
+    await loadDatabase(page, 'chembl_monomers_no_id.json');
+  });
+
+  for (const [index, helm] of largeLabelPeptides.entries()) {
+    const counts = [
+      [20, 19],
+      [17, 16],
+      [29, 28],
+    ][index];
+    test(`adapted certification example ${index + 1}: import, cleanup, and readable attachment labels`, async ({
+      page,
+    }) => {
+      await checkImportAndCleanup(page, helm, ...counts, async () => {
+        const state = await scene(page);
+        const standardWidth = Math.max(
+          ...state.atoms
+            .filter((atom) => ['A', 'C', 'G', 'T'].includes(atom.label))
+            .map((atom) => atom.sceneBounds.width),
+        );
+        // A long-long backbone connection exercises label clearance in the
+        // crowded part of each example, rather than on an isolated short bead.
+        const connector = state.connectors.find((item) => {
+          const start = state.atoms.find((atom) => atom.index === item.start);
+          const end = state.atoms.find((atom) => atom.index === item.end);
+          return (
+            item.end === item.start + 1 &&
+            start.sceneBounds.width > standardWidth * 1.5 &&
+            end.sceneBounds.width > standardWidth * 1.5
+          );
+        });
+        expect(connector, 'long-label backbone connection exists').toBeDefined();
+        await expectConnectorLabels(page, connector.index, ['N', 'C']);
+      });
+    });
+  }
+
+  for (const longCount of [0, 1, 2]) {
+    test(`${longCount} long labels preserve ordinary backbone gaps`, async ({ page }) => {
+      const reference = 'PEPTIDE1{A.A.A.A.A}$$$$V2.0';
+      await pasteText(page, reference);
+      await expectMonomerGeometry(page, 5, 4);
+      const shortState = await scene(page);
+      const baseline = shortState.connectors.map(
+        (item) => connectorClearance(shortState, item).length,
+      );
+      await clear(page);
+      const residues = ['A', 'A', 'A', 'A', 'A'];
+      for (let index = 0; index < longCount; index++) residues[index + 1] = '[Tyr(tBu)]';
+      await checkImportAndCleanup(
+        page,
+        `PEPTIDE1{${residues.join('.')}}$$$$V2.0`,
+        5,
+        4,
+        async () => {
+          await expectConnectorLabels(page, 1, ['N', 'C']);
+          const current = await scene(page);
+          const longBeads = current.atoms.filter((atom) => atom.label === 'Tyr(tBu)');
+          expect(longBeads).toHaveLength(longCount);
+          for (const bead of longBeads) {
+            expect(bead.sceneBounds.width).toBeGreaterThan(
+              shortState.atoms[0].sceneBounds.width * 1.5,
+            );
+          }
+          for (const connector of current.connectors) {
+            const gap = connectorClearance(current, connector).length;
+            // Compare bead edges, so a wider bead must not stretch its gap.
+            expect(gap).toBeGreaterThan(Math.min(...baseline) * 0.8);
+            expect(gap).toBeLessThan(Math.max(...baseline) * 1.2);
+          }
+        },
+      );
+    });
+  }
+});
 
 test('SKETCH-2849: cleanup replaces modestly distorted coordinates and remains stable', async ({
   page,
