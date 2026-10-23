@@ -206,13 +206,12 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
     mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
                      /* new_molecule_added = */ true,
-                     /* enforce_size_limit = */ false,
                      /* enforce_monomer_validity = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 {
-    mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
+    mol_model.addReaction(rxn);
 }
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
