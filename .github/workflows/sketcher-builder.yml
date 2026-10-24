@@ -265,6 +265,7 @@ jobs:
         if: matrix.build-name == 'wasm'
         run: |
           cd test/wasm
+          python3 -m pytest test_update_cache_bust.py
           npm install
           npm run test
 

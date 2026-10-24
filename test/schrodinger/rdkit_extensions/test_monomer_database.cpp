@@ -63,6 +63,54 @@ BOOST_AUTO_TEST_CASE(database_change_subscriptions)
     BOOST_CHECK_EQUAL(notifications, 6);
 }
 
+BOOST_AUTO_TEST_CASE(serialized_custom_monomers)
+{
+    auto& db = MonomerDatabase::instance();
+    db.resetMonomerDefinitions();
+    BOOST_CHECK_THROW(static_cast<void>(db.serializeCustomMonomers()),
+                      std::runtime_error);
+    db.loadMonomersFromJson(R"JSON([{
+        "symbol": "Transferred", "polymer_type": "PEPTIDE",
+        "natural_analog": "A", "smiles": "CC(N)C(=O)O",
+        "name": "Transferred monomer", "monomer_type": "Backbone",
+        "author": "test"
+    }])JSON");
+    const auto expected = db.getMonomerDefinitions(false);
+    const auto image = db.serializeCustomMonomers();
+    db.loadMonomersFromJson("[]");
+    // Populate derived caches before installing the image.
+    static_cast<void>(db.getEnumeratedCoreSmiles());
+    static_cast<void>(db.getComplexMonomerQueries());
+    int notifications = 0;
+    auto connection = db.subscribeToChanges([&]() {
+        ++notifications;
+        BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), expected);
+    });
+    db.loadSerializedCustomMonomers(image);
+    BOOST_CHECK_EQUAL(notifications, 1);
+    BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), expected);
+    BOOST_CHECK_THROW(db.loadSerializedCustomMonomers({}), std::runtime_error);
+    BOOST_CHECK_THROW(db.loadSerializedCustomMonomers({1, 2, 3}),
+                      std::runtime_error);
+    BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), expected);
+    BOOST_CHECK_EQUAL(notifications, 1);
+    connection.disconnect();
+    // The transferred database remains writable and can grow.
+    const auto inserted = db.insertMonomersFromJson(R"JSON([{
+        "symbol": "Added", "polymer_type": "PEPTIDE",
+        "natural_analog": "A", "smiles": "CCC(N)C(=O)O",
+        "name": "Added monomer", "monomer_type": "Backbone",
+        "author": "test"
+    }])JSON");
+    BOOST_CHECK_EQUAL(inserted.first.size(), 1);
+    BOOST_CHECK(inserted.second.empty());
+    db.resetMonomerDefinitions();
+    db.loadMonomersFromJson("[]");
+    const auto empty_image = db.serializeCustomMonomers();
+    db.loadSerializedCustomMonomers(empty_image);
+    BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), "[]");
+}
+
 BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
                      boost::unit_test::data::make({0, 1}), ff_state)
 {
