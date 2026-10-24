@@ -62,9 +62,9 @@ jobs:
       - name: Use the wasm shell as the landing page
         run: cp site/wasm_shell.html site/index.html
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
