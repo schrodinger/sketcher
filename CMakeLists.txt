@@ -356,16 +356,19 @@ target_link_libraries(
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Utility: smiles_to_helm
-set(SMILES_TO_HELM_TARGET smiles_to_helm)
-add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
-setup_target(${SMILES_TO_HELM_TARGET})
-set_target_properties(
-  ${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                      ${CMAKE_BINARY_DIR}/sketcher_app)
-target_link_libraries(
-  ${SMILES_TO_HELM_TARGET}
-  PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse
-          ${RDKIT_EXTENSIONS_TARGET})
+if(NOT EMSCRIPTEN)
+  set(SMILES_TO_HELM_TARGET smiles_to_helm)
+  add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
+  setup_target(${SMILES_TO_HELM_TARGET})
+  set_target_properties(
+    ${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                        ${CMAKE_BINARY_DIR}/sketcher_app)
+  target_link_libraries(
+    ${SMILES_TO_HELM_TARGET}
+    PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse
+            ${RDKIT_EXTENSIONS_TARGET})
+
+endif()
 
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
@@ -540,8 +543,11 @@ if(APPLE)
 else()
   # Install the application file preserving the build-time rpath
   install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
-                   $<TARGET_FILE:${SMILES_TO_HELM_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR})
+  if(NOT EMSCRIPTEN)
+    install(PROGRAMS $<TARGET_FILE:${SMILES_TO_HELM_TARGET}>
+            DESTINATION ${CMAKE_INSTALL_BINDIR})
+  endif()
 endif()
 install(
   FILES $<TARGET_FILE:${SKETCHER_TARGET}>
