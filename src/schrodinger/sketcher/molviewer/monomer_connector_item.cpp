@@ -227,7 +227,110 @@ void MonomerConnectorItem::updateCachedData()
                    m_connector_line.p1());
         m_end_join_line = QLineF(get_join_start(end_pos, end_has_arrowhead),
                                  m_connector_line.p2());
+static std::tuple<QPointF, QPointF, QPointF, QLineF, QLineF, QLineF>
+calculate_connector_geometry(const AbstractMonomerItem& start_item,
+                             const AbstractMonomerItem& end_item,
+                             const bool is_secondary_connection,
+                             const int connector_lane,
+                             const bool start_has_arrowhead,
+                             const bool end_has_arrowhead)
+{
+    QPointF start_offset;
+    QPointF end_offset;
+    QLineF start_join_line;
+    QLineF end_join_line;
+    const auto start_qcoords = start_item.pos();
+    const auto end_qcoords = end_item.pos();
+    // A nonzero lane identifies a custom connection in a linear peptide. Its
+    // endpoint anchors are fixed above or below the residue boxes. Unrouted
+    // connectors (lane zero) keep the normal direction-aware geometry.
+    qreal lane_offset_y = 0;
+    if (connector_lane == 0) {
+        if (start_has_arrowhead) {
+            start_offset = get_monomer_arrowhead_offset(
+                start_item, end_qcoords, start_item.getAtom(),
+                end_item.getAtom(), is_secondary_connection);
+        }
+        if (end_has_arrowhead) {
+            end_offset = get_monomer_arrowhead_offset(
+                end_item, start_qcoords, end_item.getAtom(),
+                start_item.getAtom(), is_secondary_connection);
+        }
+    } else {
+        // Always take the arrowhead size into account when positioning this
+        // lane. Even if this connection doesn't have an arrowhead, we need to
+        // ensure that we avoid any potential nearby connections that do have an
+        // arrowhead
+        const auto start_magnitude = start_item.boundingRect().height() / 2 +
+                                     MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        const auto end_magnitude = end_item.boundingRect().height() / 2 +
+                                   MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        lane_offset_y =
+            -connector_lane * 2 * MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        // Positive lanes are above the backbone. Qt's y axis points down, so
+        // an above-backbone offset has a negative y component.
+        const auto vertical_direction = connector_lane > 0 ? -1 : 1;
+        start_offset.ry() = vertical_direction * start_magnitude;
+        end_offset.ry() = vertical_direction * end_magnitude;
     }
+
+    const auto end_pos = end_qcoords - start_qcoords + end_offset;
+    const QPointF line_displacement(0, lane_offset_y);
+    const QLineF connector_line(start_offset + line_displacement,
+                                end_pos + line_displacement);
+
+    if (connector_lane != 0) {
+        // Complete the routed connector with one line from each residue to the
+        // horizontal lane. Together, the three lines form two right-angle
+        // bends. Diamond connections begin at the diamond's outward tip;
+        // connections without diamonds begin at the residue edge.
+        const auto vertical_direction = connector_lane > 0 ? -1 : 1;
+        const auto get_join_start =
+            [vertical_direction](const QPointF& endpoint,
+                                 const bool has_diamond) {
+                const auto offset_direction =
+                    has_diamond ? vertical_direction : -vertical_direction;
+                return endpoint +
+                       QPointF(0, offset_direction *
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+            };
+        start_join_line =
+            QLineF(get_join_start(start_offset, start_has_arrowhead),
+                   connector_line.p1());
+        end_join_line = QLineF(get_join_start(end_pos, end_has_arrowhead),
+                               connector_line.p2());
+    }
+    return {start_offset,   end_offset,      end_pos,
+            connector_line, start_join_line, end_join_line};
+}
+
+void MonomerConnectorItem::updateCachedData()
+{
+    prepareGeometryChange();
+    m_arrowhead_path.clear();
+    auto connector_type = get_connector_type(m_bond, m_is_secondary_connection);
+    auto [start_has_arrowhead, end_has_arrowhead] =
+        does_connector_have_arrowheads(m_bond, connector_type);
+    auto [connector_color, connector_color_dark_bg, connector_width,
+          connector_pen_style] = STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
+    m_connector_color = connector_color;
+    m_connector_color_dark_bg = connector_color_dark_bg;
+    auto color = getConnectorColor();
+    m_connector_pen = QPen(color, connector_width, connector_pen_style);
+    m_arrowhead_pen = QPen(color, connector_width);
+    m_arrowhead_pen.setJoinStyle(Qt::PenJoinStyle::MiterJoin);
+    m_arrowhead_brush = QBrush(color);
+
+    setPos(m_start_item.pos());
+    const auto [start_offset, end_offset, end_pos, connector_line,
+                start_join_line, end_join_line] =
+        calculate_connector_geometry(
+            m_start_item, m_end_item, m_is_secondary_connection,
+            m_connector_lane, start_has_arrowhead, end_has_arrowhead);
+    m_connector_line = connector_line;
+    m_start_join_line = start_join_line;
+    m_end_join_line = end_join_line;
+
     if (start_has_arrowhead) {
         add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
                                       MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
