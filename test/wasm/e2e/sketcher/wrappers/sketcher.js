@@ -438,6 +438,7 @@ const COPY_ALL_AS_NAMES = {
   inchi: 'InChI',
   pdb: 'PDB',
   sdf: 'MDL SD V3000',
+  helm: 'HELM',
   smi: 'SMILES',
 };
 
@@ -478,6 +479,7 @@ const CONTEXT_MENU_NAMES = {
 
 const IMPORT_MENU_NAMES = {
   import_from_file: 'Import from File...',
+  load_monomer_database: 'Load Monomer Database...',
   paste_in_text: 'Paste in Text...',
   replace_current_content: 'Replace Current Content',
 };
@@ -1372,13 +1374,15 @@ export class Sketcher {
     // lookup can overlap it in unoptimized local artifacts and abort the app.
     // A fresh Sketcher/import dialog has no popup to clean up at this point.
     const menuItem = IMPORT_MENU_NAMES[button] || button;
-    if (button === 'import_from_file' && text !== null) {
+    const fileImport = ['import_from_file', 'load_monomer_database'].includes(button);
+    if (fileImport && text !== null) {
       await setFilePickerResult(this.page, String(text));
     }
     const importRows = {
       import_from_file: 12,
       paste_in_text: 35,
       replace_current_content: 58,
+      load_monomer_database: 85,
     };
     if (importRows[button] !== undefined) {
       let lastError;
@@ -1386,7 +1390,7 @@ export class Sketcher {
         await clickWidget(this.page, 'import_btn');
         await new Promise((resolve) => setTimeout(resolve, 100));
         try {
-          await clickPopupRow(this.page, 0, importRows[button]);
+          await clickPopupRow(this.page, 'latest', importRows[button]);
           // A Qt popup can accept the browser click while it is still
           // transitioning, dismissing the menu without activating its row.
           // Do not treat that as success: for Paste in Text, wait until the
@@ -1416,7 +1420,7 @@ export class Sketcher {
       await this.page.waitForTimeout(100);
     }
 
-    if (button === 'import_from_file' && text !== null) {
+    if (fileImport && text !== null) {
       await this.page.waitForTimeout(100);
       return;
     }
@@ -1495,6 +1499,7 @@ export class Sketcher {
         inchi: 155,
         inchikey: 179,
         pdb: 202,
+        helm: 274,
         // Image follows the 13 standard export formats and a separator.
         image: 322,
       };

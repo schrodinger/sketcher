@@ -12,7 +12,6 @@
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
 
 class QAbstractButton;
-class QAction;
 class QWidget;
 
 namespace Ui
@@ -26,7 +25,8 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 enum class ChainType;
-}
+struct MonomerID;
+} // namespace rdkit_extensions
 
 namespace sketcher
 {
@@ -80,17 +80,6 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onAminoAcidClicked(QAbstractButton* button);
 
     /**
-     * Open the dialog for sketching a custom monomer of the specified type.
-     */
-    void sketchCustomMonomer(rdkit_extensions::ChainType chain_type);
-
-    /**
-     * Update the first custom-monomer menu action for the active monomer tab.
-     */
-    void
-    setCustomMonomerActionChainType(rdkit_extensions::ChainType chain_type);
-
-    /**
      * Respond the the user clicking OK in the custom monomer dialog
      * @param smiles A SMILES string representing the sketched monomer
      * @param monomer_type The monomer type that the user selected in the dialog
@@ -105,13 +94,20 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onNucleicAcidClicked(QAbstractButton* button);
 
     /**
+     * Activate the remembered database monomer from either unclassified
+     * button.
+     */
+    void activateMonomerDbMonomer(QAbstractButton* button);
+
+    rdkit_extensions::MonomerID
+    getMonomerDbMonomerForButton(QAbstractButton* button) const;
+
+    /**
      * Respond to the user clicking on a specific monomeric connection button
      */
     void onConnectionButtonClicked(int button_id);
 
   private:
-    QAction* m_custom_monomer_action = nullptr;
-    rdkit_extensions::ChainType m_custom_monomer_chain_type;
     boost::signals2::scoped_connection m_database_connection;
 };
 

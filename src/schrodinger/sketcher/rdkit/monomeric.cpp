@@ -389,6 +389,17 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
     return MonomerType::CHEM;
 }
 
+MonomerType get_monomer_type(std::string_view res_name,
+                             rdkit_extensions::ChainType chain_type)
+{
+    if (chain_type == rdkit_extensions::ChainType::PEPTIDE) {
+        return MonomerType::PEPTIDE;
+    } else if (chain_type == rdkit_extensions::ChainType::CHEM) {
+        return MonomerType::CHEM;
+    }
+    return get_na_monomer_type_from_res_name(res_name);
+}
+
 MonomerType get_na_monomer_type_from_res_name(const std::string_view res_name)
 {
     if (res_name.empty()) {

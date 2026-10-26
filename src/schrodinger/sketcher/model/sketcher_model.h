@@ -274,6 +274,7 @@ enum class DrawTool {
     MONOMER,
     MONOMERIC_CONNECTION,
     CUSTOM_MONOMER,
+    MONOMER_DB_MONOMER,
 };
 
 /**
@@ -310,15 +311,17 @@ enum class ModelKey {
     CUSTOM_NUCLEOTIDE,   /// a tuple of (sugar, base, phosphate) to use for the
                          ///   CUSTOM_NUCLEOTIDE tool
     CUSTOM_MONOMER,
-    INTERFACE_TYPE, /// whether the Sketcher is intended for use with
-                    ///   atomistic models, monomeric models, or both
-    TOOL_SET,       /// whether the side bar shows the atomistic tools or
-                    ///   monomeric tools, which (along with
-                    ///   MONOMER_TOOL_TYPE) controls the keyboard
-                    ///   shortcuts (i.e. should "C" activate carbon,
-                    ///   cysteine, or cytosine)
-    MOLECULE_TYPE,  /// whether the Sketcher workspace contains an
-                    ///   atomistic model, a monomeric model, or is empty
+    INTERFACE_TYPE,     /// whether the Sketcher is intended for use with
+                        ///   atomistic models, monomeric models, or both
+    TOOL_SET,           /// whether the side bar shows the atomistic tools or
+                        ///   monomeric tools, which (along with
+                        ///   MONOMER_TOOL_TYPE) controls the keyboard
+                        ///   shortcuts (i.e. should "C" activate carbon,
+                        ///   cysteine, or cytosine)
+    MOLECULE_TYPE,      /// whether the Sketcher workspace contains an
+                        ///   atomistic model, a monomeric model, or is empty
+    MONOMER_DB_MONOMER, /// database monomer identity
+                        /// (rdkit_extensions::MonomerID)
 };
 
 enum class MoleculeType {
@@ -359,6 +362,7 @@ enum class AminoAcidTool {
     TYR,
     VAL,
     UNK,
+    UNCLASSIFIED,
 };
 
 const std::unordered_map<AminoAcidTool, std::string>
@@ -438,6 +442,7 @@ enum class NucleicAcidTool {
     RNA_NUCLEOTIDE,
     DNA_NUCLEOTIDE,
     CUSTOM_NUCLEOTIDE,
+    UNCLASSIFIED,
 };
 
 const std::unordered_map<NucleicAcidTool, std::string>

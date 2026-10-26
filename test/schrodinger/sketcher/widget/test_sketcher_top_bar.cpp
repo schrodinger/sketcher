@@ -228,5 +228,20 @@ BOOST_AUTO_TEST_CASE(test_menu_shortcuts_with_closed_menu)
     BOOST_TEST(select_all_spy.count() == 1);
 }
 
+/**
+ * Make sure the "Load Monomer Database..." action can be hidden and shown
+ */
+BOOST_AUTO_TEST_CASE(test_set_load_monomer_database_visible)
+{
+    TestSketcherWidget sk;
+    TestSketcherTopBar top_bar(sk.m_sketcher_model);
+    auto action = top_bar.getImportMenu()->m_load_monomer_database_act;
+    BOOST_TEST(action->isVisible());
+    top_bar.setLoadMonomerDatabaseVisible(false);
+    BOOST_TEST(!action->isVisible());
+    top_bar.setLoadMonomerDatabaseVisible(true);
+    BOOST_TEST(action->isVisible());
+}
+
 } // namespace sketcher
 } // namespace schrodinger

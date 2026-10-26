@@ -29,6 +29,13 @@ namespace bdata = boost::unit_test::data;
 
 using TestData = std::pair<std::string, std::string>;
 
+struct ResetMonomerDatabase {
+    ~ResetMonomerDatabase()
+    {
+        MonomerDatabase::instance().resetMonomerDefinitions();
+    }
+};
+
 namespace std
 {
 std::ostream& operator<<(std::ostream& os, const TestData& pair)
@@ -80,6 +87,16 @@ file_to_rdkit(const std::string& filename)
     file.close();
     return to_rdkit(content);
 }
+
+bool has_atom_map_numbers(const RDKit::ROMol& mol)
+{
+    for (const auto* atom : mol.atoms()) {
+        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+            return true;
+        }
+    }
+    return false;
+};
 
 [[maybe_unused]] static std::unique_ptr<RDKit::ROMol>
 resolve_his(const RDKit::ROMol& mol)
@@ -671,6 +688,197 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomer)
             BOOST_TEST(!helm_result.empty());
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(TestAtomisticConversionWithMultiAtomLeavingGroupSmiles)
+{
+    ResetMonomerDatabase reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "AzA",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "[N-]=[N+]=[N:4]CC(=O)[OH:1]",
+            "name": "Azidoacetic acid",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "AZA"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    auto uncapped_monomer = to_rdkit("PEPTIDE1{A.[AzA]}$$$$V2.0", Format::HELM);
+    BOOST_CHECK_THROW(toAtomistic(*uncapped_monomer), std::runtime_error);
+}
+
+BOOST_AUTO_TEST_CASE(TestAtomisticConversionWithMultiAtomLeavingGroupAzide)
+{
+    ResetMonomerDatabase reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "AzA",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "[N-]=[N+]=[N:4]CC(=O)[OH:1]",
+            "core_smiles": "*CC(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*N=[N+]=[N-] |$_R4;;;$|\"}",
+            "name": "Azidoacetic acid",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "AZA"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    // No connection, azide group present but no atom map numbers
+    auto uncapped_monomer = to_rdkit("PEPTIDE1{A.[AzA]}$$$$V2.0", Format::HELM);
+    auto capped_atomistic = toAtomistic(*uncapped_monomer);
+    std::unique_ptr<RDKit::RWMol> aza_query(RDKit::SmartsToMol("N=[N+]=[N-]"));
+    auto capped_matches = RDKit::SubstructMatch(*capped_atomistic, *aza_query);
+    BOOST_TEST(capped_matches.size() == 1);
+    BOOST_TEST(!has_atom_map_numbers(*capped_atomistic));
+
+    // Connection between AzA R4 and Alanine R1 carbon
+    // No azide group and no atom map numbers
+    auto linked_monomer = to_rdkit(
+        "PEPTIDE1{A.[AzA]}$PEPTIDE1,PEPTIDE1,1:R1-2:R4$$$V2.0", Format::HELM);
+    auto linked_atomistic = toAtomistic(*linked_monomer);
+    auto linked_matches = RDKit::SubstructMatch(*linked_atomistic, *aza_query);
+    BOOST_TEST(linked_matches.size() == 0);
+    BOOST_TEST(!has_atom_map_numbers(*linked_atomistic));
+}
+
+BOOST_AUTO_TEST_CASE(TestAtomisticConversionWithMultiAtomLeavingGroupVinyl)
+{
+    ResetMonomerDatabase reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "VnY",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "[C]=[C:4]CC(=O)[OH:1]",
+            "core_smiles": "*CC(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*C=[C] |$_R4;;;$|\"}",
+            "name": "Vinylacetic acid",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "VNY"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    // No connection, vinyl group should be present but no atom map nums
+    auto uncapped_monomer = to_rdkit("PEPTIDE1{A.[VnY]}$$$$V2.0", Format::HELM);
+    auto capped_atomistic = toAtomistic(*uncapped_monomer);
+    std::unique_ptr<RDKit::RWMol> vinyl_query(RDKit::SmilesToMol("C=C"));
+    auto capped_matches =
+        RDKit::SubstructMatch(*capped_atomistic, *vinyl_query);
+    BOOST_TEST(capped_matches.size() == 1);
+    BOOST_TEST(!has_atom_map_numbers(*capped_atomistic));
+
+    // Connection between VnY R4 and Alanine R1 carbon
+    // No vinyl group should be present and no atom map nums
+    auto linked_monomer = to_rdkit(
+        "PEPTIDE1{A.[VnY]}$PEPTIDE1,PEPTIDE1,1:R1-2:R4$$$V2.0", Format::HELM);
+    auto linked_atomistic = toAtomistic(*linked_monomer);
+    auto linked_matches =
+        RDKit::SubstructMatch(*linked_atomistic, *vinyl_query);
+    BOOST_TEST(linked_matches.size() == 0);
+    BOOST_TEST(!has_atom_map_numbers(*linked_atomistic));
+}
+
+BOOST_AUTO_TEST_CASE(TestAtomisticConversionWithMultiAtomLeavingGroupAllyl)
+{
+    ResetMonomerDatabase reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "AlY",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "[C]=[C]-[C:4]CC(=O)[OH:1]",
+            "core_smiles": "*CC(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*C-[C]=[C] |$_R4;;;$|\"}",
+            "name": "Allyl acid",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "ALY"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    // No connection, allyl group should be present but no atom map nums
+    auto uncapped_monomer = to_rdkit("PEPTIDE1{A.[AlY]}$$$$V2.0", Format::HELM);
+    auto capped_atomistic = toAtomistic(*uncapped_monomer);
+    std::unique_ptr<RDKit::RWMol> allyl_query(RDKit::SmilesToMol("C-C=C"));
+    auto capped_matches =
+        RDKit::SubstructMatch(*capped_atomistic, *allyl_query);
+    BOOST_TEST(capped_matches.size() == 1);
+    BOOST_TEST(!has_atom_map_numbers(*capped_atomistic));
+
+    // Connection between AlY R4 and Alanine R1 carbon
+    // No allyl group should be present and no atom map nums
+    auto linked_monomer = to_rdkit(
+        "PEPTIDE1{A.[AlY]}$PEPTIDE1,PEPTIDE1,1:R1-2:R4$$$V2.0", Format::HELM);
+    auto linked_atomistic = toAtomistic(*linked_monomer);
+    auto linked_matches =
+        RDKit::SubstructMatch(*linked_atomistic, *allyl_query);
+    BOOST_TEST(linked_matches.size() == 0);
+    BOOST_TEST(!has_atom_map_numbers(*linked_atomistic));
+}
+
+BOOST_AUTO_TEST_CASE(TestAtomisticConversionWithMultiAtomLeavingGroupMultiMatch)
+{
+    ResetMonomerDatabase reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "TriC",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "CC[CH2:4]C(=O)[OH:1]",
+            "core_smiles": "*C(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*CCC |$_R4;;;$|\"}",
+            "name": "Propane",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "TRC"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    // No connection, TriC group present but no atom map numbers
+    auto uncapped_monomer =
+        to_rdkit("PEPTIDE1{A.[TriC]}$$$$V2.0", Format::HELM);
+    auto capped_atomistic = toAtomistic(*uncapped_monomer);
+    std::unique_ptr<RDKit::RWMol> tri_query(RDKit::SmartsToMol("CCC"));
+    auto capped_matches = RDKit::SubstructMatch(*capped_atomistic, *tri_query);
+    // 5 matches between alanine and tric (7 carbons in a chain)
+    BOOST_TEST(capped_matches.size() == 5);
+    BOOST_TEST(!has_atom_map_numbers(*capped_atomistic));
+
+    // Connection between Tri R4 and Alanine R1 carbon
+    // No TriC group and no atom map numbers
+    auto linked_monomer = to_rdkit(
+        "PEPTIDE1{A.[TriC]}$PEPTIDE1,PEPTIDE1,1:R1-2:R4$$$V2.0", Format::HELM);
+    auto linked_atomistic = toAtomistic(*linked_monomer);
+    auto linked_matches = RDKit::SubstructMatch(*linked_atomistic, *tri_query);
+    // 2 matches after capping group is gone (4 carbons in a chain)
+    BOOST_TEST(linked_matches.size() == 2);
+    BOOST_TEST(!has_atom_map_numbers(*linked_atomistic));
 }
 
 BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomerFromSql)
