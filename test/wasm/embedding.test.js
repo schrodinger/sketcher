@@ -105,6 +105,24 @@ test('cross-origin parent gets molecules and images through messages', async ({
     } catch (err) {
       imageError = err.message;
     }
+    let moleculeFormatError;
+    try {
+      await request('getMolecule', { format: 'NOT_A_FORMAT' });
+    } catch (err) {
+      moleculeFormatError = err.message;
+    }
+    let moleculeTypeError;
+    try {
+      await request('setMolecule', { text: null });
+    } catch (err) {
+      moleculeTypeError = err.message;
+    }
+    let methodError;
+    try {
+      await request('unknownMethod');
+    } catch (err) {
+      methodError = err.message;
+    }
     let error;
     try {
       await request('setMolecule', { text: 'foobar' });
@@ -124,6 +142,9 @@ test('cross-origin parent gets molecules and images through messages', async ({
       svg,
       imageSizes,
       imageError,
+      moleculeFormatError,
+      moleculeTypeError,
+      methodError,
     };
   });
   expect(result.directAccessBlocked).toBe(true);
@@ -141,6 +162,9 @@ test('cross-origin parent gets molecules and images through messages', async ({
     expect(height).toBeGreaterThan(0);
   }
   expect(result.imageError).toBe('Unknown image format: JPEG');
+  expect(result.moleculeFormatError).toBe('Unknown molecule format: NOT_A_FORMAT');
+  expect(result.moleculeTypeError).toBe('Molecule must be a string');
+  expect(result.methodError).toBe('Unknown sketcher method: unknownMethod');
 });
 
 const malformedSmiles = [
