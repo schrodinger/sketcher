@@ -1170,6 +1170,9 @@ MonomerDatabase::getComplexMonomerQueries() const
 {
     using namespace RDKit::v2::SmilesParse;
     static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)[O,N]");
+    // A cysteine with a heavy atom on the sulfur (other than the R3 dummy).
+    static auto s_substituted_cysteine_query =
+        MolFromSmarts("N[CX4H]([CX4H2][SX2][!#0;!#1])C=O");
 
     // Return the atom indices for the R1 and R2 attachment points (either
     // one may be missing).
@@ -1196,6 +1199,12 @@ MonomerDatabase::getComplexMonomerQueries() const
     // Roughly: a monomer is complex unless it matches the residue_query
     // pattern once and has r1 and r2 four bonds apart, or is tiny.
     auto is_complex = [&](auto& mol) {
+        // toMonomeric() partitions structures using a generic cysteine query
+        // that would claim the sulfur and leave its substituent behind as a
+        // separate monomer, so these need to be matched as a whole.
+        if (!SubstructMatch(mol, *s_substituted_cysteine_query).empty()) {
+            return true;
+        }
         auto matches = SubstructMatch(mol, *residue_query);
         if (matches.size() == 1) {
             // Look at distance between mapping numbers
