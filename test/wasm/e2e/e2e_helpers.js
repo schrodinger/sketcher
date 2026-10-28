@@ -9,6 +9,12 @@ export const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 
  * loaded and the canvas to be visible.
  */
 export async function waitForSketcherReady(page) {
+  // Window activation must not change the hovered atom/bond for a shortcut.
+  await page.addInitScript(() => {
+    document.addEventListener('pointermove', ({ clientX, clientY }) => {
+      window.__sketcherPlaywrightPointer = { x: clientX, y: clientY };
+    });
+  });
   await page.goto('/wasm_shell.html');
   await page.waitForFunction(() => typeof window.Module !== 'undefined', undefined, {
     timeout: 20000,
@@ -19,10 +25,32 @@ export async function waitForSketcherReady(page) {
 }
 
 /**
- * Focus the shadow DOM canvas so keyboard events reach Qt.
+ * Activate a Qt window through its inert top edge, preserving the pointer.
+ * Browser focus alone does not reactivate a Qt 6.7 window after popup closure.
+ */
+export async function activateQtWindow(page, qtWindow) {
+  const pointer = await page.evaluate(() => window.__sketcherPlaywrightPointer);
+  const bounds = await qtWindow.boundingBox();
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + 5);
+  if (pointer) await page.mouse.move(pointer.x, pointer.y);
+}
+
+/** Focus the browser element Qt uses to receive keyboard input. */
+export async function focusQtWindow(page, qtWindow) {
+  const input = qtWindow.locator('input.qt-window-input-element');
+  await ((await input.count()) ? input : qtWindow.locator('canvas')).focus();
+}
+
+/**
+ * Focus the drawing window so keyboard events reach Qt in both Qt 6.7 and 6.12.
  */
 export async function focusCanvas(page) {
-  await page.locator('#screen canvas').focus();
+  const qtWindow = page.locator('[id^="qt-window-"]').first();
+  const alreadyFocused = await qtWindow.evaluate((element) =>
+    element.contains(element.getRootNode().activeElement),
+  );
+  if (!alreadyFocused) await activateQtWindow(page, qtWindow);
+  await focusQtWindow(page, qtWindow);
 }
 
 /**

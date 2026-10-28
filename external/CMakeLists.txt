@@ -27,6 +27,35 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+# generate_git_patch_command(<var_name> [SUBMODULE <submodule>]
+# <patch_file_names>...)
+#
+# Create a command to apply a list of patches to the local clone of a git
+# repository. Before applying the patches, the repo is reset to ensure that
+# repeated calls to this command don't result in an error. The optional
+# SUBMODULE argument selects the git submodule to reset and patch.
+function(generate_git_patch_command VAR_NAME)
+  cmake_parse_arguments(PATCH "" "SUBMODULE" "" ${ARGN})
+  set(GIT_COMMAND git)
+  if(PATCH_SUBMODULE)
+    list(APPEND GIT_COMMAND -C "${PATCH_SUBMODULE}")
+  endif()
+  set(PATCH_COMMAND ${GIT_COMMAND} reset --hard HEAD)
+  foreach(PATCH_FILE IN LISTS PATCH_UNPARSED_ARGUMENTS)
+    list(
+      APPEND
+      PATCH_COMMAND
+      &&
+      ${GIT_COMMAND}
+      apply
+      --ignore-whitespace
+      "${CMAKE_CURRENT_SOURCE_DIR}/${PATCH_FILE}")
+  endforeach()
+  set(${VAR_NAME}
+      "${PATCH_COMMAND}"
+      PARENT_SCOPE)
+endfunction()
+
 # Generate URLS for downloading the SQLite amalgamation, which contains all of
 # the SQLite source code concatenated into a single header and a single
 # implementation file. The URL contains the release year, but there's no trivial
@@ -262,108 +291,21 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/expat-${EXPAT_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
-set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
-
-# Prevent RDKit from trying to build shared libs
-list(
-  APPEND
+generate_git_patch_command(
   RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
-
-# Fix expat.h header propagation. This breaks the Windows and wasm builds
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_expat_public_includes.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9563.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9550.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9536.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_molecular_templates_pr_29.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9639.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9649.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9650.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9630.patch)
-
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_revert_pr_9414.patch)
+  # Prevent RDKit from trying to build shared libs
+  rdkit_static_build.patch
+  # Fix expat.h header propagation. This breaks the Windows and wasm builds
+  rdkit_expat_public_includes.patch
+  rdkit_pr_9563.patch
+  rdkit_pr_9550.patch
+  rdkit_pr_9536.patch
+  rdkit_molecular_templates_pr_29.patch
+  rdkit_pr_9639.patch
+  rdkit_pr_9649.patch
+  rdkit_pr_9650.patch
+  rdkit_pr_9630.patch
+  rdkit_revert_pr_9414.patch)
 
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)

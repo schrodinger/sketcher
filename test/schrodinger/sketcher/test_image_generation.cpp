@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(test_SVG_post_processing)
 
     // make sure that we specify fallback fonts
     BOOST_TEST(
-        svg.contains(R"(font-family="Arimo, Helvetica, Arial, sans-serif")"));
+        svg.contains(R"(font-family="Arimo,Helvetica,Arial,sans-serif")"));
 }
 
 /**

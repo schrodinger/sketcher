@@ -31,6 +31,7 @@ import {
   setClipboardText,
   setFilePickerResult,
   setWidgetText,
+  selectWidgetCombo,
   widgetRect,
   widgetState,
 } from './sketcher_wasm.js';
@@ -786,8 +787,24 @@ export class Sketcher {
 
   /** Equivalent to Squish `click_tool(tool, click_and_hold=False)`. */
   async click_tool(tool, click_and_hold = false) {
+    if (['rect_btn', 'lasso_btn', 'ellipse_btn'].includes(tool)) {
+      // Clear and keyboard shortcuts can change the active tool without
+      // updating current_tool. Re-clicking an active Select button opens its
+      // popup and consumes the next canvas click, so inspect the live shape.
+      if (!(await widgetState(this.page, tool)).checked) {
+        if (!(await widgetState(this.page, 'select_tool_btn')).checked) {
+          await clickWidget(this.page, 'select_tool_btn');
+        }
+        if (!(await widgetState(this.page, tool)).checked) {
+          await clickWidget(this.page, 'select_tool_btn');
+          await this.page.waitForTimeout(100);
+          await clickWidget(this.page, tool);
+        }
+      }
+      this.record_current_tool(tool);
+      return;
+    }
     // Squish tracks sticky tools and avoids re-clicking the current tool.
-    // In particular, repeated rect_btn clicks interrupt Shift-add selection.
     if (this.current_tool === tool) return;
     if (WILDCARD_TOOL_NAMES[tool]) {
       const [parent, child] = WILDCARD_TOOL_NAMES[tool];
@@ -883,22 +900,6 @@ export class Sketcher {
       } finally {
         await this.page.mouse.up();
       }
-      this.record_current_tool(tool);
-      return;
-    }
-    if (tool === 'lasso_btn' || tool === 'ellipse_btn') {
-      // A checked ToolButtonWithPopup opens its visible selector popup on a
-      // second ordinary click.  Choose the real popup child with the mouse.
-      if (
-        this.current_tool !== 'rect_btn' &&
-        this.current_tool !== 'lasso_btn' &&
-        this.current_tool !== 'ellipse_btn'
-      ) {
-        await clickWidget(this.page, 'select_tool_btn');
-      }
-      await clickWidget(this.page, 'select_tool_btn');
-      await this.page.waitForTimeout(100);
-      await clickWidget(this.page, tool);
       this.record_current_tool(tool);
       return;
     }
@@ -1137,9 +1138,11 @@ export class Sketcher {
         unpaired_electrons,
       );
     if (enhanced_stereo !== undefined) {
-      await clickWidget(this.page, set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo');
-      await this.page.keyboard.type(String(enhanced_stereo));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(
+        this.page,
+        set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo',
+        enhanced_stereo,
+      );
     }
     if (enhanced_stereo_label !== undefined)
       await setWidgetText(
@@ -1152,17 +1155,13 @@ export class Sketcher {
     // specific-element field above.
     if (element_list !== undefined) await setWidgetText(this.page, 'element_list_le', element_list);
     if (wildcard_type !== undefined) {
-      await clickWidget(this.page, 'wildcard_combo');
-      await this.page.keyboard.type(String(wildcard_type));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(this.page, 'wildcard_combo', wildcard_type);
     }
     if (rgroup !== undefined) await setWidgetText(this.page, 'rgroup_sb', rgroup);
     if (num_connections !== undefined)
       await setWidgetText(this.page, 'num_connections_sb', num_connections);
     const selectAdvancedCombo = async (objectName, value) => {
-      await clickWidget(this.page, objectName);
-      await this.page.keyboard.type(String(value));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(this.page, objectName, value);
     };
     if (total_h !== undefined) await selectAdvancedCombo('total_h_combo', total_h);
     if (aromaticity !== undefined) await selectAdvancedCombo('aromaticity_combo', aromaticity);
