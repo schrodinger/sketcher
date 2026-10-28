@@ -138,6 +138,11 @@ BOOST_AUTO_TEST_CASE(test_arrow_layouts)
 BOOST_AUTO_TEST_CASE(test_available_styles)
 {
     for (const auto& name : QStyleFactory::keys()) {
+        // The native macOS style requires Cocoa window handles, which the
+        // offscreen platform used by these tests does not provide.
+        if (name.compare("macOS", Qt::CaseInsensitive) == 0) {
+            continue;
+        }
         BOOST_TEST_CONTEXT("style=" << name.toStdString())
         {
             std::unique_ptr<QStyle> style(QStyleFactory::create(name));
