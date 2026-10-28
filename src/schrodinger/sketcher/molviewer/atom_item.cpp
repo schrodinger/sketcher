@@ -257,6 +257,10 @@ void AtomItem::updateHighlightingPaths()
     // there are additional components to the label, so we use a rounded
     // rectangle large enough to cover everything
     QRectF label_rect;
+    if (!m_label_is_visible) {
+        // Offset labels must not exclude the atom's default highlighting area.
+        label_rect = m_predictive_highlighting_path.boundingRect();
+    }
     for (const auto& rect : rects) {
         label_rect |= rect;
     }

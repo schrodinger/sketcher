@@ -14,8 +14,9 @@
 #include <QList>
 #include <QLineF>
 #include <QPainter>
-#include <QRegularExpression>
 #include <QSvgRenderer>
+#include <QXmlStreamReader>
+#include <QXmlStreamWriter>
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>
 #include <boost/test/tools/floating_point_comparison.hpp>
@@ -282,15 +283,31 @@ BOOST_AUTO_TEST_CASE(test_atom_label_halo_color_and_opacity)
                             }
                             return get_qimage(smiles, options);
                         }
-                        auto svg_text = QString::fromUtf8(
-                            get_image_bytes(smiles, ImageFormat::SVG, options));
+                        auto svg_data =
+                            get_image_bytes(smiles, ImageFormat::SVG, options);
                         if (hide_labels) {
-                            svg_text.remove(QRegularExpression(
-                                "<text\\b[^>]*>.*?</text>",
-                                QRegularExpression::
-                                    DotMatchesEverythingOption));
+                            // Avoid QRegularExpression here: PCRE2's JIT can
+                            // read past the SVG buffer under Valgrind.
+                            QXmlStreamReader reader(svg_data);
+                            QByteArray without_labels;
+                            QXmlStreamWriter writer(&without_labels);
+                            while (!reader.atEnd()) {
+                                reader.readNext();
+                                if (reader.isStartElement() &&
+                                    reader.name() == QLatin1String("text")) {
+                                    reader.skipCurrentElement();
+                                } else {
+                                    writer.writeCurrentToken(reader);
+                                }
+                            }
+                            BOOST_REQUIRE_MESSAGE(
+                                !reader.hasError(),
+                                reader.errorString().toStdString());
+                            BOOST_REQUIRE(!writer.hasError());
+                            svg_data = without_labels;
                         }
-                        QSvgRenderer renderer(svg_text.toUtf8());
+                        QSvgRenderer renderer(svg_data);
+                        BOOST_REQUIRE(renderer.isValid());
                         QImage image(options.width_height,
                                      QImage::Format_ARGB32_Premultiplied);
                         image.fill(Qt::transparent);

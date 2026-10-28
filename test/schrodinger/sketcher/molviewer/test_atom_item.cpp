@@ -356,13 +356,20 @@ BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
 
 BOOST_AUTO_TEST_CASE(test_highlighting_covers_complete_atom_labels)
 {
-    for (const auto* smiles : {"CO", "CN", "CS", "[O-]", "[Mg+2]", "[13NH3+:7]",
-                               "NNNN", "CC", "C[C@H](N)S", "* |$_R5$|"}) {
-        BOOST_TEST_CONTEXT(smiles)
+    const std::vector<std::pair<std::string, Format>> cases = {
+        {"CO", Format::SMILES},         {"CN", Format::SMILES},
+        {"CS", Format::SMILES},         {"[O-]", Format::SMILES},
+        {"[Mg+2]", Format::SMILES},     {"[13NH3+:7]", Format::SMILES},
+        {"NNNN", Format::SMILES},       {"CC", Format::SMILES},
+        {"C[C@H](N)S", Format::SMILES}, {"* |$_R5$|", Format::SMILES},
+        {"C[#6,#7]C", Format::SMARTS},  {"C[!#6;!#7]C", Format::SMARTS},
+        {"C[#7,+2]C", Format::SMARTS}};
+    for (const auto& [text, format] : cases) {
+        BOOST_TEST_CONTEXT(text)
         {
             auto scene = TestScene::getScene();
             auto* model = scene->m_mol_model;
-            import_mol_text(model, smiles);
+            import_mol_text(model, text, format);
             std::unordered_set<const RDKit::Atom*> atoms;
             for (const auto* atom : model->getMol()->atoms()) {
                 atoms.insert(atom);
@@ -389,6 +396,11 @@ BOOST_AUTO_TEST_CASE(test_highlighting_covers_complete_atom_labels)
                 for (const auto* atom : model->getMol()->atoms()) {
                     const auto* item = static_cast<const AtomItem*>(
                         scene->getGraphicsItemForAtom(atom));
+                    BOOST_CHECK(item->shape().contains(QPointF(0, 0)));
+                    BOOST_CHECK(item->selectionHighlightingPath().contains(
+                        QPointF(0, 0)));
+                    BOOST_CHECK(item->predictiveHighlightingPath().contains(
+                        QPointF(0, 0)));
                     const auto path = halo->mapFromScene(
                         item->mapToScene(item->selectionHighlightingPath()));
                     BOOST_CHECK((path - halo->path()).isEmpty());
@@ -401,6 +413,22 @@ BOOST_AUTO_TEST_CASE(test_highlighting_covers_complete_atom_labels)
                         BOOST_CHECK(
                             halo->path().contains(halo->mapRectFromScene(
                                 item->mapRectToScene(rect))));
+                    }
+                    if (!item->labelIsVisible()) {
+                        const auto predictive =
+                            get_predictive_highlighting_path_for_atom(atom);
+                        const auto selection =
+                            get_selection_highlighting_path_for_atom(atom);
+                        BOOST_CHECK((predictive - item->shape()).isEmpty());
+                        BOOST_CHECK(
+                            (predictive - item->predictiveHighlightingPath())
+                                .isEmpty());
+                        BOOST_CHECK(
+                            (selection - item->selectionHighlightingPath())
+                                .isEmpty());
+                        if (!item->getSubrects().empty()) {
+                            check_highlighting_path_type(*item, false);
+                        }
                     }
                     if (item->getSubrects().empty()) {
                         BOOST_CHECK(
