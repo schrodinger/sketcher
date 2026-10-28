@@ -34,8 +34,18 @@ jobs:
       - name: Package release assets
         run: |
           for dir in artifacts/sketcher-*; do
-            [[ "$dir" == *-memtest ]] && continue
-            (cd "$dir" && zip -r "../../$(basename "$dir").zip" .)
+            name=$(basename "$dir")
+            case "$name" in
+              *-memtest) continue ;;
+              # download-artifact drops file permissions, so restore them
+              *-linux-x64) chmod +x "$dir"/Sketcher "$dir"/smiles_to_helm ;;
+              *-macos-*) chmod +x "$dir"/Sketcher.app/Contents/MacOS/Sketcher "$dir"/smiles_to_helm ;;
+            esac
+            if [[ "$name" == *-linux-x64 ]]; then
+              tar -czf "${name}.tar.gz" -C "$dir" .
+            else
+              (cd "$dir" && zip -r "../../${name}.zip" .)
+            fi
           done
 
       - name: Create or update release
@@ -46,7 +56,9 @@ jobs:
           git tag -f "$tag"
           git push -f origin "$tag"
           gh release delete "$tag" --yes 2>/dev/null || true
-          gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
+          gh release create "$tag" \
+            sketcher-${{ inputs.version }}-*.zip \
+            sketcher-${{ inputs.version }}-*.tar.gz \
             --title "${{ inputs.version }}" \
             --notes "Schrödinger Sketcher ${{ inputs.version }} release" \
             --target "${{ inputs.version }}"

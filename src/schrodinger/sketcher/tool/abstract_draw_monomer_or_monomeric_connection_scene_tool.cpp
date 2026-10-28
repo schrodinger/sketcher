@@ -18,6 +18,7 @@
 #include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
@@ -45,10 +46,11 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
         const AtomDisplaySettings& atom_display_settings,
         const BondDisplaySettings& bond_display_settings, Scene* scene,
-        MolModel* mol_model) :
+        MolModel* mol_model, const bool is_smiles_monomer) :
     AbstractMonomerSceneTool(fonts, scene, mol_model),
     m_res_name(res_name),
     m_chain_type(chain_type),
+    m_is_smiles_monomer(is_smiles_monomer),
     m_bolded_fonts(fonts),
     m_atom_display_settings(&atom_display_settings),
     m_bond_display_settings(&bond_display_settings)
@@ -61,13 +63,7 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // change won't affect anything else.)
     m_bolded_fonts.m_main_label_font.setBold(true);
     m_bolded_fonts.updateFontMetrics();
-    if (chain_type == rdkit_extensions::ChainType::PEPTIDE) {
-        m_monomer_type = MonomerType::PEPTIDE;
-    } else if (chain_type == rdkit_extensions::ChainType::CHEM) {
-        m_monomer_type = MonomerType::CHEM;
-    } else {
-        m_monomer_type = get_na_monomer_type_from_res_name(res_name);
-    }
+    m_monomer_type = get_monomer_type(res_name, chain_type);
 }
 
 AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -183,9 +179,23 @@ find_attachment_point_with_num(
     return *it;
 }
 
+/**
+ * Return the library residue name or inline SMILES, and whether it is SMILES.
+ */
+static std::pair<std::string, bool>
+get_monomer_name_or_smiles(const RDKit::Atom* monomer)
+{
+    bool is_smiles = false;
+    monomer->getPropIfPresent(SMILES_MONOMER, is_smiles);
+    return {is_smiles ? monomer->getProp<std::string>(ATOM_LABEL)
+                      : get_monomer_res_name(monomer),
+            is_smiles};
+}
+
 UnboundMonomericAttachmentPointItem* get_default_attachment_point(
     const MonomerType hovered_type, const std::string& hovered_res_name,
-    const MonomerType tool_type, const std::string& tool_res_name,
+    const bool hovered_is_smiles, const MonomerType tool_type,
+    const std::string& tool_res_name,
     const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
 {
     if (unbound_ap_items.empty()) {
@@ -196,18 +206,11 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
         UnboundMonomericAttachmentPointItem* default_ap = nullptr;
         if (tool_type == MonomerType::PEPTIDE) {
             std::vector<int> aps_to_look_for = {PeptideAP::C, PeptideAP::N};
-            if (hovered_res_name == CYS_RES_NAME &&
-                tool_res_name == CYS_RES_NAME) {
-                // only offer to form a disulfide if we're forming a connection
-                // between two cysteines
-                aps_to_look_for.push_back(PeptideAP::S);
+            if (peptide_has_ap3(hovered_res_name, hovered_is_smiles)) {
+                aps_to_look_for.push_back(PeptideAP::X_OR_S);
             }
             default_ap = find_preferred_attachment_point_by_num(
                 unbound_ap_items, aps_to_look_for);
-        }
-        if (default_ap == nullptr) {
-            default_ap = find_attachment_point_with_name(unbound_ap_items,
-                                                         H_BOND_AP_MODEL_NAME);
         }
         return default_ap;
     } else if (hovered_type == MonomerType::NA_BASE) {
@@ -242,7 +245,8 @@ std::string get_attachment_point_for_new_monomer(
     const MonomerType existing_monomer_type,
     const std::string_view existing_monomer_ap,
     const MonomerType new_monomer_type,
-    const std::string_view new_monomer_res_name)
+    const std::string_view new_monomer_res_name,
+    const bool new_monomer_is_smiles)
 {
     switch (new_monomer_type) {
         case MonomerType::CHEM:
@@ -255,9 +259,10 @@ std::string get_attachment_point_for_new_monomer(
                            ap_model_name_for(PeptideAP::C)) {
                     return ap_model_name_for(PeptideAP::N);
                 } else if (existing_monomer_ap ==
-                               ap_model_name_for(PeptideAP::S) &&
-                           new_monomer_res_name == CYS_RES_NAME) {
-                    return ap_model_name_for(PeptideAP::S);
+                               ap_model_name_for(PeptideAP::X_OR_S) &&
+                           peptide_has_ap3(std::string(new_monomer_res_name),
+                                           new_monomer_is_smiles)) {
+                    return ap_model_name_for(PeptideAP::X_OR_S);
                 }
             }
             return H_BOND_AP_MODEL_NAME;
@@ -333,15 +338,15 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto get_drag_monomer_type_and_res_name =
         [this](const AbstractMonomerItem* const monomer_item) {
             if (monomer_item == nullptr) {
-                return std::make_pair(m_monomer_type, m_res_name);
+                return std::make_tuple(m_monomer_type, m_res_name, false);
             }
             auto [monomer, monomer_type] = get_monomer_and_type(monomer_item);
-            auto res_name = get_monomer_res_name(monomer);
-            return std::make_pair(monomer_type, res_name);
+            auto [res_name, is_smiles] = get_monomer_name_or_smiles(monomer);
+            return std::make_tuple(monomer_type, res_name, is_smiles);
         };
-    auto [drag_start_monomer_type, drag_start_res_name] =
+    auto [drag_start_monomer_type, drag_start_res_name, drag_start_is_smiles] =
         get_drag_monomer_type_and_res_name(m_drag_start_monomer_item);
-    auto [drag_end_monomer_type, drag_end_res_name] =
+    auto [drag_end_monomer_type, drag_end_res_name, drag_end_is_smiles] =
         get_drag_monomer_type_and_res_name(m_drag_end_monomer_item);
 
     // if the user is hovered over the monomer itself (not an attachment point)
@@ -349,7 +354,7 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // dragged from a C terminus), use that one
     auto ideal_ap_model_name = get_attachment_point_for_new_monomer(
         drag_start_monomer_type, m_drag_start_ap_model_name,
-        drag_end_monomer_type, drag_end_res_name);
+        drag_end_monomer_type, drag_end_res_name, drag_end_is_smiles);
     for (auto* ap_item : m_drag_end_unbound_ap_items) {
         if (ap_item->getAttachmentPoint().model_name == ideal_ap_model_name) {
             return ap_item;
@@ -360,8 +365,9 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // good option, so use whatever we would've defaulted if we'd started the
     // drag at this monomer.
     return get_default_attachment_point(
-        drag_end_monomer_type, drag_end_res_name, drag_start_monomer_type,
-        drag_start_res_name, m_drag_end_unbound_ap_items);
+        drag_end_monomer_type, drag_end_res_name, drag_end_is_smiles,
+        drag_start_monomer_type, drag_start_res_name,
+        m_drag_end_unbound_ap_items);
 }
 
 std::tuple<const RDKit::Atom*, MonomerType>
@@ -387,9 +393,10 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
         clickShouldMutate(monomer, monomer_type)) {
         return nullptr;
     }
-    return get_default_attachment_point(
-        monomer_type, get_monomer_res_name(monomer), m_monomer_type, m_res_name,
-        m_unbound_ap_items);
+    auto [res_name, is_smiles] = get_monomer_name_or_smiles(monomer);
+    return get_default_attachment_point(monomer_type, res_name, is_smiles,
+                                        m_monomer_type, m_res_name,
+                                        m_unbound_ap_items);
 }
 
 bool AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -405,9 +412,10 @@ bool AbstractDrawMonomerOrMonomericConnectionSceneTool::
     if (clickShouldMutate(monomer, monomer_type)) {
         return true;
     }
-    return get_default_attachment_point(
-               monomer_type, get_monomer_res_name(monomer), m_monomer_type,
-               m_res_name, m_unbound_ap_items) != nullptr;
+    auto [res_name, is_smiles] = get_monomer_name_or_smiles(monomer);
+    return get_default_attachment_point(monomer_type, res_name, is_smiles,
+                                        m_monomer_type, m_res_name,
+                                        m_unbound_ap_items) != nullptr;
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::onMouseMove(
@@ -448,14 +456,6 @@ static RDGeom::Point3D get_coords_for_monomer(const RDKit::Atom* const monomer)
 {
     auto& conf = monomer->getOwningMol().getConformer();
     return conf.getAtomPos(monomer->getIdx());
-}
-
-RDGeom::Point3D
-get_default_coords_for_bound_monomer(const RDKit::Atom* const monomer,
-                                     const Direction dir)
-{
-    auto monomer_pos = get_coords_for_monomer(monomer);
-    return get_default_coords_for_bound_monomer(monomer_pos, dir);
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::createHintFragmentItem(
@@ -511,14 +511,17 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const QPointF& scene_pos) const
 {
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
-    auto monomer =
-        rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);
+    auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, 1,
+                                                 m_is_smiles_monomer);
     auto monomer_pos = to_mol_xy(scene_pos);
     auto linkage_start = getDefaultDragStartAPModelName();
+    auto size = get_monomer_graphics_item_size(monomer.get(), *m_fonts,
+                                               *m_atom_display_settings,
+                                               *m_bond_display_settings);
     // returned monomer is owned by the calling scope
-    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type,
-                                   monomer_pos, linkage_start,
-                                   NEW_MONOMER_FROM_DRAG};
+    return HintFragmentMonomerInfo{std::move(monomer),    m_monomer_type,
+                                   monomer_pos,           linkage_start,
+                                   NEW_MONOMER_FROM_DRAG, size};
 }
 
 HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -531,8 +534,15 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto copy_of_monomer = std::make_unique<RDKit::Atom>(*monomer);
     auto monomer_pos = get_coords_for_monomer(monomer);
     auto monomer_idx = static_cast<int>(monomer->getIdx());
-    return HintFragmentMonomerInfo{std::move(copy_of_monomer), monomer_type,
-                                   monomer_pos, ap_model_name, monomer_idx};
+    const auto rect = monomer_item->boundingRect();
+    const RDGeom::Point3D size(rect.width() / VIEW_SCALE,
+                               rect.height() / VIEW_SCALE, 0);
+    return HintFragmentMonomerInfo{std::move(copy_of_monomer),
+                                   monomer_type,
+                                   monomer_pos,
+                                   ap_model_name,
+                                   monomer_idx,
+                                   size};
 }
 
 HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -558,21 +568,28 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const HintFragmentMonomerInfo& start_monomer_info,
         const Direction direction) const
 {
-    auto pos =
-        get_default_coords_for_bound_monomer(start_monomer_info.pos, direction);
     // We'll determine the correct values for chain id and residue number
     // when/if the structure is actually added to MolModel. For the hint,
     // though, just generate something reasonable looking.
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
     auto res_num = 2;
     // returned monomer is owned by the calling scope
-    auto monomer =
-        rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num, false);
+    auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num,
+                                                 m_is_smiles_monomer);
+    auto size = get_monomer_graphics_item_size(monomer.get(), *m_fonts,
+                                               *m_atom_display_settings,
+                                               *m_bond_display_settings);
+    auto default_offset = rdkit_extensions::direction_to_vector(direction) *
+                          rdkit_extensions::MONOMER_BOND_LENGTH;
+    auto pos = start_monomer_info.pos +
+               rdkit_extensions::get_monomer_connection_offset(
+                   default_offset, start_monomer_info.size, size);
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
-        m_monomer_type, m_res_name);
-    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type, pos,
-                                   ap_model_name, NEW_MONOMER_FROM_DRAG};
+        m_monomer_type, m_res_name, m_is_smiles_monomer);
+    return HintFragmentMonomerInfo{
+        std::move(monomer), m_monomer_type,        pos,
+        ap_model_name,      NEW_MONOMER_FROM_DRAG, size};
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragStart(
@@ -781,10 +798,15 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragRelease(
     auto hint_start_monomer_info = getHintFragmentMonomerInfoForDragStart();
     auto [drag_end_info, hovered_monomer_item] =
         getDragEndInfo(event->scenePos());
-    // we know that hint_start_monomer_info can't be std::nullopt, since
-    // otherwise m_drag_ignored would be true and we would've returned already
-    auto hint_end_monomer_info = getHintFragmentMonomerInfoForDragEnd(
-        *hint_start_monomer_info, drag_end_info);
+    // hint_start_monomer_info can be std::nullopt if the structure was updated
+    // during the drag (e.g. the user hit Ctrl+Z), since onStructureUpdated()
+    // clears m_drag_start_monomer_item. In that case, there's no drag structure
+    // to add.
+    std::optional<HintFragmentMonomerInfo> hint_end_monomer_info;
+    if (hint_start_monomer_info.has_value()) {
+        hint_end_monomer_info = getHintFragmentMonomerInfoForDragEnd(
+            *hint_start_monomer_info, drag_end_info);
+    }
 
     // delete the attachment point graphics items before we modify the structure
     // so that we don't have to worry about monomer graphics items being deleted
@@ -818,7 +840,8 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::
             } else {
                 auto monomer_idx = m_mol_model->getMol()->getNumAtoms();
                 m_mol_model->addMonomer(m_res_name, m_chain_type,
-                                        monomer_info.pos);
+                                        monomer_info.pos, m_is_smiles_monomer,
+                                        monomer_info.size);
                 return monomer_idx;
             }
         };
@@ -829,10 +852,48 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto end_monomer_idx =
         add_monomer_to_mol_model_if_new(hint_end_monomer_info);
     auto mol = m_mol_model->getMol();
-    m_mol_model->addMonomericConnection(mol->getAtomWithIdx(start_monomer_idx),
-                                        hint_start_monomer_info.ap_model_name,
-                                        mol->getAtomWithIdx(end_monomer_idx),
-                                        hint_end_monomer_info.ap_model_name);
+
+    /**
+     * @return the attachment point model name to use for the given monomer.
+     * This is taken directly from monomer_info *except* when connecting a
+     * nucleic acid phosphate to a sugar. Because a phosphate's attachment
+     * points are chemically identical, we select the AP that will create a
+     * standard backbone connection. Note that this will only affect
+     * click-and-drag connections where the user dragged to or from the "wrong"
+     * phosphate AP. In all other scenarios, the scene tool will have defaulted
+     * to the correct AP already.
+     */
+    auto get_ap_name = [&mol](const HintFragmentMonomerInfo& monomer_info,
+                              const unsigned int monomer_idx,
+                              const HintFragmentMonomerInfo& other_info) {
+        if (monomer_info.monomer_type == MonomerType::NA_PHOSPHATE &&
+            other_info.monomer_type == MonomerType::NA_SUGAR &&
+            (other_info.ap_model_name == "R1" ||
+             other_info.ap_model_name == "R2")) {
+            auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(
+                mol->getAtomWithIdx(monomer_idx));
+            auto is_unbound = [&unbound_aps](const std::string& name) {
+                return std::ranges::any_of(
+                    unbound_aps,
+                    [&name](const auto& ap) { return ap.model_name == name; });
+            };
+            if (is_unbound("R1") && is_unbound("R2")) {
+                return get_attachment_point_for_new_monomer(
+                    MonomerType::NA_SUGAR, other_info.ap_model_name,
+                    MonomerType::NA_PHOSPHATE, "P", false);
+            }
+        }
+        return monomer_info.ap_model_name;
+    };
+
+    auto start_ap_name = get_ap_name(hint_start_monomer_info, start_monomer_idx,
+                                     hint_end_monomer_info);
+    auto end_ap_name = get_ap_name(hint_end_monomer_info, end_monomer_idx,
+                                   hint_start_monomer_info);
+
+    m_mol_model->addMonomericConnection(
+        mol->getAtomWithIdx(start_monomer_idx), start_ap_name,
+        mol->getAtomWithIdx(end_monomer_idx), end_ap_name);
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::

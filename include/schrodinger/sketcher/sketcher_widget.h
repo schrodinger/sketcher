@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/shared_ptr.hpp>
 #include <QSet>
@@ -12,6 +13,8 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+
+Q_MOC_INCLUDE("schrodinger/sketcher/rdkit/monomer_analog.h")
 
 class QGraphicsSvgItem;
 class QGraphicsSceneMouseEvent;
@@ -59,10 +62,13 @@ class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
 class MonomerContextMenu;
+struct MonomerMutation;
 class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
+struct RenderOptions;
+class SketcherSideBar;
 enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
@@ -78,6 +84,12 @@ class ModelObjsByType;
 class SKETCHER_API SketcherWidget : public QWidget
 {
     Q_OBJECT
+
+    // allow CustomMonomerDialog to customize its embedded SketcherWidget to
+    // make sure that the dialog can fit into the Live Design Sketcher frame.
+    // However, we want to keep the public API small, so we don't want to
+    // publicly expose those customizations options
+    friend class CustomMonomerDialog;
 
   public:
     SketcherWidget(QWidget* parent = nullptr,
@@ -145,6 +157,20 @@ class SKETCHER_API SketcherWidget : public QWidget
      * the background color.
      */
     void setColorScheme(const ColorScheme color_scheme);
+
+    /**
+     * Apply image-generation rendering options to this widget's display model.
+     *
+     * @param options Rendering options to apply
+     */
+    void setRenderOptions(const RenderOptions& options);
+
+    /**
+     * Set whether the "Load Monomer Database..." menu item is visible. This
+     * should be hidden when the monomer database is supplied by the host
+     * application (e.g. from a monomer service).
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
@@ -326,6 +352,18 @@ class SKETCHER_API SketcherWidget : public QWidget
                                       const bool set_to_allowed_list);
 
     /**
+     * Show the custom monomer structure editor for the specified monomer.
+     */
+    void showEditMonomerStructureDialog(const RDKit::Atom* const atom);
+
+    /**
+     * Apply a context-menu monomer mutation after warning about lost
+     * connections if there are any.
+     */
+    void mutateMonomersFromContextMenu(std::vector<MonomerMutation> mutations,
+                                       QString description);
+
+    /**
      * Updates the watermark on user drawing atoms or deleting all
      * atoms from the scene
      */
@@ -474,6 +512,22 @@ class SKETCHER_API SketcherWidget : public QWidget
     void setToolbarsVisible(const bool visible);
 
     /**
+     * Show or hide the atomistic/monomeric interface toggle.
+     */
+    void setInterfaceToggleVisible(const bool visible);
+
+    /**
+     * Add a widget below the View, alongside the side bar. The widget is
+     * reparented to this SketcherWidget.
+     */
+    void addWidgetBelowView(QWidget* widget);
+
+    /**
+     * @return the side bar, for dialog layout customization
+     */
+    const SketcherSideBar* getSideBar() const;
+
+    /**
      * Override QWidget methods to handle keystrokes
      */
     void keyPressEvent(QKeyEvent* event) override;
@@ -513,7 +567,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleAtomisticKeyboardShortcuts(QKeyEvent* event,
+    bool handleAtomisticKeyboardShortcuts(QKeyEvent* event,
                                           const QPointF& cursor_pos,
                                           const ModelObjsByType& targets);
     /**
@@ -521,7 +575,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleAminoAcidKeyboardShortcuts(QKeyEvent* event,
+    bool handleAminoAcidKeyboardShortcuts(QKeyEvent* event,
                                           const QPointF& cursor_pos,
                                           const ModelObjsByType& targets);
     /**
@@ -535,7 +589,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleNucleicAcidKeyboardShortcuts(QKeyEvent* event,
+    bool handleNucleicAcidKeyboardShortcuts(QKeyEvent* event,
                                             const QPointF& cursor_pos,
                                             const ModelObjsByType& targets);
 

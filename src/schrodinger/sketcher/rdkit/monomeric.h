@@ -1,9 +1,12 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 
 #include <fmt/format.h>
@@ -22,6 +25,11 @@ class Atom;
 class Bond;
 class ROMol;
 } // namespace RDKit
+
+namespace RDGeom
+{
+class Point3D;
+} // namespace RDGeom
 
 namespace schrodinger
 {
@@ -45,7 +53,7 @@ enum class ConnectorType {
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, S = 3 };
+enum { N = 1, C = 2, X_OR_S = 3 };
 }
 
 namespace NASugarAP
@@ -62,7 +70,16 @@ constexpr int NA_BASE_AP_N1_9 = 1;
 const std::string H_BOND_AP_MODEL_NAME = "pair";
 const std::string H_BOND_DISPLAY_NAME = "H-bond";
 
-const std::string CYS_RES_NAME = "C";
+const std::string PEPTIDE_R3_NAME_S = "S";
+const std::string PEPTIDE_R3_NAME_X = "X";
+
+/**
+ * Validate the monomers in a monomeric molecule.
+ * @throw std::runtime_error if a monomer is missing from the database (other
+ * than peptide X and nucleic acid N, which represent unknown monomers) or its
+ * inline SMILES cannot be parsed.
+ */
+SKETCHER_API void validate_monomers(const RDKit::ROMol& mol);
 
 /**
  * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the
@@ -70,6 +87,73 @@ const std::string CYS_RES_NAME = "C";
  * number.
  */
 SKETCHER_API std::string ap_model_name_for(int ap_num);
+
+/**
+ * @return a list of all attachment points in required_attachment_points that
+ * are not present in atomistic_mol
+ */
+SKETCHER_API std::vector<int> get_missing_required_attachment_points(
+    const RDKit::ROMol& atomistic_mol,
+    std::vector<int> required_attachment_points);
+
+/**
+ * Return the numbered attachment points in the given atomistic molecule (which
+ * contains the contents of a monomer). Each attachment point is described using
+ * a pair of the attachment point number and the symbol of the heavy atom at
+ * that site. Note that this function assumes that the attachment points in the
+ * molecule are sane; it does not protect against, e.g., duplicated attachment
+ * points or attachment points on unbound dummy atoms.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol);
+
+/**
+ * Return the numbered attachment points in a monomer SMILES string. Each
+ * attachment point is described using a pair of the attachment point number and
+ * the symbol of the heavy atom at that site. Note that this function assumes
+ * that the SMILES string is valid and sane; it does not protect against, e.g.,
+ * duplicated attachment points or attachment points on unbound dummy atoms.
+ *
+ * @param smiles the SMILES string, with attachment points indicated using
+ * atom-map numbers, isotope-numbered dummy atoms, or CXSMILES atom labels such
+ * as "_R1". For example, any of the following are acceptable descriptions of
+ * alanine:
+ *   - C[C@H](N[H:1])C(=O)[OH:2]
+ *   - [1*]N[C@@H](C)C(=O)O[2*]
+ *   - *N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles);
+
+/**
+ * Normalize numbered attachment points in a monomer SMILES string so each is
+ * represented by a dummy atom with a CXSMILES atom label such as "_R1".
+ * Attachment points may initially be represented by atom-map numbers,
+ * isotope-numbered dummy atoms, or CXSMILES atom labels. Atom-mapped leaving
+ * atoms are replaced by labeled dummy atoms. A heavy atom marked only with a
+ * CXSMILES label receives a new bonded dummy atom.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::string
+normalize_smiles_attachment_points(const std::string& smiles);
+
+/**
+ * Return the numbered attachment points for the given monomer. Each attachment
+ * point is described using a pair of the attachment point number and the symbol
+ * of the heavy atom at that site.
+ *
+ * If the monomer is missing from the database, unknown nucleic acid bases (N)
+ * have R1, while unknown peptides (X) and all other missing monomers have R1
+ * and R2. These fallback attachment points have empty element symbols.
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_res(const std::string& resname,
+                              const rdkit_extensions::ChainType chain_type);
 
 /**
  * Information about an attachment point on a monomer that's bound to another
@@ -130,6 +214,12 @@ const int ATTACHMENT_POINT_WITH_CUSTOM_NAME = -1;
 SKETCHER_API MonomerType get_monomer_type(const RDKit::Atom* atom);
 
 /**
+ * Determine a monomer's type from its symbol and polymer type.
+ */
+SKETCHER_API MonomerType get_monomer_type(
+    std::string_view res_name, rdkit_extensions::ChainType chain_type);
+
+/**
  * @return the type of nucleic acid monomer that the given residue name
  * represents
  */
@@ -140,6 +230,79 @@ get_na_monomer_type_from_res_name(const std::string_view res_name);
  * Determine the text to use for the name of the given monomer
  */
 SKETCHER_API std::string get_monomer_res_name(const RDKit::Atom* const monomer);
+
+/**
+ * @return true if the given NA base atom is part of a DNA strand, i.e. its
+ * bound sugar's residue name is "dR". Returns false for RNA bases (sugar "R")
+ * and for bases with no bound sugar or a non-standard sugar.
+ *
+ * @throw std::runtime_error if the atom does not represent an NA_BASE monomer.
+ */
+SKETCHER_API bool is_dna_base(const RDKit::Atom* const base);
+
+/**
+ * @return the Watson-Crick DNA complement symbol for the given nucleic acid
+ * base residue name, or std::nullopt if the symbol has no standard complement.
+ * @param base_symbol the residue name of the base (e.g. "A", "G")
+ */
+SKETCHER_API std::optional<std::string>
+get_dna_complement_base_symbol(const std::string_view base_symbol);
+
+/**
+ * @return the Watson-Crick RNA complement symbol for the given nucleic acid
+ * base residue name, or std::nullopt if the symbol has no standard complement.
+ * @param base_symbol the residue name of the base (e.g. "A", "G")
+ */
+SKETCHER_API std::optional<std::string>
+get_rna_complement_base_symbol(const std::string_view base_symbol);
+
+/**
+ * @return true if the given nucleic acid base residue name has a standard
+ * Watson-Crick complement. Existence is independent of the DNA/RNA target, so
+ * this is suitable for gating UI before the target strand type is known.
+ */
+SKETCHER_API bool na_base_has_complement(const std::string_view base_symbol);
+
+/**
+ * The data needed to build one nucleotide (sugar, base, and phosphate) of a
+ * complementary strand
+ */
+struct ComplementNucleotide {
+    // the index of the original base that this nucleotide pairs with
+    size_t original_base_idx;
+    std::string sugar_symbol;
+    std::string base_symbol;
+};
+
+/**
+ * Determine the complementary chains needed to pair with the given nucleic acid
+ * bases. Bases are grouped by polymer, and each polymer's bases are split into
+ * runs of neighboring nucleotides, each of which gets its own complementary
+ * chain. Bases without a Watson-Crick complement are skipped (which also splits
+ * the run), as are atoms that aren't nucleic acid bases.
+ *
+ * @param bases the nucleic acid bases to complement
+ * @return the complementary chains in the order that they should be created.
+ * Each chain lists its nucleotides in the residue order of the original bases
+ * that they pair with.
+ */
+SKETCHER_API std::vector<std::vector<ComplementNucleotide>>
+get_complement_chains(const std::unordered_set<const RDKit::Atom*>& bases);
+
+/**
+ * Determine the direction from the original bases toward their complements. The
+ * complement sits on the side of the base away from the base's own sugar, so
+ * deriving the direction from the geometry lets the complement follow a rotated
+ * or moved strand.
+ *
+ * @param mol the monomer molecule containing the original bases
+ * @param complement_nucleotides the nucleotides of one complementary chain
+ * @return a unit vector toward the complement, taken from the first original
+ * base with a locatable sugar, or (0, -1) if there is no such base
+ */
+SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
+    const RDKit::ROMol& mol,
+    const std::vector<ComplementNucleotide>& complement_nucleotides);
 
 /**
  * @return whether the given bond represents two connections between the same
@@ -189,18 +352,52 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
 
 /**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
- * distance between the center of the monomer and the center of the arrowhead.
+ * offset from the center of the monomer to the center of the arrowhead. The
+ * arrowhead is placed outside the nearest cardinal side facing the bound
+ * monomer. If that side is occupied, up to three other forward-facing sides
+ * and corners are considered, preferring sides over corners. A side or corner
+ * is occupied when another connection is within 45 degrees of its direction.
+ * Independently placed endpoints use the candidate crossing the fewest other
+ * bonds, with normal direction priority breaking ties. Same-chain endpoints
+ * are coordinated when necessary so their connector does not cross the chain
+ * between them.
  * @param monomer_item the graphics item for the monomer
  * @param bound_coords the Scene coordinates for the other monomer involved in
  * the bond
+ * @param monomer the monomer where the arrowhead is being placed
+ * @param bound_monomer the other monomer involved in the connection
+ * @param is_secondary_connection whether this is the secondary connection of
+ * a bond that represents two monomer connections
  */
-SKETCHER_API qreal get_monomer_arrowhead_offset(
-    const QGraphicsItem& monomer_item, const QPointF& bound_coords);
+SKETCHER_API QPointF get_monomer_arrowhead_offset(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const RDKit::Atom* monomer, const RDKit::Atom* bound_monomer,
+    bool is_secondary_connection);
 
 /**
- * @return a list of all unbound attachment points names for the given monomer
- * using "pretty" names (e.g. "N" instead of "R1" for amino acids)
+ * Low-level overload that uses an explicitly provided set of occupied sides
+ * and corners. This is useful when the caller has already determined
+ * connection occupancy.
+ * @param monomer_item the graphics item for the monomer
+ * @param bound_coords the Scene coordinates for the other monomer
+ * @param occupied_directions sides and corners already used by other
+ * connections
  */
+SKETCHER_API QPointF get_monomer_arrowhead_offset(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const std::unordered_set<Direction>& occupied_directions);
+
+/**
+ * @return whether or not the specified peptide monomer has a side-chain
+ * attachment point
+ * @param res_name_or_smiles The residue name if is_smiles is false or the
+ * SMILES string if is_smiles if true.
+ * @param is_smiles Whether res_name_or_smiles represents the residue name (for
+ * residues that appear in the monomer database) or the SMILES string (for
+ * SMILES monomers)
+ */
+SKETCHER_API bool peptide_has_ap3(const std::string& res_name_or_smiles,
+                                  const bool is_smiles);
 
 /**
  * Determine all bound and unbound monomeric attachment points for the given

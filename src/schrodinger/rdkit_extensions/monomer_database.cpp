@@ -275,7 +275,8 @@ get_monomer_query_sql(std::string monomer_id,
 }
 
 std::pair<std::string, std::string>
-canonicalize_monomer_smiles(const char* smiles)
+canonicalize_monomer_smiles(const char* smiles,
+                            const char* original_core_smiles = "")
 {
     using namespace RDKit::v2::SmilesParse;
     static const SmilesParserParams read_params{.removeHs = false,
@@ -314,17 +315,22 @@ canonicalize_monomer_smiles(const char* smiles)
         new_smiles = new_smiles.substr(0, pos);
     }
 
-    // after generating the SMILES, remove the "leaving atoms" for
-    // the CORE_SMILES field
-    mol->beginBatchEdit();
-    for (auto atom : mol->atoms()) {
-        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-            mol->removeAtom(atom);
+    std::string core_smiles;
+    if (original_core_smiles != nullptr && original_core_smiles[0] != '\0') {
+        core_smiles = original_core_smiles;
+    } else {
+        // Derive CORE_SMILES from the canonicalized SMILES when the user did
+        // not supply one.
+        auto core_mol = MolFromSmiles(new_smiles, read_params);
+        core_mol->beginBatchEdit();
+        for (auto atom : core_mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                core_mol->removeAtom(atom);
+            }
         }
+        core_mol->commitBatchEdit();
+        core_smiles = RDKit::MolToSmiles(*core_mol);
     }
-    mol->commitBatchEdit();
-
-    auto core_smiles = RDKit::MolToSmiles(*mol);
 
     return {new_smiles, core_smiles};
 }
@@ -332,7 +338,8 @@ canonicalize_monomer_smiles(const char* smiles)
 void canonicalize_db(sqlite3* db)
 {
     constexpr std::string_view sql_select =
-        "SELECT id, smiles FROM monomer_definitions ORDER BY id ASC;";
+        "SELECT id, smiles, core_smiles FROM monomer_definitions ORDER BY id "
+        "ASC;";
     constexpr std::string_view sql_update =
         "UPDATE monomer_definitions SET smiles=?, core_smiles=? WHERE id=?;";
 
@@ -369,8 +376,9 @@ void canonicalize_db(sqlite3* db)
             // column numbers used here are dictated by sql_select
             auto id = sqlite3_column_int(select_stmt, 0);
             auto smiles = _sqlite3_column_cstring(select_stmt, 1);
+            auto original_core_smiles = _sqlite3_column_cstring(select_stmt, 2);
             auto [new_smiles, new_core_smiles] =
-                canonicalize_monomer_smiles(smiles);
+                canonicalize_monomer_smiles(smiles, original_core_smiles);
 
             // Bind parameters to the UPDATE statement
             sqlite3_bind_text(update_stmt, 1, new_smiles.c_str(), -1,
@@ -473,10 +481,10 @@ insert_monomers_from_json(sqlite3* db, std::string_view json)
         // core_smiles, pdbcode) may be different from the original inputs.
 
         try {
-            // Make sure the SMILES/CORE_SMILES are canonical
-            // based on the current RDKit version.
-            auto [new_smiles, new_core_smiles] =
-                canonicalize_monomer_smiles(m.smiles.value().c_str());
+            // Canonicalize SMILES and derive CORE_SMILES only when the user
+            // did not supply it.
+            auto [new_smiles, new_core_smiles] = canonicalize_monomer_smiles(
+                m.smiles.value().c_str(), m.core_smiles.value_or("").c_str());
             m.smiles = new_smiles;
             m.core_smiles = new_core_smiles;
         } catch (const std::runtime_error&) {
@@ -678,12 +686,11 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
         dumpToFile(db.get(), *custom_db_path);
     }
 
-    // Make sure the SMILES/CORE_SMILES are canonical
-    // based on the current RDKit version.
+    // Canonicalize SMILES and derive CORE_SMILES only when it was not supplied.
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
@@ -699,7 +706,7 @@ MonomerDatabase::loadMonomersFromJson(std::string_view json)
     }
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 
     return result;
 }
@@ -712,7 +719,7 @@ MonomerDatabase::insertMonomersFromJson(std::string_view json)
         result = loadMonomersFromJson(json);
     } else {
         result = insert_monomers_from_json(m_custom_monomers_db, json);
-        invalidateCache();
+        onDatabaseChanged();
     }
     return result;
 }
@@ -742,12 +749,11 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
         throw std::runtime_error(msg);
     }
 
-    // Make sure the SMILES/CORE_SMILES are canonical
-    // based on the current RDKit version.
+    // Canonicalize SMILES and derive CORE_SMILES only when it was not supplied.
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 MonomerDatabase& MonomerDatabase::instance()
@@ -756,13 +762,21 @@ MonomerDatabase& MonomerDatabase::instance()
     return monomer_db;
 }
 
+boost::signals2::scoped_connection MonomerDatabase::subscribeToChanges(
+    const boost::signals2::signal<void()>::slot_type& callback)
+{
+    return boost::signals2::scoped_connection(
+        m_database_changed.connect(callback));
+}
+
 MonomerDatabase::MonomerDatabase() :
     m_core_monomers_db{create_default_monomers_db().release()}
 {
-    if (auto path = getMonomerDbPath();
-        path.has_value() && boost::filesystem::exists(*path)) {
+    if (auto path = getMonomerDbPath(); path.has_value()) {
         try {
-            loadMonomersFromSQLiteFile(*path);
+            if (boost::filesystem::exists(*path)) {
+                loadMonomersFromSQLiteFile(*path);
+            }
         } catch (const std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
@@ -771,7 +785,7 @@ MonomerDatabase::MonomerDatabase() :
 
 MonomerDatabase::~MonomerDatabase()
 {
-    resetMonomerDefinitions();
+    swap_custom_monomers_db(nullptr);
     if (m_core_monomers_db) {
         sqlite3_close_v2(m_core_monomers_db);
     }
@@ -840,7 +854,7 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
 void MonomerDatabase::resetMonomerDefinitions()
 {
     swap_custom_monomers_db(nullptr);
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 std::vector<std::string> MonomerDatabase::getDbFields() const
@@ -987,6 +1001,37 @@ MonomerInfo MonomerDatabase::getMonomerInfo(const std::string& monomer_id,
     };
 }
 
+MonomerInfo
+MonomerDatabase::getMonomerInfoBySmiles(const std::string& smiles) const
+{
+    auto fields = fmt::format("{}", fmt::join(getDbFields(), ", "));
+    auto canonical_smiles = canonicalize_monomer_smiles(smiles.c_str()).first;
+    // Escape apostrophes possible in CXSMILES
+    auto escaped_smiles = boost::replace_all_copy(canonical_smiles, "'", "''");
+    auto sql = fmt::format("SELECT {} FROM {} WHERE {}='{}';", fields,
+                           monomer_defs_table, smiles_column, escaped_smiles);
+
+    auto monomer_info_getter = [](sqlite3_stmt* stmt) {
+        auto m = std::make_optional<MonomerInfo>();
+        for (int i = 0; i < sqlite3_column_count(stmt); ++i) {
+            auto key = sqlite3_column_name(stmt, i);
+            auto value = _sqlite3_column_cstring(stmt, i);
+            assign_monomer_info(*m, key, value);
+        }
+        return m;
+    };
+
+    if (auto ret = get_info_from_database(
+            m_custom_monomers_db, m_core_monomers_db, sql, monomer_info_getter);
+        ret.has_value()) {
+        return *ret;
+    }
+
+    return MonomerInfo{
+        .symbol = boost::trim_copy(smiles),
+    };
+}
+
 void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
 {
     for (sqlite3* db : {include_core == true ? m_core_monomers_db : nullptr,
@@ -995,7 +1040,7 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 [[nodiscard]] MonomerDatabase::all_smiles_t
@@ -1125,6 +1170,9 @@ MonomerDatabase::getComplexMonomerQueries() const
 {
     using namespace RDKit::v2::SmilesParse;
     static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)[O,N]");
+    // A cysteine with a heavy atom on the sulfur (other than the R3 dummy).
+    static auto s_substituted_cysteine_query =
+        MolFromSmarts("N[CX4H]([CX4H2][SX2][!#0;!#1])C=O");
 
     // Return the atom indices for the R1 and R2 attachment points (either
     // one may be missing).
@@ -1151,6 +1199,12 @@ MonomerDatabase::getComplexMonomerQueries() const
     // Roughly: a monomer is complex unless it matches the residue_query
     // pattern once and has r1 and r2 four bonds apart, or is tiny.
     auto is_complex = [&](auto& mol) {
+        // toMonomeric() partitions structures using a generic cysteine query
+        // that would claim the sulfur and leave its substituent behind as a
+        // separate monomer, so these need to be matched as a whole.
+        if (!SubstructMatch(mol, *s_substituted_cysteine_query).empty()) {
+            return true;
+        }
         auto matches = SubstructMatch(mol, *residue_query);
         if (matches.size() == 1) {
             // Look at distance between mapping numbers
@@ -1197,7 +1251,13 @@ MonomerDatabase::getComplexMonomerQueries() const
                     auto can_smiles = RDKit::MolToSmiles(tautomer);
                     std::unique_ptr<RDKit::RWMol> can_tautomer(
                         RDKit::SmilesToMol(can_smiles, debug, sanitize));
-                    RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    try {
+                        RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    } catch (const RDKit::MolSanitizeException&) {
+                        // Sometimes the tautomerization reactions produce
+                        // an invalid structure; skip it.
+                        continue;
+                    }
                     query.mol = make_query(*can_tautomer, can_smiles);
                     query.attch_map = make_attch_map(*query.mol);
                     query.name = monomer_id.symbol;
@@ -1219,21 +1279,44 @@ MonomerDatabase::getComplexMonomerQueries() const
     return *m_complex_monomer_queries;
 }
 
-void MonomerDatabase::invalidateCache()
+void MonomerDatabase::onDatabaseChanged()
 {
     m_enumerated_core_smiles_cache.reset();
     m_complex_monomer_queries.reset();
+    m_database_changed();
 }
 
 [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
 MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
 {
-    auto type_value = toString(polymer_type);
-    auto sql = fmt::format("SELECT {} FROM {} WHERE {}=? AND {} != {};",
-                           fmt::join(getDbFields(), ", "), monomer_defs_table,
-                           polymer_type_column, symbol_column, analog_column);
-
     std::unordered_map<std::string, std::vector<MonomerInfo>> result;
+    for (auto& monomer : getMonomers(polymer_type, true)) {
+        if (monomer.natural_analog) {
+            result[*monomer.natural_analog].push_back(std::move(monomer));
+        }
+    }
+    return result;
+}
+
+std::vector<MonomerInfo>
+MonomerDatabase::getMonomersByPolymerType(ChainType polymer_type) const
+{
+    return getMonomers(polymer_type, false);
+}
+
+std::vector<MonomerInfo>
+MonomerDatabase::getMonomers(ChainType polymer_type,
+                             bool non_natural_only) const
+{
+    auto type_value = toString(polymer_type);
+    auto sql = fmt::format(
+        "SELECT {} FROM {} WHERE {}=?{};", fmt::join(getDbFields(), ", "),
+        monomer_defs_table, polymer_type_column,
+        non_natural_only
+            ? fmt::format(" AND {} != {}", symbol_column, analog_column)
+            : "");
+
+    std::vector<MonomerInfo> result;
 
     sqlite3_stmt* stmt = nullptr;
     for (sqlite3* db : {m_core_monomers_db, m_custom_monomers_db}) {
@@ -1253,9 +1336,7 @@ MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
                 auto value = _sqlite3_column_cstring(stmt, i);
                 assign_monomer_info(m, key, value);
             }
-            if (m.natural_analog.has_value()) {
-                result[*m.natural_analog].push_back(std::move(m));
-            }
+            result.push_back(std::move(m));
         }
     }
 

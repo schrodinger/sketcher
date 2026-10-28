@@ -1,0 +1,219 @@
+diff --git a/Code/GraphMol/Depictor/EmbeddedFrag.cpp b/Code/GraphMol/Depictor/EmbeddedFrag.cpp
+index f79a08e2f..250b342d7 100644
+--- a/Code/GraphMol/Depictor/EmbeddedFrag.cpp
++++ b/Code/GraphMol/Depictor/EmbeddedFrag.cpp
+@@ -106,26 +106,29 @@ void EmbeddedFrag::computeNbrsAndAng(unsigned int aid,
+   PRECONDITION(aid < dp_mol->getNumAtoms(), "");
+ 
+   PRECONDITION(doneNbrs.size() >= 3, "");
+-  // we will find all the inter nbr angles, pick the one with the largest angle
+-  // make those neighbors the nbr1 and nbr2 of aid
+-  double ang = 0.;
+-  std::vector<DOUBLE_INT_PAIR> anglePairs;
+-  anglePairs.reserve(doneNbrs.size() * (doneNbrs.size() - 1) / 2);
+-  for (auto nbi1 = doneNbrs.begin(); nbi1 != doneNbrs.end(); ++nbi1) {
+-    for (auto nbi2 = std::next(nbi1); nbi2 != doneNbrs.end(); ++nbi2) {
+-      ang = computeAngle(d_eatoms[aid].loc, d_eatoms[*nbi1].loc,
+-                         d_eatoms[*nbi2].loc);
+-      auto nbrPair = std::make_pair((*nbi1), (*nbi2));
+-      anglePairs.emplace_back(ang, nbrPair);
+-    }
++  // Consecutive bond directions bound gaps containing no other bond from aid.
++  // Pairwise angles are limited to pi and can instead span existing bonds when
++  // the gap around a bridgehead is larger than a semicircle.
++  std::vector<std::pair<double, int>> directions;
++  directions.reserve(doneNbrs.size());
++  for (auto nbr : doneNbrs) {
++    const auto delta = d_eatoms[nbr].loc - d_eatoms[aid].loc;
++    directions.emplace_back(std::atan2(delta.y, delta.x), nbr);
+   }
++  std::sort(directions.begin(), directions.end());
+ 
+-  std::ranges::sort(anglePairs, [](const auto &pr1, const auto &pr2) {
+-    if (pr1.first == pr2.first) {
+-      return pr1.second < pr2.second;
++  std::vector<DOUBLE_INT_PAIR> anglePairs;
++  anglePairs.reserve(directions.size());
++  for (size_t i = 0; i < directions.size(); ++i) {
++    const auto &start = directions[i];
++    const auto &end = directions[(i + 1) % directions.size()];
++    auto angle = end.first - start.first;
++    if (i + 1 == directions.size()) {
++      angle += 2 * M_PI;
+     }
+-    return pr1.first < pr2.first;
+-  });
++    anglePairs.emplace_back(angle, std::make_pair(start.second, end.second));
++  }
++  std::sort(anglePairs.begin(), anglePairs.end());
+ 
+   // more pain, more pain we unfortunately cannot right away pick the largest
+   // angle - it is possible that we pick an angle that is in a fused ring - see
+@@ -151,39 +154,13 @@ void EmbeddedFrag::computeNbrsAndAng(unsigned int aid,
+       break;
+     }
+   }
+-  const auto [wnb1, wnb2] = winner.second;
+-
+-  // now find the smallest angle that contains one of these nbrs
+-  int nb2 = -1;
+-  int nb1 = -1;
+-  for (const auto &anglePair : anglePairs) {
+-    const auto nbrPair = anglePair.second;
+-    if (wnb1 == nbrPair.first) {
+-      nb2 = wnb1;
+-      nb1 = nbrPair.second;
+-      break;
+-    } else if (wnb1 == nbrPair.second) {
+-      nb2 = wnb1;
+-      nb1 = nbrPair.first;
+-      break;
+-    } else if (wnb2 == nbrPair.first) {
+-      nb2 = wnb2;
+-      nb1 = nbrPair.second;
+-      break;
+-    } else if (wnb2 == nbrPair.second) {
+-      nb2 = wnb2;
+-      nb1 = nbrPair.first;
+-      break;
+-    }
+-  }
+ 
+-  // now find the rotation between nb1 and nb2
+-  auto wAng = winner.first;
+-  d_eatoms[aid].rotDir = rotationDir(d_eatoms[aid].loc, d_eatoms[nb1].loc,
+-                                     d_eatoms[nb2].loc, wAng);
+-  d_eatoms[aid].nbr1 = nb1;
+-  d_eatoms[aid].nbr2 = nb2;
+-  d_eatoms[aid].angle = 2 * M_PI - wAng;
++  // New neighbors are placed by rotating nbr2 towards nbr1 through the gap.
++  // Its direction is known, including for gaps larger than pi.
++  d_eatoms[aid].rotDir = 1;
++  d_eatoms[aid].nbr1 = winner.second.second;
++  d_eatoms[aid].nbr2 = winner.second.first;
++  d_eatoms[aid].angle = 2 * M_PI - winner.first;
+ }
+ 
+ // constructor to embed a cis/trans system
+@@ -961,7 +938,8 @@ void EmbeddedFrag::addAtomToAtomWithAng(unsigned int aid, unsigned int toAid) {
+ 
+   const auto &nb1 = d_eatoms.at(refAtom.nbr1).loc;
+   const auto &nb2 = d_eatoms.at(refAtom.nbr2).loc;
+-  if (d_eatoms[toAid].rotDir == 0) {
++  const auto canChooseDirection = refAtom.rotDir == 0;
++  if (canChooseDirection) {
+     d_eatoms[toAid].rotDir = rotationDir(refLoc, nb1, nb2, remAngle);
+   }
+ 
+@@ -971,13 +949,15 @@ void EmbeddedFrag::addAtomToAtomWithAng(unsigned int aid, unsigned int toAid) {
+   rtrans.SetTransform(refLoc, currAngle);
+   auto currLoc = nb2;
+   rtrans.TransformPoint(currLoc);
+-  if (fabs(remAngle) - M_PI < 1e-3) {
++  // Either direction is valid only for an unassigned half-plane. Once a gap
++  // has been selected, reversing would place the atom outside that gap.
++  if (canChooseDirection && std::abs(remAngle - M_PI) < 1e-3) {
+     auto currLoc2 = nb2;
+     rtrans.SetTransform(refLoc, -currAngle);
+     rtrans.TransformPoint(currLoc2);
+     if (findNumNeigh(currLoc, 0.5) > findNumNeigh(currLoc2, 0.5)) {
+       currLoc = currLoc2;
+-      currAngle *= -1;
++      d_eatoms[toAid].rotDir *= -1;
+     } else {
+       rtrans.SetTransform(refLoc, currAngle);
+     }
+diff --git a/Code/GraphMol/Depictor/catch_tests.cpp b/Code/GraphMol/Depictor/catch_tests.cpp
+index d767d65a9..505d1c2f5 100644
+--- a/Code/GraphMol/Depictor/catch_tests.cpp
++++ b/Code/GraphMol/Depictor/catch_tests.cpp
+@@ -14,6 +14,7 @@
+ #include <GraphMol/RDKitBase.h>
+ #include <GraphMol/Chirality.h>
+ #include <GraphMol/MolOps.h>
++#include "EmbeddedFrag.h"
+ #include "RDDepictor.h"
+ #include "DepictUtils.h"
+ #include <GraphMol/SmilesParse/SmilesParse.h>
+@@ -415,8 +416,15 @@ TEST_CASE("templates are aware of E/Z stereochemistry") {
+   params.useRingTemplates = true;
+   RDDepict::compute2DCoords(*mol1, params);
+   RDDepict::compute2DCoords(*mol2, params);
+-  auto rmsd = MolAlign::getBestRMS(*mol1, *mol2);
+-  CHECK(rmsd > 1.);
++  // Check template acceptance directly against a template-free depiction.
++  // Comparing the two stereoisomers' overall RMSD also measures unrelated
++  // substituent placement and makes the cutoff sensitive to layout changes.
++  ROMol mol1WithoutTemplate(*mol1), mol2WithoutTemplate(*mol2);
++  params.useRingTemplates = false;
++  RDDepict::compute2DCoords(mol1WithoutTemplate, params);
++  RDDepict::compute2DCoords(mol2WithoutTemplate, params);
++  CHECK(MolAlign::getBestRMS(*mol1, mol1WithoutTemplate) > 0.1);
++  CHECK(MolAlign::getBestRMS(*mol2, mol2WithoutTemplate) < 1.e-4);
+ }
+ 
+ TEST_CASE("dative bonds and rings") {
+@@ -2502,6 +2510,63 @@ TEST_CASE(
+ }
+ #endif
+ 
++TEST_CASE("attachments use the exterior gap larger than pi") {
++  auto side = GENERATE(-1.0, 1.0);
++  CAPTURE(side);
++  auto mol = "C(F)(Cl)(Br)C"_smiles;
++  REQUIRE(mol);
++  // Three bonds occupy a 90-degree sector. The fourth belongs in the free
++  // 270-degree sector, including when that gap crosses the atan2 branch cut.
++  RDGeom::INT_POINT2D_MAP coords{
++      {0, {0, 0}}, {1, {side, -1}}, {2, {side, 0}}, {3, {side, 1}}};
++  RDDepict::EmbeddedFrag fragment(mol.get(), coords);
++  fragment.addNonRingAtom(4, 0);
++  const auto &pos = fragment.GetEmbeddedAtom(4).loc;
++  CHECK(pos.x * side < 0);
++  CHECK(std::abs(pos.y) < 1.e-6);
++}
++
++TEST_CASE("crowding does not reverse a selected attachment gap") {
++  auto halfWidth = GENERATE(M_PI / 2, 5 * M_PI / 9);
++  CAPTURE(halfWidth);
++  auto mol = "P(F)(Cl)(Br)(CC)C"_smiles;
++  REQUIRE(mol);
++  const auto pointAt = [](double angle) {
++    return RDGeom::Point2D(std::cos(angle), std::sin(angle)) *
++           RDDepict::BOND_LEN;
++  };
++  const auto step = (2 * M_PI - 2 * halfWidth) / 3;
++  // The three existing bonds leave a 180- or 160-degree gap. Atom 5 crowds
++  // the first new position, but reversing would leave the selected gap.
++  RDGeom::INT_POINT2D_MAP coords{{0, {0, 0}},
++                                 {1, pointAt(-halfWidth)},
++                                 {2, pointAt(0)},
++                                 {3, pointAt(halfWidth)},
++                                 {5, pointAt(halfWidth + step) * 1.05}};
++  RDDepict::EmbeddedFrag fragment(mol.get(), coords);
++  for (auto atom : {4, 6}) {
++    fragment.addNonRingAtom(atom, 0);
++    const auto expected = pointAt(halfWidth + (atom == 4 ? 1 : 2) * step);
++    CHECK((fragment.GetEmbeddedAtom(atom).loc - expected).length() < 1.e-6);
++  }
++}
++
++TEST_CASE("attachments retain a direction chosen to avoid crowding") {
++  auto mol = "C(F)(Cl)(CC)C"_smiles;
++  REQUIRE(mol);
++  // Two opposite bonds leave either half-plane available. Atom 4 crowds
++  // the right side, so both remaining substituents should go to the left.
++  RDGeom::INT_POINT2D_MAP coords{
++      {0, {0, 0}}, {1, {0, -1.5}}, {2, {0, 1.5}}, {4, {1.3, 0.75}}};
++  RDDepict::EmbeddedFrag fragment(mol.get(), coords);
++  for (auto atom : {3, 5}) {
++    fragment.addNonRingAtom(atom, 0);
++    const RDGeom::Point2D expected(-std::sqrt(3.) * 0.75,
++                                   atom == 3 ? 0.75 : -0.75);
++    CHECK((fragment.GetEmbeddedAtom(atom).loc - expected).length() < 1.e-6);
++  }
++}
++
+ TEST_CASE("canonical ordering") {
+   auto useLegacy = GENERATE(true, false);
+   CAPTURE(useLegacy);

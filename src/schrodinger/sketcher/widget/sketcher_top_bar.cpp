@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QToolButton>
 #include <QWidget>
@@ -10,7 +11,8 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
-#include "schrodinger/sketcher/dialog/error_dialog.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
@@ -68,6 +70,9 @@ void SketcherTopBar::initMenus()
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_import_menu->m_paste_in_text_act, &QAction::triggered, this,
             &SketcherTopBar::onPasteInTextClicked, Qt::QueuedConnection);
+    connect(m_import_menu->m_load_monomer_database_act, &QAction::triggered,
+            this, &SketcherTopBar::onLoadMonomerDatabaseClicked,
+            Qt::QueuedConnection);
 
     // Set up "Export" menu
     m_export_menu = new ExportMenu(this);
@@ -156,6 +161,11 @@ void SketcherTopBar::setModel(SketcherModel* model)
             &SketcherTopBar::updateWidgetsEnabled);
     connect(model, &SketcherModel::undoStackDataChanged, this,
             &SketcherTopBar::updateWidgetsEnabled);
+}
+
+void SketcherTopBar::setLoadMonomerDatabaseVisible(const bool visible)
+{
+    m_import_menu->m_load_monomer_database_act->setVisible(visible);
 }
 
 void SketcherTopBar::updateWidgetsEnabled()
@@ -248,13 +258,39 @@ void SketcherTopBar::onImportFromFileClicked()
         }
     };
 
-    QStringList filters;
-    for (const auto& [_, label, extensions] : get_import_formats()) {
-        filters.append(get_filter_name(label, extensions));
-    }
-    auto name_filter = filters.join(";;");
+    QFileDialog::getOpenFileContent(get_import_name_filter(),
+                                    file_open_completed, this);
+}
 
-    QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
+void SketcherTopBar::onLoadMonomerDatabaseClicked()
+{
+    auto file_open_completed = [this](const QString& file_path,
+                                      const QByteArray& content) {
+        if (file_path.isEmpty()) {
+            return;
+        }
+        try {
+            auto& db = rdkit_extensions::MonomerDatabase::instance();
+            auto result = db.loadMonomersFromJson(content.toStdString());
+            if (!result.second.empty()) {
+                QStringList failures;
+                for (const auto& failure : result.second) {
+                    failures.append(QString::fromStdString(failure));
+                }
+                show_error_dialog("Monomer Database Error", failures.join("\n"),
+                                  this);
+            } else {
+                show_information_dialog("Monomer Database",
+                                        QFileInfo(file_path).fileName() +
+                                            " read successfully.",
+                                        this);
+            }
+        } catch (const std::exception& exc) {
+            show_error_dialog("Monomer Database Error", exc.what(), this);
+        }
+    };
+    QFileDialog::getOpenFileContent("JSON files (*.json)", file_open_completed,
+                                    this);
 }
 
 void SketcherTopBar::onPasteInTextClicked()

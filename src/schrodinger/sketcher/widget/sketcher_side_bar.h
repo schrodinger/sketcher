@@ -35,6 +35,16 @@ class SKETCHER_API SketcherSideBar : public SketcherView
     void updateCheckState() override;
 
     /**
+     * Show or hide the atomistic/monomeric interface toggle.
+     */
+    void setInterfaceToggleVisible(const bool visible);
+
+    /**
+     * @return the interface toggle's height hint after applying its style
+     */
+    int getInterfaceToggleHeight() const;
+
+    /**
      * Disconnect signals from each widget's updateWidgetsEnabled()
      * slot; called when selection-only mode is enabled in SketcherWidget.
      */

@@ -1,0 +1,96 @@
+diff --git a/Code/GraphMol/ChemTransforms/MolFragmenter.cpp b/Code/GraphMol/ChemTransforms/MolFragmenter.cpp
+index dd5ca9af4..7f13bdab7 100644
+--- a/Code/GraphMol/ChemTransforms/MolFragmenter.cpp
++++ b/Code/GraphMol/ChemTransforms/MolFragmenter.cpp
+@@ -460,7 +460,7 @@ ROMol *fragmentOnBonds(
+   for (auto bondIdx : bondIndices) {
+     bondsToRemove.push_back(res->getBondWithIdx(bondIdx));
+   }
+-  std::unordered_set<unsigned int> atomsToUpdate;
++  std::unordered_map<unsigned int, unsigned int> atomsToUpdate;
+   res->beginBatchEdit();
+   for (unsigned int i = 0; i < bondsToRemove.size(); ++i) {
+     const Bond *bond = bondsToRemove[i];
+@@ -492,7 +492,7 @@ ROMol *fragmentOnBonds(
+         at2->setIsotope(eidx);
+       }
+       unsigned int idx1 = res->addAtom(at1.release(), false, true);
+-      atomsToUpdate.insert(idx1);
++      ++atomsToUpdate[idx1];
+       if (bondTypes) {
+         bT = (*bondTypes)[i];
+       }
+@@ -511,7 +511,7 @@ ROMol *fragmentOnBonds(
+       }
+ 
+       unsigned int idx2 = res->addAtom(at2.release(), false, true);
+-      atomsToUpdate.insert(idx2);
++      ++atomsToUpdate[idx2];
+       bondidx = res->addBond(bidx, idx2, bT) - 1;
+       // this bond starts at the same atom, so its direction should always be
+       // correct:
+@@ -560,23 +560,21 @@ ROMol *fragmentOnBonds(
+       }
+     }
+     // keep track of the atoms so that we can adjust H counts later
+-    atomsToUpdate.insert(bidx);
+-    atomsToUpdate.insert(eidx);
+-}
++    ++atomsToUpdate[bidx];
++    ++atomsToUpdate[eidx];
++  }
+   res->commitBatchEdit();
+   res->clearComputedProps();
+-  if (!atomsToUpdate.empty()) {
+-    // Adjust H counts on dummies and atoms where bonds were broken.
+-    // was github issues 429, 6034
+-    std::ranges::for_each(atomsToUpdate, [&](unsigned int idx) {
+-      Atom *atom = res->getAtomWithIdx(idx);
+-      if (!addDummies &&
+-          (atom->getNoImplicit() ||
+-           (atom->getIsAromatic() && atom->getAtomicNum() != 6))) {
+-        atom->setNumExplicitHs(atom->getNumExplicitHs() + 1);
+-      }
+-      atom->updatePropertyCache(false);
+-    });
++
++  // Adjust H counts on dummies and atoms where bonds were broken.
++  // was github issues 429, 6034
++  for (auto [idx, count] : atomsToUpdate) {
++    Atom *atom = res->getAtomWithIdx(idx);
++    if (!addDummies && (atom->getNoImplicit() ||
++                        (atom->getIsAromatic() && atom->getAtomicNum() != 6))) {
++      atom->setNumExplicitHs(atom->getNumExplicitHs() + count);
++    }
++    atom->updatePropertyCache(false);
+   }
+ 
+   return static_cast<ROMol *>(res.release());
+diff --git a/Code/GraphMol/ChemTransforms/catch_tests.cpp b/Code/GraphMol/ChemTransforms/catch_tests.cpp
+index f0b723ac4..8037222ba 100644
+--- a/Code/GraphMol/ChemTransforms/catch_tests.cpp
++++ b/Code/GraphMol/ChemTransforms/catch_tests.cpp
+@@ -852,4 +852,21 @@ TEST_CASE("github #9468") {
+       CHECK(splitMol->getAtomWithIdx(1)->getTotalNumHs() == 1);
+     }
+   }
+-}
+\ No newline at end of file
++  SECTION("breaking multiple bonds with NoImplicit") {
++    // The brackets are totally redundant here, but they are required
++    // to trigger the issue
++    auto mol = "C[C](C)(C)C"_smiles;
++    REQUIRE(mol);
++    std::vector<unsigned int> bonds{0, 1};
++    {
++      bool addDummies = false;
++      std::unique_ptr<ROMol> splitMol(
++          MolFragmenter::fragmentOnBonds(*mol, bonds, addDummies));
++      REQUIRE(splitMol);
++
++      auto atom = splitMol->getAtomWithIdx(1);
++      CHECK(atom->getTotalNumHs() == 2);
++      CHECK(atom->getNoImplicit() == true);
++    }
++  }
++}

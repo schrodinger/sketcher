@@ -3,7 +3,9 @@
 #include <cmath>
 
 #include <QBuffer>
+#include <QFontMetricsF>
 #include <QGraphicsScene>
+#include <QLinearGradient>
 #include <QPainter>
 #include <QSvgGenerator>
 
@@ -155,9 +157,56 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->setPen(m_border_pen);
     painter->setBrush(m_border_brush);
     painter->drawPath(m_border_path);
-    painter->setPen(m_main_label_pen);
     painter->setFont(m_main_label_font);
-    painter->drawText(m_main_label_left_baseline, m_main_label_text);
+
+    if (m_main_label_is_truncated) {
+        QPainterPath text_path;
+        text_path.addText(m_main_label_left_baseline, m_main_label_font,
+                          m_main_label_fade_text);
+
+        // Start the gradient at the last character used to size the label.
+        // Subtracting its advance from the shortened label's advance preserves
+        // the kerning Qt applies before that character.
+        const QFontMetricsF metrics(m_main_label_font, painter->device());
+        const auto fade_start_character = m_main_label_text.right(1);
+        const auto fade_start_character_x =
+            m_main_label_left_baseline.x() +
+            metrics.horizontalAdvance(m_main_label_text) -
+            metrics.horizontalAdvance(fade_start_character);
+        QPainterPath fade_start_character_path;
+        fade_start_character_path.addText(
+            QPointF(fade_start_character_x, m_main_label_left_baseline.y()),
+            m_main_label_font, fade_start_character);
+        const auto fade_start_x =
+            fade_start_character_path.boundingRect().left();
+
+        // Intersect the glyph outlines explicitly rather than relying only on
+        // the painter clip. This ensures that SVG output also truncates the
+        // additional character at the monomer boundary.
+        const auto clipped_text_path = text_path.intersected(m_border_path);
+        const auto fade_end_x = clipped_text_path.boundingRect().right();
+
+        const auto color = m_main_label_pen.color();
+        auto faded_color = color;
+        faded_color.setAlpha(0);
+
+        QLinearGradient gradient(fade_start_x, 0.0, fade_end_x, 0.0);
+        gradient.setColorAt(0.0, color);
+        gradient.setColorAt(1.0, faded_color);
+
+        // The item is sized and the text is centered using the shortened
+        // label, so the explicitly intersected path makes the extra character
+        // visibly truncated in the right-side padding.
+        painter->fillPath(clipped_text_path, QBrush(gradient));
+
+        // Ensure that the clipped glyph never paints over the border.
+        painter->setPen(m_border_pen);
+        painter->setBrush(Qt::NoBrush);
+        painter->drawPath(m_border_path);
+    } else {
+        painter->setPen(m_main_label_pen);
+        painter->drawText(m_main_label_left_baseline, m_main_label_text);
+    }
     painter->restore();
 }
 
@@ -198,13 +247,25 @@ qreal AbstractMonomerItem::scaleBasedOnFontSize(qreal num) const
     return num * m_fonts.size() / DEFAULT_FONT_SIZE;
 }
 
+void AbstractMonomerItem::setMainLabelText(const std::string& text)
+{
+    const auto full_text = QString::fromStdString(text);
+    m_main_label_text = elide_text(text);
+    m_main_label_is_truncated = m_main_label_text != full_text;
+    m_main_label_fade_text = m_main_label_is_truncated
+                                 ? full_text.left(MAX_MONOMER_LABEL_LENGTH + 1)
+                                 : m_main_label_text;
+}
+
 QString elide_text(const std::string& text)
 {
     auto qtext = QString::fromStdString(text);
-    if (text.length() > MAX_MONOMER_LABEL_LENGTH) {
-        // shorten the string and add ellipses
-        return qtext.left(MAX_MONOMER_LABEL_LENGTH - 1) +
-               QString::fromUtf16(u"\u2026");
+    // A label with one character beyond MAX_MONOMER_LABEL_LENGTH fits without
+    // suggesting that more text follows. For longer labels, crop at
+    // MAX_MONOMER_LABEL_LENGTH so the additional character can provide the
+    // fade-out at the monomer boundary.
+    if (qtext.length() > MAX_MONOMER_LABEL_LENGTH + 1) {
+        return qtext.left(MAX_MONOMER_LABEL_LENGTH);
     } else {
         return qtext;
     }

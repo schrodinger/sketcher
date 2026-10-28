@@ -197,6 +197,7 @@ set(BOOST_LIBS_TO_INCLUDE
     # rdkit_extensions required libraries
     bimap
     filesystem
+    signals2
     test)
 
 if(NOT EMSCRIPTEN)
@@ -282,6 +283,87 @@ list(
   apply
   --ignore-whitespace
   ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_expat_public_includes.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9563.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9550.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9536.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_molecular_templates_pr_29.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9639.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9649.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9650.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9630.patch)
+
+list(
+  APPEND
+  RDKIT_PATCH_COMMAND
+  &&
+  git
+  apply
+  --ignore-whitespace
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_revert_pr_9414.patch)
 
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)

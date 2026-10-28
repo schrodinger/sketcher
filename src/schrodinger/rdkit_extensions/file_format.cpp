@@ -203,7 +203,7 @@ get_compression_type_from_ext(const boost::filesystem::path& filename)
 {
     if (boost::algorithm::iends_with(filename.string(), "gz")) {
         return CompressionType::GZIP;
-    } else if (boost::algorithm::iends_with(filename.string(), ".zst")) {
+    } else if (boost::algorithm::iends_with(filename.string(), "zst")) {
         return CompressionType::ZSTD;
     }
     return CompressionType::UNKNOWN;

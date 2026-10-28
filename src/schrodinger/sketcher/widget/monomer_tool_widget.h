@@ -3,8 +3,10 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 
 #include <boost/bimap.hpp>
+#include <boost/signals2/connection.hpp>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
@@ -19,6 +21,13 @@ class MonomerToolWidget;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class ChainType;
+struct MonomerID;
+} // namespace rdkit_extensions
+
 namespace sketcher
 {
 
@@ -45,6 +54,9 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     std::unordered_set<QAbstractButton*> getCheckableButtons() override;
 
   protected:
+    /** Rebuild monomer analog popups from the current monomer database. */
+    void updateMonomerButtons();
+
     std::unique_ptr<Ui::MonomerToolWidget> ui;
     boost::bimap<QAbstractButton*, AminoAcidTool> m_button_amino_acid_bimap;
     boost::bimap<QAbstractButton*, NucleicAcidTool> m_button_nucleic_acid_bimap;
@@ -68,14 +80,35 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onAminoAcidClicked(QAbstractButton* button);
 
     /**
+     * Respond the the user clicking OK in the custom monomer dialog
+     * @param smiles A SMILES string representing the sketched monomer
+     * @param monomer_type The monomer type that the user selected in the dialog
+     */
+    void onCustomMonomerDialogAccepted(
+        const std::string& smiles,
+        const rdkit_extensions::ChainType monomer_type);
+
+    /**
      * Respond to the user clicking on a specific nucleic acid
      */
     void onNucleicAcidClicked(QAbstractButton* button);
 
     /**
+     * Activate the remembered database monomer from either unclassified
+     * button.
+     */
+    void activateMonomerDbMonomer(QAbstractButton* button);
+
+    rdkit_extensions::MonomerID
+    getMonomerDbMonomerForButton(QAbstractButton* button) const;
+
+    /**
      * Respond to the user clicking on a specific monomeric connection button
      */
     void onConnectionButtonClicked(int button_id);
+
+  private:
+    boost::signals2::scoped_connection m_database_connection;
 };
 
 } // namespace sketcher

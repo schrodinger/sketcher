@@ -1,0 +1,249 @@
+#pragma once
+
+#include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include "schrodinger/rdkit_extensions/definitions.h"
+
+#include <boost/noncopyable.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/signals2/signal.hpp>
+
+struct sqlite3;
+
+inline constexpr std::string_view CUSTOM_MONOMER_DB_PATH_ENV_VAR =
+    "SCHRODINGER_CUSTOM_MONOMER_DB_PATH";
+
+namespace RDKit
+{
+class RWMol;
+}
+
+namespace schrodinger
+{
+namespace rdkit_extensions
+{
+enum class ChainType;
+
+using opt_string_t = std::optional<std::string>;
+
+// Returns path of custom monomer database if it exists, otherwise returns
+RDKIT_EXTENSIONS_API std::optional<std::string> getMonomerDbPath();
+
+struct RDKIT_EXTENSIONS_API MonomerInfo {
+    opt_string_t symbol = std::nullopt;
+    opt_string_t polymer_type = std::nullopt;
+    opt_string_t natural_analog = std::nullopt;
+    opt_string_t smiles = std::nullopt;
+    opt_string_t core_smiles = std::nullopt;
+    opt_string_t name = std::nullopt;
+    opt_string_t monomer_type = std::nullopt;
+    opt_string_t author = std::nullopt;
+    opt_string_t pdbcode = std::nullopt;
+    opt_string_t rgroups = std::nullopt;
+
+    size_t getHash() const;
+    bool areRequiredFieldsPopulated() const;
+};
+
+struct RDKIT_EXTENSIONS_API ResidueQuery {
+    /// Query molecule
+    boost::shared_ptr<RDKit::RWMol> mol;
+
+    /// Map from atom index to attachment point number
+    std::vector<unsigned int> attch_map;
+
+    /// Query name used for logging
+    std::string name;
+
+    /// Whether to consider chirality while doing the substructure search.
+    /// Usually false for generic queries but true for specific monomers.
+    bool use_chirality;
+
+    /// Getter for calling from Python.
+    // (I gave up on trying to get SWIG to convert the type of mol correctly
+    // when accessing the member variable directly.)
+    boost::shared_ptr<RDKit::RWMol> getMol() const
+    {
+        return mol;
+    }
+};
+
+/// A custom monomer is uniquely identified by it chain type (PEPTIDE, RNA,
+/// CHEM...) and symbol. For example, there can be both a PEPTIDE "A" (alanine)
+/// and an RNA "A" (adenine).
+struct RDKIT_EXTENSIONS_API MonomerID {
+    std::string symbol;
+    ChainType chain_type;
+
+    bool operator==(const MonomerID&) const = default;
+};
+
+class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
+{
+  public:
+    // (HELM symbol, smiles, chain type)
+    using helm_info_t =
+        std::optional<std::tuple<std::string, std::string, ChainType>>;
+    using monomer_smiles_t = std::pair<std::string, MonomerID>;
+    using all_smiles_t = std::vector<monomer_smiles_t>;
+    using enumerated_core_smiles_map_t =
+        std::unordered_map<std::string, MonomerID>;
+
+    // Get the current DB instance. It will always contain an
+    // up-to-date table with our core monomer, and MAY contain
+    // an additional table with custom definitions.
+    [[nodiscard]] static MonomerDatabase& instance();
+
+    ~MonomerDatabase();
+
+    // Subscribe to completed database updates. Keep the returned connection
+    // alive to receive notifications; destroying it unsubscribes. Callbacks
+    // run synchronously after cache invalidation and must not throw or mutate
+    // the database. Notifications may also be sent for no-op updates.
+    [[nodiscard]] boost::signals2::scoped_connection subscribeToChanges(
+        const boost::signals2::signal<void()>::slot_type& callback);
+
+    // Populate the custom monomers table with the given SQL.
+    // Note that any prior custom definitions will be dropped
+    // if the SQL is successful (on failure, previous contents
+    // will be preserved).
+    // Also, be careful with this one, as the SQL may drop/alter
+    // the table schema, which may result in a DB missing some
+    // required columns!
+    // @throws std::runtime_error if the SQL fails to execute,
+    //    or the resulting table is missing some required columns.
+    void loadMonomersFromSql(std::string_view sql);
+
+    // Populate the custom monomers table with the definitions
+    // parsed from the JSON. Note that if the JSON definitions can
+    // successfully parsed, any prior custom definitions
+    // will be dropped (they will be preserved if an exception is
+    // thrown during the import process).
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    loadMonomersFromJson(std::string_view json);
+
+    // use the indicated SQLite DB file as the source for custom
+    // monomer definitions.
+    // @throws std::runtime_error if the DB file cannot be opened,
+    //    the 'monomers' table is missing, or some required columns
+    //    do not exist in the DB file.
+    void loadMonomersFromSQLiteFile(boost::filesystem::path db_file);
+
+    // Insert the custom monomers in JSON format into the custom
+    // definitions table. Any previous definitions will be preserved.
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    insertMonomersFromJson(std::string_view json);
+
+    void resetMonomerDefinitions();
+
+    [[nodiscard]] std::vector<std::string> getDbFields() const;
+
+    [[nodiscard]] MonomerInfo getMonomerInfo(const std::string& monomer_id,
+                                             ChainType polymer_type) const;
+
+    [[nodiscard]] MonomerInfo
+    getMonomerInfoBySmiles(const std::string& smiles) const;
+
+    [[nodiscard]] opt_string_t getMonomerSmiles(const std::string& monomer_id,
+                                                ChainType polymer_type) const;
+
+    [[nodiscard]] opt_string_t getNaturalAnalog(const std::string& monomer_id,
+                                                ChainType polymer_type) const;
+
+    [[nodiscard]] opt_string_t getPdbCode(const std::string& monomer_id,
+                                          ChainType polymer_type) const;
+
+    [[nodiscard]] helm_info_t
+    getHelmInfo(const std::string& three_letter_code) const;
+
+    // Return all information stored in the currently active DBs.
+    // Note that definitions may be duplicated between the "core"
+    // and the "custom" DBs.
+    // @param include_core : whether to include the core monomers
+    //   in the output or just return the custom ones. Default: true.
+    // @returns a JSON string with the content of the DBs.
+    [[nodiscard]] std::string
+    getMonomerDefinitions(bool include_core = true) const;
+
+    // Canonicalize SMILES fields in the DBs, deriving CORE_SMILES from SMILES
+    // only when CORE_SMILES was not supplied.
+    // This should be used after loading SQL/JSON/a SQLite file.
+    void canonicalizeSmilesFields(bool include_core = false);
+
+    [[nodiscard]] all_smiles_t getAllSMILES() const;
+
+    // Return a cached map from enumerated core SMILES to monomer symbol and
+    // chain type.
+    // The cache is invalidated whenever the database is modified.
+    [[nodiscard]] const enumerated_core_smiles_map_t&
+    getEnumeratedCoreSmiles() const;
+
+    // Returns non-natural monomers grouped by their natural analog symbol.
+    // Only returns monomers where SYMBOL != NATURAL_ANALOG.
+    [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
+    getMonomersByNaturalAnalog(ChainType polymer_type) const;
+
+    // Returns all monomers of the given polymer type, including monomers
+    // without a natural analog.
+    [[nodiscard]] std::vector<MonomerInfo>
+    getMonomersByPolymerType(ChainType polymer_type) const;
+
+    // Return the cached list of complex monomer queries. (A "complex
+    // monomer" is one that can't be matched correctly using a generic SMARTS
+    // pattern.) The cache is invalidated whenever the database is modified.
+    [[nodiscard]] const std::vector<ResidueQuery>&
+    getComplexMonomerQueries() const;
+
+  private:
+    std::vector<MonomerInfo> getMonomers(ChainType polymer_type,
+                                         bool non_natural_only) const;
+
+    // this is private because we don't want to allow managing
+    // just any db -- we require the proper schema!
+    MonomerDatabase();
+
+    // swaps the SQLite DB we use to read the custom monomers
+    // from. The instance will take ownership of the DB and close
+    // the current DB instance if there's one.
+    void swap_custom_monomers_db(sqlite3* db);
+
+    // Checks whether the db has the schema that is required
+    // by this class (i.e. the table(s) and columns a the
+    // core monomers db)
+    [[nodiscard]] std::vector<std::string> check_db(sqlite3* db) const;
+
+    void dumpToFile(sqlite3* db, boost::filesystem::path db_file) const;
+
+    // Invalidate derived data before notifying readers of a completed update.
+    void onDatabaseChanged();
+
+    boost::signals2::signal<void()> m_database_changed;
+
+    sqlite3* m_core_monomers_db = nullptr;
+    sqlite3* m_custom_monomers_db = nullptr;
+
+    // Cache for enumerated core SMILES to monomer symbol and chain type.
+    mutable std::optional<enumerated_core_smiles_map_t>
+        m_enumerated_core_smiles_cache;
+
+    // Cache for complex monomer queries
+    mutable std::optional<std::vector<ResidueQuery>> m_complex_monomer_queries;
+};
+} // namespace rdkit_extensions
+} // namespace schrodinger

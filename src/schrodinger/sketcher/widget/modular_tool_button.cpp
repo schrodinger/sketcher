@@ -13,6 +13,11 @@ namespace sketcher
 ModularToolButton::ModularToolButton(QWidget* parent) :
     ToolButtonWithPopup(parent)
 {
+    connect(this, &QToolButton::clicked, this, [this]() {
+        if (m_enum_int == -1) {
+            showPopup();
+        }
+    });
 }
 
 void ModularToolButton::setPopupWidget(QWidget* popup)
@@ -48,9 +53,15 @@ void ModularToolButton::setEnumItem(int enum_int)
     }
 }
 
+void ModularToolButton::setUpdateAppearanceFromPopup(bool update)
+{
+    m_update_appearance_from_popup = update;
+    updateButton();
+}
+
 void ModularToolButton::updateButton()
 {
-    if (m_popup_wdg == nullptr) {
+    if (m_popup_wdg == nullptr || !m_update_appearance_from_popup) {
         return;
     }
     auto popup = dynamic_cast<ModularPopup*>(m_popup_wdg);

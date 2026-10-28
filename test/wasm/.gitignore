@@ -5,3 +5,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+# Recreated from versioned archives by Playwright's global setup.
+/e2e/sketcher/.runtime_fixtures/
+/e2e/__snapshots__/
