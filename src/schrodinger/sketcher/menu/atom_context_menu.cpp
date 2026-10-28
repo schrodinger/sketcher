@@ -219,6 +219,10 @@ ExistingRGroupMenu::ExistingRGroupMenu(MolModel* mol_model, QWidget* parent) :
     m_mol_model(mol_model)
 {
     setTitle("Existing R-Group");
+    // Populate before QMenu calculates popup geometry. showEvent is too late
+    // for an initially empty submenu on Qt 6.12/WASM.
+    connect(this, &QMenu::aboutToShow, this,
+            &ExistingRGroupMenu::updateActions);
 }
 
 void ExistingRGroupMenu::updateActions()
