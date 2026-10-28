@@ -163,6 +163,9 @@ void Scene::updateItems(const WhatChangedType what_changed)
         auto bond_display_settings_ptr =
             m_sketcher_model->getBondDisplaySettingsPtr();
 
+        // This setting matches the generated coordinates when rendering through
+        // image_generation. If exposed in the GUI, connector routing must use
+        // the actual coordinate layout rather than just the requested setting.
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_bond_to_secondary_connection_item,
                  m_s_group_to_s_group_item) =
