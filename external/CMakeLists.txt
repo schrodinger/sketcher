@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 include(ExternalProject)
 
 project(schrodinger_sketcher_external)
@@ -87,15 +87,24 @@ function(generate_sqlite_urls VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    -DCMAKE_BUILD_TYPE=Release)
+
 if(EMSCRIPTEN)
+  # All dependencies must use the same exception and setjmp/longjmp model as Qt
+  # and Sketcher. Include C libraries that use longjmp as well as C++ code.
+  set(WASM_EXCEPTION_FLAGS "-fwasm-exceptions -sSUPPORT_LONGJMP=wasm")
+  list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+       "-DCMAKE_C_FLAGS=${WASM_EXCEPTION_FLAGS}"
+       "-DCMAKE_CXX_FLAGS=${WASM_EXCEPTION_FLAGS}")
   set(EXTRA_BOOST_CMAKE_ARGS
-      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
-  )
+      "-DCMAKE_CXX_FLAGS=${WASM_EXCEPTION_FLAGS} -fdeclspec -pthread")
   set(EXTRA_QT_CMAKE_ARGS
-      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
-  set(EXTRA_RDKIT_CMAKE_ARGS
-      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
-      -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
+      -DFEATURE_wasm_jspi=ON -DFEATURE_wasm_exceptions=ON)
+  set(EXTRA_RDKIT_CMAKE_ARGS ${EXTRA_BOOST_CMAKE_ARGS}
+                             -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
 
@@ -104,10 +113,6 @@ else()
          -DFEATURE_xcb_xlib=ON -DFEATURE_xkbcommon=ON)
   endif()
 endif()
-
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
-    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
-    -DCMAKE_BUILD_TYPE=Release)
 
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
@@ -350,6 +355,19 @@ else()
   set(QT_GIT_SUBMODULES qtbase qtsvg)
 endif()
 
+generate_git_patch_command(
+  QT_PATCH_COMMAND
+  SUBMODULE
+  qtbase
+  # QTBUG-151280 is fixed in Qt 6.13; appears likely to be backported to Qt
+  # 6.12.1 as well.
+  qt_QTBUG-151280.patch
+  # Give PNG clipboard blobs their required MIME type to fix QTBUG-151788. This
+  # is fixed upstream in Qt 6.12.1 and 6.13.
+  qt_QTBUG-151788.patch
+  # Support the $CFGDIR paths written by Emscripten 6.0.4 and later.
+  qt_emsdk_cfgdir.patch)
+
 set_cmake_arg(QT_BUILD_SUBMODULES ${QT_GIT_SUBMODULES})
 ExternalProject_Add(
   qt
@@ -357,8 +375,7 @@ ExternalProject_Add(
   GIT_TAG v${QT_VERSION}
   GIT_SUBMODULES ${QT_GIT_SUBMODULES}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND ${CMAKE_COMMAND} -P
-                ${CMAKE_CURRENT_SOURCE_DIR}/qt_yield_acle_patch.cmake
+  PATCH_COMMAND ${QT_PATCH_COMMAND}
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}

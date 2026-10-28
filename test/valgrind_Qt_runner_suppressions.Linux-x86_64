@@ -612,6 +612,44 @@
    fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
    fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
 }
+# Qt 6.12 can also retain tryStart between startThread and QThreadPool::start.
+# Match this observed gradient-paint TLS stack without broadening the existing
+# rules to unrelated thread pools or other allocation/leak kinds.
+{
+   Qt gradient raster paint thread pool TLS - non-inlined tryStart
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN18QThreadPoolPrivate8tryStartEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
+# Qt 6.12 can retain tryStart while inlining startThread. Keep this variant
+# restricted to the same glibc TLS allocation and Qt gradient-paint frames.
+{
+   Qt gradient raster paint thread pool TLS - inlined startThread, non-inlined tryStart
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate8tryStartEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_Z11handleSpansI15BlendSrcGenericEviPK11QT_FT_Span_PK9QSpanDataRK8Operator
+   fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
+}
 # Additional paint-thread TLS paths with startThread present in the stack.
 # Keep the glibc TLS allocation and Qt blending frames explicit so these rules
 # do not suppress allocations in Sketcher code or unrelated thread pools.
