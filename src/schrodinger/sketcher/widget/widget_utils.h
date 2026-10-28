@@ -27,6 +27,18 @@ void SKETCHER_API check_button_or_uncheck_group(QAbstractButton* button,
                                                 QButtonGroup* group);
 
 /**
+ * Add an event filter to a button's asynchronous popup to suppress replay of
+ * dismissing mouse presses over the button and clear its hover and pressed
+ * state (but not checked state) when the popup hides. This prevents the popup
+ * from reopening on release and handles dismissal paths that do not deliver a
+ * mouse leave event to the button, such as losing window focus.
+ *
+ * Note that the popup owns the event filter.
+ */
+void SKETCHER_API configure_button_popup(QAbstractButton* button,
+                                         QWidget* popup);
+
+/**
  * Switch the combo box to the entry with the specified Qt.UserRole data
  *
  * Note that this method is intentionally defined in the header so that the

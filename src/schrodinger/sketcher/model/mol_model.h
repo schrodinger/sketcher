@@ -52,6 +52,7 @@ namespace sketcher
 {
 
 class BondOrSecondaryConnection;
+struct ComplementNucleotide;
 
 enum class MonomerType;
 enum class SubgroupType;
@@ -411,11 +412,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param coords The coordinates for the new monomer
      * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
      * a SMILES string
+     * @param initial_size Optional measured size in molecular coordinates, if
+     * coords already account for the monomer's label size.
      */
     void addMonomer(const std::string_view res_name_or_smiles,
                     const rdkit_extensions::ChainType chain_type,
                     const RDGeom::Point3D& coords,
-                    bool is_smiles_monomer = false);
+                    bool is_smiles_monomer = false,
+                    std::optional<RDGeom::Point3D> initial_size = std::nullopt);
 
     /**
      * Undoably add an atom that represents a monomer, and add a connection
@@ -435,14 +439,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * attachment point used for the connection
      * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
      * a SMILES string
+     * @param initial_size Optional measured size in molecular coordinates, if
+     * coords already account for the monomer's label size.
      */
-    void addBoundMonomer(const std::string_view res_name_or_smiles,
-                         const rdkit_extensions::ChainType chain_type,
-                         const RDGeom::Point3D& coords,
-                         const std::string_view new_monomer_ap_name,
-                         const RDKit::Atom* const bound_to_monomer,
-                         const std::string_view bound_to_monomer_ap_name,
-                         bool is_smiles_monomer = false);
+    void
+    addBoundMonomer(const std::string_view res_name_or_smiles,
+                    const rdkit_extensions::ChainType chain_type,
+                    const RDGeom::Point3D& coords,
+                    const std::string_view new_monomer_ap_name,
+                    const RDKit::Atom* const bound_to_monomer,
+                    const std::string_view bound_to_monomer_ap_name,
+                    bool is_smiles_monomer = false,
+                    std::optional<RDGeom::Point3D> initial_size = std::nullopt);
 
     /**
      * Undoably add a connection between two existing monomers
@@ -458,6 +466,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                 const std::string& ap_name_one,
                                 const RDKit::Atom* const monomer_two,
                                 const std::string& ap_name_two);
+
+    /**
+     * Undoably add antiparallel Watson-Crick complement chain(s) for the
+     * given NA bases, linked back via "pair" connections. Each run of
+     * neighboring bases within a polymer gets its own chain. Bases without a
+     * complement are skipped, and nothing (including no undo entry) is added
+     * if none of the bases have one.
+     */
+    void addComplementaryStrand(
+        const std::unordered_set<const RDKit::Atom*>& selected_bases);
 
     /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
@@ -1001,9 +1019,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
     /**
-     * Persist sizes for monomers that have never been sized before, without
-     * triggering resize_monomers' displacement. Called by Scene on newly-added
-     * monomers so existing ones don't get pushed around.
+     * Persist monomer sizes without moving any monomers.
      */
     void storeInitialMonomerSizes(
         const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
@@ -1408,6 +1424,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                            const size_t bond_end_idx,
                                            const std::string& linkage,
                                            const bool is_custom_bond);
+
+    /**
+     * Build and add one antiparallel complement chain, linking each new base
+     * back to its original via a "pair" connection. Must be called within an
+     * open undo macro.
+     * @param complement_nucleotides the nucleotides of the chain, as returned
+     * by get_complement_chains
+     */
+    void addComplementChain(
+        const std::vector<ComplementNucleotide>& complement_nucleotides);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This

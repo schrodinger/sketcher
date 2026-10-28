@@ -276,7 +276,8 @@ get_monomer_query_sql(std::string monomer_id,
 }
 
 std::pair<std::string, std::string>
-canonicalize_monomer_smiles(const char* smiles)
+canonicalize_monomer_smiles(const char* smiles,
+                            const char* original_core_smiles = "")
 {
     using namespace RDKit::v2::SmilesParse;
     static const SmilesParserParams read_params{.removeHs = false,
@@ -315,17 +316,22 @@ canonicalize_monomer_smiles(const char* smiles)
         new_smiles = new_smiles.substr(0, pos);
     }
 
-    // after generating the SMILES, remove the "leaving atoms" for
-    // the CORE_SMILES field
-    mol->beginBatchEdit();
-    for (auto atom : mol->atoms()) {
-        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-            mol->removeAtom(atom);
+    std::string core_smiles;
+    if (original_core_smiles != nullptr && original_core_smiles[0] != '\0') {
+        core_smiles = original_core_smiles;
+    } else {
+        // Derive CORE_SMILES from the canonicalized SMILES when the user did
+        // not supply one.
+        auto core_mol = MolFromSmiles(new_smiles, read_params);
+        core_mol->beginBatchEdit();
+        for (auto atom : core_mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                core_mol->removeAtom(atom);
+            }
         }
+        core_mol->commitBatchEdit();
+        core_smiles = RDKit::MolToSmiles(*core_mol);
     }
-    mol->commitBatchEdit();
-
-    auto core_smiles = RDKit::MolToSmiles(*mol);
 
     return {new_smiles, core_smiles};
 }
@@ -333,7 +339,8 @@ canonicalize_monomer_smiles(const char* smiles)
 void canonicalize_db(sqlite3* db)
 {
     constexpr std::string_view sql_select =
-        "SELECT id, smiles FROM monomer_definitions ORDER BY id ASC;";
+        "SELECT id, smiles, core_smiles FROM monomer_definitions ORDER BY id "
+        "ASC;";
     constexpr std::string_view sql_update =
         "UPDATE monomer_definitions SET smiles=?, core_smiles=? WHERE id=?;";
 
@@ -370,8 +377,9 @@ void canonicalize_db(sqlite3* db)
             // column numbers used here are dictated by sql_select
             auto id = sqlite3_column_int(select_stmt, 0);
             auto smiles = _sqlite3_column_cstring(select_stmt, 1);
+            auto original_core_smiles = _sqlite3_column_cstring(select_stmt, 2);
             auto [new_smiles, new_core_smiles] =
-                canonicalize_monomer_smiles(smiles);
+                canonicalize_monomer_smiles(smiles, original_core_smiles);
 
             // Bind parameters to the UPDATE statement
             sqlite3_bind_text(update_stmt, 1, new_smiles.c_str(), -1,
@@ -474,10 +482,10 @@ insert_monomers_from_json(sqlite3* db, std::string_view json)
         // core_smiles, pdbcode) may be different from the original inputs.
 
         try {
-            // Make sure the SMILES/CORE_SMILES are canonical
-            // based on the current RDKit version.
-            auto [new_smiles, new_core_smiles] =
-                canonicalize_monomer_smiles(m.smiles.value().c_str());
+            // Canonicalize SMILES and derive CORE_SMILES only when the user
+            // did not supply it.
+            auto [new_smiles, new_core_smiles] = canonicalize_monomer_smiles(
+                m.smiles.value().c_str(), m.core_smiles.value_or("").c_str());
             m.smiles = new_smiles;
             m.core_smiles = new_core_smiles;
         } catch (const std::runtime_error&) {
@@ -679,8 +687,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
         dumpToFile(db.get(), *custom_db_path);
     }
 
-    // Make sure the SMILES/CORE_SMILES are canonical
-    // based on the current RDKit version.
+    // Canonicalize SMILES and derive CORE_SMILES only when it was not supplied.
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
@@ -788,8 +795,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
         throw std::runtime_error(msg);
     }
 
-    // Make sure the SMILES/CORE_SMILES are canonical
-    // based on the current RDKit version.
+    // Canonicalize SMILES and derive CORE_SMILES only when it was not supplied.
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
@@ -1210,6 +1216,9 @@ MonomerDatabase::getComplexMonomerQueries() const
 {
     using namespace RDKit::v2::SmilesParse;
     static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)[O,N]");
+    // A cysteine with a heavy atom on the sulfur (other than the R3 dummy).
+    static auto s_substituted_cysteine_query =
+        MolFromSmarts("N[CX4H]([CX4H2][SX2][!#0;!#1])C=O");
 
     // Return the atom indices for the R1 and R2 attachment points (either
     // one may be missing).
@@ -1236,6 +1245,12 @@ MonomerDatabase::getComplexMonomerQueries() const
     // Roughly: a monomer is complex unless it matches the residue_query
     // pattern once and has r1 and r2 four bonds apart, or is tiny.
     auto is_complex = [&](auto& mol) {
+        // toMonomeric() partitions structures using a generic cysteine query
+        // that would claim the sulfur and leave its substituent behind as a
+        // separate monomer, so these need to be matched as a whole.
+        if (!SubstructMatch(mol, *s_substituted_cysteine_query).empty()) {
+            return true;
+        }
         auto matches = SubstructMatch(mol, *residue_query);
         if (matches.size() == 1) {
             // Look at distance between mapping numbers

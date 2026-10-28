@@ -18,6 +18,7 @@
 #include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
@@ -457,14 +458,6 @@ static RDGeom::Point3D get_coords_for_monomer(const RDKit::Atom* const monomer)
     return conf.getAtomPos(monomer->getIdx());
 }
 
-RDGeom::Point3D
-get_default_coords_for_bound_monomer(const RDKit::Atom* const monomer,
-                                     const Direction dir)
-{
-    auto monomer_pos = get_coords_for_monomer(monomer);
-    return get_default_coords_for_bound_monomer(monomer_pos, dir);
-}
-
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::createHintFragmentItem(
     HintFragmentMonomerInfo& monomer_one_info,
     HintFragmentMonomerInfo& monomer_two_info)
@@ -522,10 +515,13 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
                                                  m_is_smiles_monomer);
     auto monomer_pos = to_mol_xy(scene_pos);
     auto linkage_start = getDefaultDragStartAPModelName();
+    auto size = get_monomer_graphics_item_size(monomer.get(), *m_fonts,
+                                               *m_atom_display_settings,
+                                               *m_bond_display_settings);
     // returned monomer is owned by the calling scope
-    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type,
-                                   monomer_pos, linkage_start,
-                                   NEW_MONOMER_FROM_DRAG};
+    return HintFragmentMonomerInfo{std::move(monomer),    m_monomer_type,
+                                   monomer_pos,           linkage_start,
+                                   NEW_MONOMER_FROM_DRAG, size};
 }
 
 HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -538,8 +534,15 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto copy_of_monomer = std::make_unique<RDKit::Atom>(*monomer);
     auto monomer_pos = get_coords_for_monomer(monomer);
     auto monomer_idx = static_cast<int>(monomer->getIdx());
-    return HintFragmentMonomerInfo{std::move(copy_of_monomer), monomer_type,
-                                   monomer_pos, ap_model_name, monomer_idx};
+    const auto rect = monomer_item->boundingRect();
+    const RDGeom::Point3D size(rect.width() / VIEW_SCALE,
+                               rect.height() / VIEW_SCALE, 0);
+    return HintFragmentMonomerInfo{std::move(copy_of_monomer),
+                                   monomer_type,
+                                   monomer_pos,
+                                   ap_model_name,
+                                   monomer_idx,
+                                   size};
 }
 
 HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -565,8 +568,6 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const HintFragmentMonomerInfo& start_monomer_info,
         const Direction direction) const
 {
-    auto pos =
-        get_default_coords_for_bound_monomer(start_monomer_info.pos, direction);
     // We'll determine the correct values for chain id and residue number
     // when/if the structure is actually added to MolModel. For the hint,
     // though, just generate something reasonable looking.
@@ -575,11 +576,20 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // returned monomer is owned by the calling scope
     auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num,
                                                  m_is_smiles_monomer);
+    auto size = get_monomer_graphics_item_size(monomer.get(), *m_fonts,
+                                               *m_atom_display_settings,
+                                               *m_bond_display_settings);
+    auto default_offset = rdkit_extensions::direction_to_vector(direction) *
+                          rdkit_extensions::MONOMER_BOND_LENGTH;
+    auto pos = start_monomer_info.pos +
+               rdkit_extensions::get_monomer_connection_offset(
+                   default_offset, start_monomer_info.size, size);
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
         m_monomer_type, m_res_name, m_is_smiles_monomer);
-    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type, pos,
-                                   ap_model_name, NEW_MONOMER_FROM_DRAG};
+    return HintFragmentMonomerInfo{
+        std::move(monomer), m_monomer_type,        pos,
+        ap_model_name,      NEW_MONOMER_FROM_DRAG, size};
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragStart(
@@ -830,7 +840,8 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::
             } else {
                 auto monomer_idx = m_mol_model->getMol()->getNumAtoms();
                 m_mol_model->addMonomer(m_res_name, m_chain_type,
-                                        monomer_info.pos, m_is_smiles_monomer);
+                                        monomer_info.pos, m_is_smiles_monomer,
+                                        monomer_info.size);
                 return monomer_idx;
             }
         };

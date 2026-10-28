@@ -1128,6 +1128,11 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
 
     connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
             &SketcherWidget::mutateMonomersFromContextMenu);
+
+    connect(&menu, &MonomerContextMenu::addComplementaryStrandRequested, this,
+            [this](const auto& bases) {
+                m_mol_model->addComplementaryStrand(bases);
+            });
 }
 
 void SketcherWidget::mutateMonomersFromContextMenu(
