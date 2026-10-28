@@ -362,7 +362,8 @@ generate_git_patch_command(
   # QTBUG-151280 is fixed in Qt 6.13; appears likely to be backported to Qt
   # 6.12.1 as well.
   qt_QTBUG-151280.patch
-  # Give PNG clipboard blobs their required MIME type.
+  # Give PNG clipboard blobs their required MIME type to fix QTBUG-151788. This
+  # is fixed upstream in Qt 6.12.1 and 6.13.
   qt_QTBUG-151788.patch
   # Support the $CFGDIR paths written by Emscripten 6.0.4 and later.
   qt_emsdk_cfgdir.patch)
