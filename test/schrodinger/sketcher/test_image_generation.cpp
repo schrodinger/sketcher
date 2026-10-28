@@ -5,6 +5,7 @@
 #define BOOST_TEST_MODULE sketcher_image_generation
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include <rdkit/GraphMol/GraphMol.h>
@@ -12,6 +13,9 @@
 #include <QGraphicsSimpleTextItem>
 #include <QList>
 #include <QLineF>
+#include <QPainter>
+#include <QRegularExpression>
+#include <QSvgRenderer>
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>
 #include <boost/test/tools/floating_point_comparison.hpp>
@@ -256,6 +260,99 @@ BOOST_AUTO_TEST_CASE(test_highlighting)
 
     auto qimage = get_qimage(*rdmol, opts);
     BOOST_TEST(!qimage.allGray());
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_label_halo_color_and_opacity)
+{
+    for (const auto* smiles : {"O", "N", "S", "[O-]", "[Mg+2]", "[Ne]"}) {
+        for (int font_size : {18, 36}) {
+            for (bool svg : {false, true}) {
+                BOOST_TEST_CONTEXT(smiles << ", font size " << font_size
+                                          << ", SVG " << svg)
+                {
+                    RenderOptions opts;
+                    opts.font_size = font_size;
+                    opts.scale = 2;
+                    auto render = [&](RenderOptions options,
+                                      bool hide_labels = false) {
+                        if (!svg) {
+                            if (hide_labels) {
+                                options.rdatom_index_to_line_color[0] =
+                                    Qt::transparent;
+                            }
+                            return get_qimage(smiles, options);
+                        }
+                        auto svg_text = QString::fromUtf8(
+                            get_image_bytes(smiles, ImageFormat::SVG, options));
+                        if (hide_labels) {
+                            svg_text.remove(QRegularExpression(
+                                "<text\\b[^>]*>.*?</text>",
+                                QRegularExpression::
+                                    DotMatchesEverythingOption));
+                        }
+                        QSvgRenderer renderer(svg_text.toUtf8());
+                        QImage image(options.width_height,
+                                     QImage::Format_ARGB32_Premultiplied);
+                        image.fill(Qt::transparent);
+                        QPainter painter(&image);
+                        renderer.render(&painter);
+                        return image;
+                    };
+                    const auto label = render(opts);
+                    const auto decorations = render(opts, true);
+                    const QColor color(80, 160, 240, 128);
+                    opts.rdatom_index_to_halo_color[0] = color;
+                    const auto highlighted = render(opts);
+                    // Hide the ink to inspect the halo directly beneath every
+                    // glyph, including the hydrogen count and charge text.
+                    const auto halo = render(opts, true);
+                    int label_pixels = 0;
+                    int uncovered_pixels = 0;
+                    int changed_ink_pixels = 0;
+                    for (int y = 0; y < label.height(); ++y) {
+                        for (int x = 0; x < label.width(); ++x) {
+                            const auto ink = label.pixelColor(x, y);
+                            // Valence-error backgrounds are painted above the
+                            // halo and are independent of the label's ink.
+                            if (ink.alpha() == 0 ||
+                                decorations.pixelColor(x, y).alpha() != 0) {
+                                continue;
+                            }
+                            ++label_pixels;
+                            const auto background = halo.pixelColor(x, y);
+                            // SVG serializes opacity as a decimal, so allow
+                            // one unit of rounding in each channel.
+                            if (std::abs(background.alpha() - color.alpha()) >
+                                    1 ||
+                                std::abs(background.red() - color.red()) > 1 ||
+                                std::abs(background.green() - color.green()) >
+                                    1 ||
+                                std::abs(background.blue() - color.blue()) >
+                                    1) {
+                                ++uncovered_pixels;
+                            }
+                            if (ink.alpha() == 255 &&
+                                highlighted.pixelColor(x, y) != ink) {
+                                ++changed_ink_pixels;
+                            }
+                        }
+                    }
+                    if (uncovered_pixels > 0) {
+                        const auto prefix = QString("tmp_halo_%1_%2_%3_")
+                                                .arg(smiles)
+                                                .arg(font_size)
+                                                .arg(svg);
+                        label.save(prefix + "label.png");
+                        highlighted.save(prefix + "highlighted.png");
+                        halo.save(prefix + "halo.png");
+                    }
+                    BOOST_CHECK_GT(label_pixels, 0);
+                    BOOST_CHECK_EQUAL(uncovered_pixels, 0);
+                    BOOST_CHECK_EQUAL(changed_ink_pixels, 0);
+                }
+            }
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_get_best_image_scale)

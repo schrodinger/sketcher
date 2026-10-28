@@ -1,10 +1,13 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
+#include <algorithm>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <QGraphicsPathItem>
 #include <QMarginsF>
 #include <QRectF>
 #include <QString>
@@ -16,6 +19,7 @@
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::HsDirection);
@@ -112,6 +116,48 @@ createAtomItem(std::shared_ptr<AtomQueryProperties> props)
     return std::make_pair(atom_item, test_scene);
 }
 
+/**
+ * Check that selection and predictive paths for the given atom match the
+ * expected shape: either a circle or a rounded rectangle.
+ */
+static void check_highlighting_path_type(const AtomItem& item, bool circular)
+{
+    const auto predictive_bounds =
+        item.predictiveHighlightingPath().boundingRect();
+    const auto selection_bounds =
+        item.selectionHighlightingPath().boundingRect();
+    BOOST_CHECK_SMALL(predictive_bounds.left() - selection_bounds.left() - 1.0,
+                      1e-6);
+    BOOST_CHECK_SMALL(predictive_bounds.top() - selection_bounds.top() - 1.0,
+                      1e-6);
+    BOOST_CHECK_SMALL(
+        selection_bounds.right() - predictive_bounds.right() - 1.0, 1e-6);
+    BOOST_CHECK_SMALL(
+        selection_bounds.bottom() - predictive_bounds.bottom() - 1.0, 1e-6);
+    for (const auto& [name, path, padding] :
+         {std::make_tuple("selection", item.selectionHighlightingPath(), 1.0),
+          std::make_tuple("predictive", item.predictiveHighlightingPath(),
+                          0.0)}) {
+        BOOST_TEST_CONTEXT(name)
+        {
+            const auto bounds = path.boundingRect();
+            QPainterPath expected;
+            expected.addEllipse(bounds);
+            if (circular) {
+                BOOST_CHECK_EQUAL(bounds.width(), bounds.height());
+                BOOST_CHECK(path == expected);
+            } else {
+                expected.clear();
+                const auto radius =
+                    std::min({ATOM_LABEL_HIGHLIGHTING_CORNER_RADIUS + padding,
+                              bounds.width() * 0.5, bounds.height() * 0.5});
+                expected.addRoundedRect(bounds, radius, radius);
+                BOOST_CHECK(path == expected);
+            }
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
 {
     auto [atom_item, test_scene] = createAtomItem("N");
@@ -171,6 +217,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
 {
     auto [atom_item, test_scene] = createAtomItem("* |$_R5$|");
     BOOST_TEST(atom_item->m_main_label_text == "R5");
+    BOOST_CHECK_EQUAL(atom_item->getAtom()->getAtomicNum(), 0);
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
     BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
     BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
@@ -181,6 +228,12 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+    check_highlighting_path_type(*atom_item, false);
+    atom_item->getAtom()->setProp(RDKit::common_properties::dummyLabel,
+                                  std::string("R5"));
+    atom_item->updateCachedData();
+    BOOST_CHECK_EQUAL(atom_item->getAtom()->getSymbol(), "R5");
+    check_highlighting_path_type(*atom_item, false);
 }
 
 BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
@@ -219,7 +272,17 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomLabel)
         BOOST_TEST(atom_item->m_label_is_visible);
         BOOST_TEST(!(atom_item->m_shape.isEmpty()));
         BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+        check_highlighting_path_type(*atom_item, false);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_custom_element_label_highlighting)
+{
+    auto [item, scene] = createAtomItem("C |$Phenyl$|");
+    BOOST_CHECK_EQUAL(item->getAtom()->getAtomicNum(), 6);
+    BOOST_CHECK(item->m_main_label_text == "Phenyl");
+    BOOST_REQUIRE_EQUAL(item->getSubrects().size(), 1);
+    check_highlighting_path_type(*item, false);
 }
 
 BOOST_AUTO_TEST_CASE(test_deuterium_and_tritium_display)
@@ -251,6 +314,8 @@ BOOST_AUTO_TEST_CASE(test_deuterium_and_tritium_display)
     BOOST_TEST(atom_items[1]->m_main_label_text == "T");
     BOOST_TEST(atom_items.at(1)->m_isotope_label_text.toStdString() == "");
     BOOST_TEST(atom_items.at(1)->m_isotope_label_rect.isNull());
+    check_highlighting_path_type(*atom_items[0], true);
+    check_highlighting_path_type(*atom_items[1], true);
 }
 
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
@@ -287,6 +352,151 @@ BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
     BOOST_TEST(atom_items.at(1)->findHsDirection() == HsDirection::UP);
     BOOST_TEST(atom_items.at(2)->findHsDirection() == HsDirection::DOWN);
     BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::RIGHT);
+}
+
+BOOST_AUTO_TEST_CASE(test_highlighting_covers_complete_atom_labels)
+{
+    for (const auto* smiles : {"CO", "CN", "CS", "[O-]", "[Mg+2]", "[13NH3+:7]",
+                               "NNNN", "CC", "C[C@H](N)S", "* |$_R5$|"}) {
+        BOOST_TEST_CONTEXT(smiles)
+        {
+            auto scene = TestScene::getScene();
+            auto* model = scene->m_mol_model;
+            import_mol_text(model, smiles);
+            std::unordered_set<const RDKit::Atom*> atoms;
+            for (const auto* atom : model->getMol()->atoms()) {
+                atoms.insert(atom);
+            }
+            const QColor color(80, 160, 240, 128);
+            model->addHaloHighlighting(atoms, {}, color);
+            for (int font_size : {8, 18, 36}) {
+                scene->m_sketcher_model->setFontSize(font_size);
+                // Rotation changes the placement of hydrogen labels and
+                // exercises the coordinate-only halo refresh.
+                model->rotateByAngle(90, {0, 0, 0});
+                const QGraphicsPathItem* halo = nullptr;
+                for (const auto* item : scene->items()) {
+                    if (item->zValue() ==
+                        static_cast<qreal>(ZOrder::ATOM_HIGHLIGHTING)) {
+                        halo = dynamic_cast<const QGraphicsPathItem*>(item);
+                        if (halo != nullptr) {
+                            break;
+                        }
+                    }
+                }
+                BOOST_REQUIRE(halo != nullptr);
+                BOOST_CHECK(halo->brush().color() == color);
+                for (const auto* atom : model->getMol()->atoms()) {
+                    const auto* item = static_cast<const AtomItem*>(
+                        scene->getGraphicsItemForAtom(atom));
+                    const auto path = halo->mapFromScene(
+                        item->mapToScene(item->selectionHighlightingPath()));
+                    BOOST_CHECK((path - halo->path()).isEmpty());
+                    for (const auto& rect : item->getSubrects()) {
+                        BOOST_CHECK(item->shape().contains(rect));
+                        BOOST_CHECK(
+                            item->selectionHighlightingPath().contains(rect));
+                        BOOST_CHECK(
+                            item->predictiveHighlightingPath().contains(rect));
+                        BOOST_CHECK(
+                            halo->path().contains(halo->mapRectFromScene(
+                                item->mapRectToScene(rect))));
+                    }
+                    if (item->getSubrects().empty()) {
+                        BOOST_CHECK(
+                            item->selectionHighlightingPath() ==
+                            get_selection_highlighting_path_for_atom(atom));
+                        BOOST_CHECK(
+                            item->predictiveHighlightingPath() ==
+                            get_predictive_highlighting_path_for_atom(atom));
+                    }
+                }
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_plain_element_highlighting_circle_fits_label)
+{
+    for (const auto* smiles : {"O=C=O", "ClCCl", "BrCBr", "N#N", "CC"}) {
+        auto [items, scene] = createAtomItems(smiles);
+        for (int font_size : {8, 36, 18, 16, 14, 12, 8}) {
+            scene->m_fonts.setSize(font_size);
+            for (auto& item : items) {
+                item->updateCachedData();
+                check_highlighting_path_type(*item, true);
+                for (const auto& [path, original] :
+                     {std::make_pair(item->selectionHighlightingPath(),
+                                     get_selection_highlighting_path_for_atom(
+                                         item->getAtom())),
+                      std::make_pair(item->predictiveHighlightingPath(),
+                                     get_predictive_highlighting_path_for_atom(
+                                         item->getAtom()))}) {
+                    const auto bounds = path.boundingRect();
+                    BOOST_CHECK(bounds.width() >=
+                                original.boundingRect().width());
+                    if (font_size == 8 || item->getSubrects().empty()) {
+                        BOOST_CHECK(path == original);
+                    } else if (font_size == 36) {
+                        BOOST_CHECK_GT(bounds.width(),
+                                       original.boundingRect().width());
+                    }
+                    for (const auto& rect : item->getSubrects()) {
+                        BOOST_CHECK(path.contains(rect));
+                        BOOST_CHECK(item->shape().contains(rect));
+                    }
+                }
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_compound_label_highlighting_has_straight_sides)
+{
+    for (const auto* smiles : {"[O-]", "[Mg+2]", "[13NH3+:7]", "N", "O"}) {
+        BOOST_TEST_CONTEXT(smiles)
+        {
+            auto [item, scene] = createAtomItem(smiles);
+            for (int font_size : {1, 8, 18, 36}) {
+                scene->m_fonts.setSize(font_size);
+                item->updateCachedData();
+                check_highlighting_path_type(*item, false);
+                QRectF label_bounds;
+                for (const auto& rect : item->getSubrects()) {
+                    label_bounds |= rect;
+                }
+                for (const auto& [path, padding] :
+                     {std::make_pair(item->selectionHighlightingPath(), 1.0),
+                      std::make_pair(item->predictiveHighlightingPath(),
+                                     0.0)}) {
+                    const auto bounds = path.boundingRect();
+                    BOOST_CHECK(bounds == label_bounds.adjusted(
+                                              -ATOM_LABEL_MARGIN - padding,
+                                              -ATOM_LABEL_MARGIN - padding,
+                                              ATOM_LABEL_MARGIN + padding,
+                                              ATOM_LABEL_MARGIN + padding));
+                    BOOST_CHECK(path.contains(
+                        QPointF(bounds.center().x(), bounds.top() + 0.1)));
+                    BOOST_CHECK(path.contains(
+                        QPointF(bounds.center().x(), bounds.bottom() - 0.1)));
+                    BOOST_CHECK(path.contains(
+                        QPointF(bounds.left() + 0.1, bounds.center().y())));
+                    BOOST_CHECK(path.contains(
+                        QPointF(bounds.right() - 0.1, bounds.center().y())));
+                    if (font_size >= 18) {
+                        // This point was inside the previous four-pixel
+                        // rounding, but is outside the larger rounded corner.
+                        BOOST_CHECK(
+                            !path.contains(bounds.topLeft() + QPointF(2, 2)));
+                    }
+                    for (const auto& rect : item->getSubrects()) {
+                        BOOST_CHECK(path.contains(rect));
+                    }
+                    BOOST_CHECK_EQUAL(path.toSubpathPolygons().size(), 1);
+                }
+            }
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_chirality_label)
@@ -481,6 +691,32 @@ BOOST_AUTO_TEST_CASE(test_chirality_label_tooltip)
     BOOST_TEST(chiral_atom->toolTip() == "Stereo: (S)");
 }
 
+/**
+ * For wildcard atoms, ensure that we use circular highlighting for single
+ * character wildcards (e.g. A) and rounded rectangular highlighting for
+ * multi-character wildcards (e.g. AH)
+ */
+BOOST_AUTO_TEST_CASE(test_wildcard_highlighting_path_types)
+{
+    const std::vector<std::tuple<AtomQuery, QString, bool>> cases = {
+        {AtomQuery::A, "A", true},    {AtomQuery::M, "M", true},
+        {AtomQuery::Q, "Q", true},    {AtomQuery::X, "X", true},
+        {AtomQuery::AH, "AH", false}, {AtomQuery::MH, "MH", false},
+        {AtomQuery::QH, "QH", false}, {AtomQuery::XH, "XH", false}};
+    for (const auto& [wildcard, label, circular] : cases) {
+        BOOST_TEST_CONTEXT(label.toStdString())
+        {
+            auto props = std::make_shared<AtomQueryProperties>();
+            props->query_type = QueryType::WILDCARD;
+            props->wildcard = wildcard;
+            auto [item, scene] = createAtomItem(props);
+            BOOST_CHECK(item->m_main_label_text == label);
+            BOOST_REQUIRE_EQUAL(item->getSubrects().size(), 1);
+            check_highlighting_path_type(*item, circular);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_wildcard_atom_tooltips)
 {
     // Test that wildcard atoms have descriptive tooltips
@@ -530,6 +766,7 @@ BOOST_AUTO_TEST_CASE(test_query_atom_with_constraints_tooltip)
 
     // Should show the query constraint text with Query prefix
     BOOST_TEST(atom_item->toolTip() == "Query: X2&R2");
+    check_highlighting_path_type(*atom_item, false);
 }
 
 BOOST_AUTO_TEST_CASE(test_atom_list_tooltip)
@@ -598,7 +835,7 @@ BOOST_AUTO_TEST_CASE(test_atom_with_both_chirality_and_query)
 
 BOOST_AUTO_TEST_CASE(test_atom_index_display)
 {
-    auto [atom_items, test_scene] = createAtomItems("CCN");
+    auto [atom_items, test_scene] = createAtomItems("CCN.O=C=O");
 
     // By default, atom indices should not be shown (carbons are unlabeled)
     BOOST_TEST(!atom_items[0]->m_label_is_visible); // C
@@ -626,6 +863,11 @@ BOOST_AUTO_TEST_CASE(test_atom_index_display)
 
     BOOST_TEST(atom_items[2]->m_label_is_visible);
     BOOST_TEST(atom_items[2]->m_main_label_text == "N:2");
+    BOOST_TEST(atom_items[4]->m_main_label_text == "C:4");
+    BOOST_REQUIRE_EQUAL(atom_items[4]->getSubrects().size(), 1);
+    for (const auto& item : atom_items) {
+        check_highlighting_path_type(*item, false);
+    }
 }
 
 } // namespace sketcher
