@@ -5,6 +5,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <QBitmap>
@@ -142,6 +143,7 @@ assign_linear_peptide_connector_lanes(const RDKit::ROMol& mol,
 {
     std::vector<LinearPeptideConnectorSpan> connector_spans;
     for (const auto* bond : mol.bonds()) {
+        // Backbone connections always use the default connector lane of zero.
         if (!bond->hasProp(CUSTOM_BOND)) {
             continue;
         }
@@ -164,6 +166,8 @@ assign_linear_peptide_connector_lanes(const RDKit::ROMol& mol,
 
         const auto begin_x = conformer.getAtomPos(begin_atom->getIdx()).x;
         const auto end_x = conformer.getAtomPos(end_atom->getIdx()).x;
+        // If the bond has two connections, only the secondary connection needs
+        // a lane: the primary connection is a backbone connection.
         const bool is_secondary_connection =
             contains_two_monomer_linkages(bond);
         connector_spans.push_back(
@@ -186,26 +190,24 @@ assign_linear_peptide_connector_lanes(const RDKit::ROMol& mol,
                          std::tie(rhs_length, rhs.left_x, rhs.right_x);
               });
 
-    for (auto span = connector_spans.begin(); span != connector_spans.end();
-         ++span) {
-        // Try the closest lanes first: top, bottom, raised top, lowered bottom,
-        // and so on. Positive lanes are above the backbone and negative lanes
-        // are below it. A lane is available when none of its earlier connector
-        // spans overlap the current span.
-        for (int distance = 1; span->lane == 0; ++distance) {
-            for (const int candidate_lane : {distance, -distance}) {
-                const bool lane_is_occupied = std::any_of(
-                    connector_spans.begin(), span, [&](const auto& previous) {
-                        return previous.polymer_id == span->polymer_id &&
-                               previous.lane == candidate_lane &&
-                               connector_spans_overlap(previous, *span);
-                    });
-                if (!lane_is_occupied) {
-                    span->lane = candidate_lane;
-                    break;
-                }
+    for (auto& span : connector_spans) {
+        std::unordered_set<int> occupied_lanes;
+        for (const auto& previous : connector_spans) {
+            if (previous.lane != 0 && previous.polymer_id == span.polymer_id &&
+                connector_spans_overlap(previous, span)) {
+                occupied_lanes.insert(previous.lane);
             }
         }
+
+        // Try the closest lanes first: top, bottom, raised top, lowered bottom,
+        // and so on. Positive lanes are above the backbone and negative lanes
+        // are below it.
+        int candidate_lane = 1;
+        while (occupied_lanes.count(candidate_lane) != 0) {
+            candidate_lane =
+                candidate_lane > 0 ? -candidate_lane : -candidate_lane + 1;
+        }
+        span.lane = candidate_lane;
     }
 
     LinearPeptideConnectorLanes connector_lanes;
