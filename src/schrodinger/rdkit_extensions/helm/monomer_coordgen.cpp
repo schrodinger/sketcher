@@ -51,7 +51,8 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
-// Center separation that leaves one bond length between residue footprints.
+// Wider center spacing for displaying arrowheads or separating unconnected
+// polymers: the minimum monomer size plus one bond length.
 constexpr double INTERPOLYMER_RESIDUE_CLEARANCE =
     MONOMER_MINIMUM_SIZE + MONOMER_BOND_LENGTH;
 
@@ -1983,6 +1984,13 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
     return bonds;
 }
 
+/**
+ * Choose the preferred center-to-center spacing for a polymer pair. A bond
+ * without arrowheads can start at one bond length. When arrowheads are present,
+ * allow more space to display them correctly. Use the wider spacing when there
+ * is no bond or the original bond cannot be found. Placement may increase this
+ * gap to avoid clashes with other residues.
+ */
 static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
                                          const RDKit::ROMol& polymer,
                                          const RDKit::ROMol& reference,
@@ -1992,6 +2000,8 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
         return INTERPOLYMER_RESIDUE_CLEARANCE;
     }
     for (const auto& [polymer_idx, reference_idx] : bonds) {
+        // The supplied indices belong to the extracted polymers; the original
+        // bond carries the linkage properties needed to classify its arrowheads.
         const auto original_polymer_idx =
             polymer.getAtomWithIdx(polymer_idx)->getProp<unsigned int>(
                 ORIGINAL_INDEX);
@@ -2003,7 +2013,7 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
         if (bond == nullptr) {
             return INTERPOLYMER_RESIDUE_CLEARANCE;
         }
-        // A bond can carry two linkages; either one may need diamond clearance.
+        // A bond can carry two linkages; either one may need arrowhead clearance.
         for (const bool secondary : {false, true}) {
             const auto type = get_connector_type(bond, secondary);
             if (type == ConnectorType::PEPTIDE_SIDE_CHAIN ||
@@ -3410,9 +3420,11 @@ void resize_monomers(
     auto ring_displacements = compute_ring_expansion_displacements(
         mol, ring_resize_data, ring_resize_info);
 
-    // Label resizing can move a ring and an attached chain by different
-    // amounts. Keep a single, initially vertical interpolymer bond aligned by
-    // translating the smaller polymer as a whole.
+    // Ring expansion moves attached monomers with the ring, but the separate
+    // linear resize pass can shift connected polymers by different amounts.
+    // That can tilt an interpolymer bond aligned vertically during placement.
+    // If a polymer pair has one such bond, shift the polymer with fewer
+    // monomers in X to preserve the alignment without changing its shape.
     std::map<std::pair<std::string, std::string>, unsigned int> bond_counts;
     std::map<std::string, unsigned int> polymer_sizes;
     for (const auto* atom : mol.atoms()) {

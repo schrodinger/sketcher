@@ -625,7 +625,7 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
 
 std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               ConnectorType connector_type)
+                               const ConnectorType connector_type)
 {
     switch (connector_type) {
         case ConnectorType::PEPTIDE_DISULFIDE:

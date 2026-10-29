@@ -306,7 +306,7 @@ SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
 SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
 
 /**
- * Determine whether diamond arrowheads should be drawn at the start and end of
+ * Determine whether arrowheads should be drawn at the start and end of
  * the given connector.
  * @param bond the bond representing a monomer connector
  * @param is_secondary_connection whether we are drawing the primary or
@@ -320,13 +320,13 @@ std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection);
 
-/** Determine diamond ends from the connector's already computed style type. */
+/** Determine arrowhead placement from the connector's computed type. */
 std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               ConnectorType connector_type);
+                               const ConnectorType connector_type);
 
 /**
- * For a monomer connector being drawn with a diamond arrowhead, determine the
+ * For a monomer connector being drawn with an arrowhead, determine the
  * offset from the center of the monomer to the center of the arrowhead. The
  * arrowhead is placed outside the nearest cardinal side facing the bound
  * monomer. If that side is occupied, up to three other forward-facing sides
