@@ -112,21 +112,24 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
 
-// Connector categories shared by coordinate generation and Sketcher. Sketcher
-// further distinguishes disulfides and nucleic acid base connections for style.
-enum class MonomerConnectorKind {
-    H_BOND,
+enum class ConnectorType {
     CHEM,
     PEPTIDE_LINEAR,
     PEPTIDE_BRANCHING,
+    PEPTIDE_DISULFIDE,
     PEPTIDE_SIDE_CHAIN,
-    NUCLEIC_ACID
+    H_BOND,
+    NA_BACKBONE,
+    NA_BACKBONE_TO_BASE
 };
 
-// Classify the primary LINKAGE or secondary CUSTOM_BOND of a monomer bond.
-[[nodiscard]] RDKIT_EXTENSIONS_API MonomerConnectorKind
-get_monomer_connector_kind(const ::RDKit::Bond* bond,
-                           bool is_secondary_connection);
+/**
+ * Classify a monomer connection, using LINKAGE for the primary connection or
+ * CUSTOM_BOND for the secondary connection. CHEM takes precedence over peptide
+ * connections, while peptide takes precedence over nucleic acid connections.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API ConnectorType
+get_connector_type(const ::RDKit::Bond* bond, bool is_secondary_connection);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);

@@ -2005,9 +2005,10 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
         }
         // A bond can carry two linkages; either one may need diamond clearance.
         for (const bool secondary : {false, true}) {
-            const auto kind = get_monomer_connector_kind(bond, secondary);
-            if (kind == MonomerConnectorKind::PEPTIDE_SIDE_CHAIN ||
-                kind == MonomerConnectorKind::PEPTIDE_BRANCHING) {
+            const auto type = get_connector_type(bond, secondary);
+            if (type == ConnectorType::PEPTIDE_SIDE_CHAIN ||
+                type == ConnectorType::PEPTIDE_DISULFIDE ||
+                type == ConnectorType::PEPTIDE_BRANCHING) {
                 return INTERPOLYMER_RESIDUE_CLEARANCE;
             }
         }

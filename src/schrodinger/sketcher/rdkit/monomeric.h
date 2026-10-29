@@ -13,6 +13,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/definitions.h"
 
@@ -40,16 +41,8 @@ using rdkit_extensions::Direction;
 
 enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
 
-enum class ConnectorType {
-    CHEM,
-    PEPTIDE_LINEAR,
-    PEPTIDE_BRANCHING,
-    PEPTIDE_DISULFIDE,
-    PEPTIDE_SIDE_CHAIN,
-    H_BOND,
-    NA_BACKBONE,
-    NA_BACKBONE_TO_BASE
-};
+using rdkit_extensions::ConnectorType;
+using rdkit_extensions::get_connector_type;
 
 namespace PeptideAP
 {
@@ -311,20 +304,6 @@ SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
  * bond object must represent both connections.
  */
 SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
-
-/**
- * Determine what type of monomeric connection the given bond represents.
- * Note that a connector between a CHEM monomer and any other monomer will be
- * categorized as a CHEM connector, and a connector between a PEPTIDE monomer
- * and an RNA monomer will be categorized as a PEPTIDE connector.
- *
- * @param bond the bond representing a monomer connector
- * @param is_secondary_connection whether to categorize the primary or secondary
- * connection of this bond. This is only relevant for bonds that
- * contains_two_monomer_linkages() returns true.
- */
-SKETCHER_API ConnectorType
-get_connector_type(const RDKit::Bond* bond, const bool is_secondary_connection);
 
 /**
  * Determine whether diamond arrowheads should be drawn at the start and end of

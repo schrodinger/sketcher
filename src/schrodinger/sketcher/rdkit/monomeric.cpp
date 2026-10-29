@@ -615,42 +615,6 @@ bool contains_two_monomer_linkages(const RDKit::Bond* bond)
     return custom_linkage_exists && custom_linkage != linkage;
 }
 
-ConnectorType get_connector_type(const RDKit::Bond* bond,
-                                 const bool is_secondary_connection)
-{
-    using rdkit_extensions::MonomerConnectorKind;
-    switch (rdkit_extensions::get_monomer_connector_kind(
-        bond, is_secondary_connection)) {
-        case MonomerConnectorKind::H_BOND:
-            return ConnectorType::H_BOND;
-        case MonomerConnectorKind::CHEM:
-            return ConnectorType::CHEM;
-        case MonomerConnectorKind::PEPTIDE_LINEAR:
-            return ConnectorType::PEPTIDE_LINEAR;
-        case MonomerConnectorKind::PEPTIDE_BRANCHING:
-            return ConnectorType::PEPTIDE_BRANCHING;
-        case MonomerConnectorKind::PEPTIDE_SIDE_CHAIN:
-            // Only the rendering style distinguishes disulfides from other
-            // peptide side-chain bonds.
-            if (peptide_ap3_name_for_monomer(bond->getBeginAtom()) ==
-                    PEPTIDE_R3_NAME_S &&
-                peptide_ap3_name_for_monomer(bond->getEndAtom()) ==
-                    PEPTIDE_R3_NAME_S) {
-                return ConnectorType::PEPTIDE_DISULFIDE;
-            }
-            return ConnectorType::PEPTIDE_SIDE_CHAIN;
-        case MonomerConnectorKind::NUCLEIC_ACID: {
-            const bool has_base =
-                get_monomer_type(bond->getBeginAtom()) ==
-                    MonomerType::NA_BASE ||
-                get_monomer_type(bond->getEndAtom()) == MonomerType::NA_BASE;
-            return has_base ? ConnectorType::NA_BACKBONE_TO_BASE
-                            : ConnectorType::NA_BACKBONE;
-        }
-    }
-    throw std::logic_error("Unknown monomer connector kind");
-}
-
 std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection)
