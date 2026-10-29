@@ -249,7 +249,8 @@ get_attachment_point_element_for_monomer(const RDKit::Atom* monomer,
     std::optional<std::string> found_element;
     for (const auto& [number, element] :
          get_numbered_attachment_points_for_monomer(monomer)) {
-        if (number == attachment_point_num) {
+        if (number >= 0 &&
+            static_cast<unsigned int>(number) == attachment_point_num) {
             found_element = element;
         }
     }
