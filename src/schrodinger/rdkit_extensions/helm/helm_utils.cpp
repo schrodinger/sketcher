@@ -322,9 +322,8 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
     bool end_is_branch = false;
     bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
     bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-    return begin_is_branch || end_is_branch
-               ? ConnectorType::PEPTIDE_BRANCHING
-               : ConnectorType::PEPTIDE_LINEAR;
+    return begin_is_branch || end_is_branch ? ConnectorType::PEPTIDE_BRANCHING
+                                            : ConnectorType::PEPTIDE_LINEAR;
 }
 
 [[nodiscard]] unsigned int get_residue_number(const ::RDKit::Atom* atom)

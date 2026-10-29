@@ -2001,19 +2001,21 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
     }
     for (const auto& [polymer_idx, reference_idx] : bonds) {
         // The supplied indices belong to the extracted polymers; the original
-        // bond carries the linkage properties needed to classify its arrowheads.
+        // bond carries the linkage properties needed to classify its
+        // arrowheads.
         const auto original_polymer_idx =
-            polymer.getAtomWithIdx(polymer_idx)->getProp<unsigned int>(
-                ORIGINAL_INDEX);
+            polymer.getAtomWithIdx(polymer_idx)
+                ->getProp<unsigned int>(ORIGINAL_INDEX);
         const auto original_reference_idx =
-            reference.getAtomWithIdx(reference_idx)->getProp<unsigned int>(
-                ORIGINAL_INDEX);
+            reference.getAtomWithIdx(reference_idx)
+                ->getProp<unsigned int>(ORIGINAL_INDEX);
         const auto* bond = monomer_mol.getBondBetweenAtoms(
             original_polymer_idx, original_reference_idx);
         if (bond == nullptr) {
             return INTERPOLYMER_RESIDUE_CLEARANCE;
         }
-        // A bond can carry two linkages; either one may need arrowhead clearance.
+        // A bond can carry two linkages; either one may need arrowhead
+        // clearance.
         for (const bool secondary : {false, true}) {
             const auto type = get_connector_type(bond, secondary);
             if (type == ConnectorType::PEPTIDE_SIDE_CHAIN ||
@@ -2231,13 +2233,12 @@ static std::pair<double, double> get_polymer_bounds(const RDKit::ROMol& polymer,
     auto coord = [x_axis](const auto& p) { return x_axis ? p.x : p.y; };
     auto [min_pos, max_pos] = std::minmax_element(
         positions.begin(), positions.end(),
-        [&coord](const auto& a, const auto& b) {
-            return coord(a) < coord(b);
-        });
+        [&coord](const auto& a, const auto& b) { return coord(a) < coord(b); });
     return {coord(*min_pos), coord(*max_pos)};
 }
 
-/** Position a polymer beside its reference without changing its internal shape. */
+/** Position a polymer beside its reference without changing its internal shape.
+ */
 static void place_polymer_beside_reference(RDKit::ROMol& polymer,
                                            const RDKit::ROMol& reference,
                                            const BOND_IDX_VEC& bonds,
@@ -2248,15 +2249,16 @@ static void place_polymer_beside_reference(RDKit::ROMol& polymer,
     const auto& parent_pos = reference.getConformer().getPositions();
     RDGeom::Point3D offset(0, 0, 0);
     if (bonds.empty()) {
-        const auto [child_left, child_right] = get_polymer_bounds(polymer, true);
+        const auto [child_left, child_right] =
+            get_polymer_bounds(polymer, true);
         const auto [child_bottom, child_top] =
             get_polymer_bounds(polymer, false);
         const auto [parent_left, parent_right] =
             get_polymer_bounds(reference, true);
         const auto [parent_bottom, parent_top] =
             get_polymer_bounds(reference, false);
-        const double gap = INTERPOLYMER_RESIDUE_CLEARANCE +
-                           DIST_BETWEEN_MULTIPLE_POLYMERS;
+        const double gap =
+            INTERPOLYMER_RESIDUE_CLEARANCE + DIST_BETWEEN_MULTIPLE_POLYMERS;
         switch (side) {
             case PolymerPlacement::BELOW:
                 offset.y = parent_bottom - child_top - gap;
@@ -2294,13 +2296,12 @@ static void place_polymer_beside_reference(RDKit::ROMol& polymer,
         for (const auto& child : child_pos) {
             for (const auto& parent : parent_pos) {
                 const auto delta = child + offset - parent;
-                const double along = delta.x * outward.x +
-                                     delta.y * outward.y;
-                const double across = delta.x * outward.y -
-                                      delta.y * outward.x;
+                const double along = delta.x * outward.x + delta.y * outward.y;
+                const double across = delta.x * outward.y - delta.y * outward.x;
                 if (std::abs(across) < clearance) {
                     extra = std::max(extra, std::sqrt(clearance * clearance -
-                                                      across * across) - along);
+                                                      across * across) -
+                                                along);
                 }
             }
         }
@@ -2343,21 +2344,20 @@ static void append_polymer_bonds(std::vector<LayoutBond>& bonds,
 }
 
 static void append_connections(std::vector<LayoutBond>& bonds,
-                               const RDKit::ROMol& from,
-                               const RDKit::ROMol& to, bool is_new,
-                               double* total_length = nullptr)
+                               const RDKit::ROMol& from, const RDKit::ROMol& to,
+                               bool is_new, double* total_length = nullptr)
 {
     const auto& from_conf = from.getConformer();
     const auto& to_conf = to.getConformer();
     for (auto [from_idx, to_idx] : get_bonds_between_polymers(from, to)) {
         const auto begin = from_conf.getAtomPos(from_idx);
         const auto end = to_conf.getAtomPos(to_idx);
-        bonds.push_back({begin, end,
-                         from.getAtomWithIdx(from_idx)->getProp<unsigned int>(
-                             ORIGINAL_INDEX),
-                         to.getAtomWithIdx(to_idx)->getProp<unsigned int>(
-                             ORIGINAL_INDEX),
-                         is_new});
+        bonds.push_back(
+            {begin, end,
+             from.getAtomWithIdx(from_idx)->getProp<unsigned int>(
+                 ORIGINAL_INDEX),
+             to.getAtomWithIdx(to_idx)->getProp<unsigned int>(ORIGINAL_INDEX),
+             is_new});
         if (total_length != nullptr) {
             *total_length += (end - begin).length();
         }
@@ -2368,8 +2368,7 @@ static void append_connections(std::vector<LayoutBond>& bonds,
  * then prefer shorter bonds and a vertical side. */
 static std::tuple<unsigned int, unsigned int, int, double, int>
 score_polymer_placement(const RDKit::ROMol& monomer_mol,
-                        const RDKit::ROMol& polymer,
-                        PolymerPlacement side,
+                        const RDKit::ROMol& polymer, PolymerPlacement side,
                         const std::vector<RDKit::ROMOL_SPTR>& placed_polymers)
 {
     unsigned int residue_clashes = 0;
@@ -2383,9 +2382,9 @@ score_polymer_placement(const RDKit::ROMol& monomer_mol,
                 const auto other_pos =
                     placed->getConformer().getAtomPos(other->getIdx());
                 if ((pos - other_pos).length() < clearance &&
-                    std::find(connections.begin(), connections.end(),
-                              std::make_pair(atom->getIdx(),
-                                             other->getIdx())) ==
+                    std::find(
+                        connections.begin(), connections.end(),
+                        std::make_pair(atom->getIdx(), other->getIdx())) ==
                         connections.end()) {
                     ++residue_clashes;
                 }
@@ -2401,8 +2400,8 @@ score_polymer_placement(const RDKit::ROMol& monomer_mol,
         append_connections(bonds, polymer, *placed_polymers[i], true,
                            &total_length);
         for (size_t j = 0; j < i; ++j) {
-            append_connections(bonds, *placed_polymers[i],
-                               *placed_polymers[j], false);
+            append_connections(bonds, *placed_polymers[i], *placed_polymers[j],
+                               false);
         }
     }
 
@@ -2414,10 +2413,9 @@ score_polymer_placement(const RDKit::ROMol& monomer_mol,
             if (!a.involves_new_polymer && !b.involves_new_polymer) {
                 continue;
             }
-            const bool shares_atom = a.begin_id == b.begin_id ||
-                                     a.begin_id == b.end_id ||
-                                     a.end_id == b.begin_id ||
-                                     a.end_id == b.end_id;
+            const bool shares_atom =
+                a.begin_id == b.begin_id || a.begin_id == b.end_id ||
+                a.end_id == b.begin_id || a.end_id == b.end_id;
             if (!shares_atom &&
                 bonds_are_too_close(a.begin, a.end, b.begin, b.end)) {
                 ++crossings;
@@ -2425,19 +2423,19 @@ score_polymer_placement(const RDKit::ROMol& monomer_mol,
         }
     }
     // Keep the conventional vertical placement when otherwise equivalent.
-    const int horizontal_side = side == PolymerPlacement::LEFT ||
-                                side == PolymerPlacement::RIGHT;
+    const int horizontal_side =
+        side == PolymerPlacement::LEFT || side == PolymerPlacement::RIGHT;
     const auto& positions = polymer.getConformer().getPositions();
-    const int right_to_left = positions.size() > 1 &&
-                              positions.back().x < positions.front().x - EPSILON;
+    const int right_to_left =
+        positions.size() > 1 &&
+        positions.back().x < positions.front().x - EPSILON;
     return {crossings, residue_clashes, right_to_left,
             std::round(total_length / EPSILON), horizontal_side};
 }
 
 /** Try each side and reflection, keeping the least crossed, shortest layout. */
 static void
-orient_polymer(RDKit::ROMol& polymer_to_orient,
-               const RDKit::ROMol& monomer_mol,
+orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
                const RDKit::ROMol& reference_polymer, bool polymer_was_rotated,
                const std::vector<RDKit::ROMOL_SPTR>& placed_polymers)
 {
@@ -2457,10 +2455,8 @@ orient_polymer(RDKit::ROMol& polymer_to_orient,
         preferred_clearance < INTERPOLYMER_RESIDUE_CLEARANCE ? 2 : 1;
     // Preserve the orientation of bases on unpaired DNA/RNA strands. The
     // 180 degree rotation of a paired nucleic acid is intentional.
-    const int reflection_count = polymer_was_rotated
-                                     ? 1
-                                     : (is_nucleic_acid(polymer_to_orient) ? 2
-                                                                            : 4);
+    const int reflection_count =
+        polymer_was_rotated ? 1 : (is_nucleic_acid(polymer_to_orient) ? 2 : 4);
     for (auto side : sides) {
         for (int reflection = 0; reflection < reflection_count; ++reflection) {
             for (int clearance_idx = 0; clearance_idx < clearance_count;
