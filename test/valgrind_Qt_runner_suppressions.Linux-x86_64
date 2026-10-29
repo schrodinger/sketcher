@@ -613,8 +613,24 @@
    fun:_Z14qBlendGradientiPK11QT_FT_Span_Pv
 }
 # Qt 6.12 can also retain tryStart between startThread and QThreadPool::start.
-# Match this observed gradient-paint TLS stack without broadening the existing
+# Match these observed paint TLS stacks without broadening the existing
 # rules to unrelated thread pools or other allocation/leak kinds.
+{
+   Qt solid raster paint thread pool TLS - non-inlined tryStart
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN18QThreadPoolPrivate8tryStartEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
+}
 {
    Qt gradient raster paint thread pool TLS - non-inlined tryStart
    Memcheck:Leak
