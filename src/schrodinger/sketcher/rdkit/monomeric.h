@@ -342,15 +342,6 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection);
 
 /**
- * @overload
- * @param bond the bond representing a monomer connector
- * @param connector_type the type of monomer connection represented by bond
- */
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const ConnectorType connector_type);
-
-/**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
  * offset from the center of the monomer to the center of the arrowhead. The
  * arrowhead is placed outside the nearest cardinal side facing the bound

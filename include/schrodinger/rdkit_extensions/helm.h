@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -17,6 +18,7 @@ const std::string SUPPLEMENTARY_INFORMATION{"SUPPLEMENTARY_INFORMATION"};
 const std::string BRANCH_LINKAGE{"R3-R1"};
 const std::string BACKBONE_LINKAGE{"R2-R1"};
 const std::string PEPTIDE_SIDE_CHAIN_LINKAGE{"R3-R3"};
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
@@ -110,6 +112,15 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
+
+/**
+ * Return which ends of a monomer connector have diamonds. The booleans refer
+ * to the bond's begin and end atoms. Secondary connections use CUSTOM_BOND;
+ * primary connections use LINKAGE.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+get_monomer_connector_diamonds(const ::RDKit::Bond* bond,
+                               bool is_secondary_connection);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);

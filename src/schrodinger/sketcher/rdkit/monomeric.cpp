@@ -44,9 +44,6 @@ const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 
-const std::string H_BOND_LINKAGE =
-    H_BOND_AP_MODEL_NAME + "-" + H_BOND_AP_MODEL_NAME;
-
 const std::unordered_map<std::string_view, std::string_view>
     DNA_BASE_COMPLEMENTS = {
         {"A", "T"}, {"T", "A"}, {"U", "A"}, {"G", "C"}, {"C", "G"}};
@@ -667,38 +664,8 @@ std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection)
 {
-    auto connector_type = get_connector_type(bond, is_secondary_connection);
-    return does_connector_have_arrowheads(bond, connector_type);
-}
-
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const ConnectorType connector_type)
-{
-    switch (connector_type) {
-        case ConnectorType::CHEM:
-        case ConnectorType::PEPTIDE_LINEAR:
-        case ConnectorType::H_BOND:
-        case ConnectorType::NA_BACKBONE:
-        case ConnectorType::NA_BACKBONE_TO_BASE:
-            return {false, false};
-
-        case ConnectorType::PEPTIDE_DISULFIDE:
-        case ConnectorType::PEPTIDE_SIDE_CHAIN:
-            return {true, true};
-
-        case ConnectorType::PEPTIDE_BRANCHING: {
-            const auto* start_atom = bond->getBeginAtom();
-            const auto* end_atom = bond->getEndAtom();
-            bool start_is_branch = false;
-            bool end_is_branch = false;
-            start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
-            end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-            return {start_is_branch, end_is_branch};
-        }
-        default:
-            return {false, false};
-    }
+    return rdkit_extensions::get_monomer_connector_diamonds(
+        bond, is_secondary_connection);
 }
 
 static Direction get_nearest_cardinal_direction(const QPointF& relative_pos)
@@ -1718,7 +1685,7 @@ build_linkage_string(const std::string_view ap_name_one,
 {
     if (ap_name_one == H_BOND_AP_MODEL_NAME ||
         ap_name_two == H_BOND_AP_MODEL_NAME) {
-        return {H_BOND_LINKAGE, false};
+        return {HYDROGEN_BOND_LINKAGE, false};
     }
     auto ap_num_one = ap_name_to_num(ap_name_one);
     auto ap_num_two = ap_name_to_num(ap_name_two);
@@ -1861,7 +1828,7 @@ bool is_hydrogen_bond(const RDKit::Bond* const bond)
 {
     std::string custom_linkage;
     bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
-    return custom_linkage == H_BOND_LINKAGE;
+    return custom_linkage == HYDROGEN_BOND_LINKAGE;
 }
 
 } // namespace sketcher

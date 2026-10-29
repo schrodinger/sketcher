@@ -137,6 +137,53 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id)
         ->getChainId();
 }
 
+std::pair<bool, bool>
+get_monomer_connector_diamonds(const RDKit::Bond* bond,
+                               bool is_secondary_connection)
+{
+    std::string custom_linkage;
+    bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
+    // Hydrogen bonds are drawn without diamonds, regardless of their endpoints.
+    if (custom_linkage == HYDROGEN_BOND_LINKAGE) {
+        return {false, false};
+    }
+
+    enum class PolymerType { CHEM, PEPTIDE, RNA };
+    const auto polymer_type = [](const RDKit::Atom* atom) {
+        const auto* residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (residue == nullptr) {
+            return PolymerType::CHEM;
+        }
+        const auto& id = residue->getChainId();
+        if (id.starts_with("PEPTIDE")) {
+            return PolymerType::PEPTIDE;
+        }
+        return id.starts_with("RNA") ? PolymerType::RNA : PolymerType::CHEM;
+    };
+
+    const auto begin_type = polymer_type(bond->getBeginAtom());
+    const auto end_type = polymer_type(bond->getEndAtom());
+    if (begin_type == PolymerType::CHEM || end_type == PolymerType::CHEM ||
+        (begin_type != PolymerType::PEPTIDE &&
+         end_type != PolymerType::PEPTIDE)) {
+        return {false, false};
+    }
+
+    std::string linkage;
+    bond->getPropIfPresent(is_secondary_connection ? CUSTOM_BOND : LINKAGE,
+                           linkage);
+    if (linkage == PEPTIDE_SIDE_CHAIN_LINKAGE) {
+        return {true, true};
+    }
+
+    bool begin_is_branch = false;
+    bool end_is_branch = false;
+    bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
+    bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
+    return {begin_is_branch, end_is_branch};
+}
+
 [[nodiscard]] unsigned int get_residue_number(const ::RDKit::Atom* atom)
 {
     const auto monomer_info = atom->getMonomerInfo();

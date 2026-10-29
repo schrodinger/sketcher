@@ -1983,37 +1983,6 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
     return bonds;
 }
 
-/** Match the connector renderer's diamond rules for interpolymer bonds. */
-static bool connection_has_diamonds(const RDKit::Bond* bond)
-{
-    const auto* begin = bond->getBeginAtom();
-    const auto* end = bond->getEndAtom();
-    const auto begin_id = get_polymer_id(begin);
-    const auto end_id = get_polymer_id(end);
-    if (boost::starts_with(begin_id, "CHEM") ||
-        boost::starts_with(end_id, "CHEM") ||
-        (!boost::starts_with(begin_id, "PEPTIDE") &&
-         !boost::starts_with(end_id, "PEPTIDE"))) {
-        return false;
-    }
-
-    bool begin_is_branch = false;
-    bool end_is_branch = false;
-    begin->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
-    end->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-    if (begin_is_branch || end_is_branch) {
-        return true;
-    }
-
-    std::string attachment_points;
-    if (bond->getPropIfPresent(CUSTOM_BOND, attachment_points) &&
-        attachment_points == PEPTIDE_SIDE_CHAIN_LINKAGE) {
-        return true;
-    }
-    return bond->getPropIfPresent(LINKAGE, attachment_points) &&
-           attachment_points == PEPTIDE_SIDE_CHAIN_LINKAGE;
-}
-
 static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
                                          const RDKit::ROMol& polymer,
                                          const RDKit::ROMol& reference,
@@ -2031,8 +2000,16 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
                 ORIGINAL_INDEX);
         const auto* bond = monomer_mol.getBondBetweenAtoms(
             original_polymer_idx, original_reference_idx);
-        if (bond == nullptr || connection_has_diamonds(bond)) {
+        if (bond == nullptr) {
             return INTERPOLYMER_RESIDUE_CLEARANCE;
+        }
+        // A bond can carry two linkages; either set of diamonds needs room.
+        for (const bool secondary : {false, true}) {
+            const auto [begin_diamond, end_diamond] =
+                get_monomer_connector_diamonds(bond, secondary);
+            if (begin_diamond || end_diamond) {
+                return INTERPOLYMER_RESIDUE_CLEARANCE;
+            }
         }
     }
     return MONOMER_BOND_LENGTH;

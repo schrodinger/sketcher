@@ -138,7 +138,7 @@ void MonomerConnectorItem::updateCachedData()
     m_arrowhead_path.clear();
     auto connector_type = get_connector_type(m_bond, m_is_secondary_connection);
     auto [start_has_arrowhead, end_has_arrowhead] =
-        does_connector_have_arrowheads(m_bond, connector_type);
+        does_connector_have_arrowheads(m_bond, m_is_secondary_connection);
     auto [connector_color, connector_color_dark_bg, connector_width,
           connector_pen_style] = STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
     m_connector_color = connector_color;
