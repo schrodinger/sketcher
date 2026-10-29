@@ -341,6 +341,11 @@ std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection);
 
+/** Determine diamond ends from the connector's already computed style type. */
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               ConnectorType connector_type);
+
 /**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
  * offset from the center of the monomer to the center of the arrowhead. The

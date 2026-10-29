@@ -618,54 +618,67 @@ bool contains_two_monomer_linkages(const RDKit::Bond* bond)
 ConnectorType get_connector_type(const RDKit::Bond* bond,
                                  const bool is_secondary_connection)
 {
-    const auto* start_atom = bond->getBeginAtom();
-    auto start_res_name = get_monomer_res_name(start_atom);
-    auto start_monomer_type = get_monomer_type(start_atom);
-
-    const auto* end_atom = bond->getEndAtom();
-    auto end_res_name = get_monomer_res_name(end_atom);
-    auto end_monomer_type = get_monomer_type(end_atom);
-
-    if (is_hydrogen_bond(bond)) {
-        return ConnectorType::H_BOND;
-    } else if (start_monomer_type == MonomerType::CHEM ||
-               end_monomer_type == MonomerType::CHEM) {
-        return ConnectorType::CHEM;
-    } else if (start_monomer_type == MonomerType::PEPTIDE ||
-               end_monomer_type == MonomerType::PEPTIDE) {
-        std::string attachment_points;
-        std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
-        bond->getPropIfPresent(prop, attachment_points);
-        if (attachment_points == PEPTIDE_SIDE_CHAIN_LINKAGE) {
-            if (peptide_ap3_name_for_monomer(start_atom) == PEPTIDE_R3_NAME_S &&
-                peptide_ap3_name_for_monomer(end_atom) == PEPTIDE_R3_NAME_S) {
-                return ConnectorType::PEPTIDE_DISULFIDE;
-            } else {
-                return ConnectorType::PEPTIDE_SIDE_CHAIN;
-            }
-        }
-        bool start_is_branch = false;
-        bool end_is_branch = false;
-        start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
-        end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-        if (start_is_branch || end_is_branch) {
+    using rdkit_extensions::MonomerConnectorKind;
+    switch (rdkit_extensions::get_monomer_connector_kind(
+        bond, is_secondary_connection)) {
+        case MonomerConnectorKind::H_BOND:
+            return ConnectorType::H_BOND;
+        case MonomerConnectorKind::CHEM:
+            return ConnectorType::CHEM;
+        case MonomerConnectorKind::PEPTIDE_LINEAR:
+            return ConnectorType::PEPTIDE_LINEAR;
+        case MonomerConnectorKind::PEPTIDE_BRANCHING:
             return ConnectorType::PEPTIDE_BRANCHING;
+        case MonomerConnectorKind::PEPTIDE_SIDE_CHAIN:
+            // Only the rendering style distinguishes disulfides from other
+            // peptide side-chain bonds.
+            if (peptide_ap3_name_for_monomer(bond->getBeginAtom()) ==
+                    PEPTIDE_R3_NAME_S &&
+                peptide_ap3_name_for_monomer(bond->getEndAtom()) ==
+                    PEPTIDE_R3_NAME_S) {
+                return ConnectorType::PEPTIDE_DISULFIDE;
+            }
+            return ConnectorType::PEPTIDE_SIDE_CHAIN;
+        case MonomerConnectorKind::NUCLEIC_ACID: {
+            const bool has_base =
+                get_monomer_type(bond->getBeginAtom()) ==
+                    MonomerType::NA_BASE ||
+                get_monomer_type(bond->getEndAtom()) == MonomerType::NA_BASE;
+            return has_base ? ConnectorType::NA_BACKBONE_TO_BASE
+                            : ConnectorType::NA_BACKBONE;
         }
-        return ConnectorType::PEPTIDE_LINEAR;
-    } else if (start_monomer_type != MonomerType::NA_BASE &&
-               end_monomer_type != MonomerType::NA_BASE) {
-        return ConnectorType::NA_BACKBONE;
-    } else {
-        return ConnectorType::NA_BACKBONE_TO_BASE;
     }
+    throw std::logic_error("Unknown monomer connector kind");
 }
 
 std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection)
 {
-    return rdkit_extensions::get_monomer_connector_diamonds(
-        bond, is_secondary_connection);
+    return does_connector_have_arrowheads(
+        bond, get_connector_type(bond, is_secondary_connection));
+}
+
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               ConnectorType connector_type)
+{
+    switch (connector_type) {
+        case ConnectorType::PEPTIDE_DISULFIDE:
+        case ConnectorType::PEPTIDE_SIDE_CHAIN:
+            return {true, true};
+        case ConnectorType::PEPTIDE_BRANCHING: {
+            bool begin_is_branch = false;
+            bool end_is_branch = false;
+            bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER,
+                                                   begin_is_branch);
+            bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER,
+                                                 end_is_branch);
+            return {begin_is_branch, end_is_branch};
+        }
+        default:
+            return {false, false};
+    }
 }
 
 static Direction get_nearest_cardinal_direction(const QPointF& relative_pos)

@@ -8,7 +8,6 @@
 #include <set>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -113,14 +112,21 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
 
-/**
- * Return which ends of a monomer connector have diamonds. The booleans refer
- * to the bond's begin and end atoms. Secondary connections use CUSTOM_BOND;
- * primary connections use LINKAGE.
- */
-[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
-get_monomer_connector_diamonds(const ::RDKit::Bond* bond,
-                               bool is_secondary_connection);
+// Connector categories shared by coordinate generation and Sketcher. Sketcher
+// further distinguishes disulfides and nucleic acid base connections for style.
+enum class MonomerConnectorKind {
+    H_BOND,
+    CHEM,
+    PEPTIDE_LINEAR,
+    PEPTIDE_BRANCHING,
+    PEPTIDE_SIDE_CHAIN,
+    NUCLEIC_ACID
+};
+
+// Classify the primary LINKAGE or secondary CUSTOM_BOND of a monomer bond.
+[[nodiscard]] RDKIT_EXTENSIONS_API MonomerConnectorKind
+get_monomer_connector_kind(const ::RDKit::Bond* bond,
+                           bool is_secondary_connection);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);

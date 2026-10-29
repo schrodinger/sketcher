@@ -137,15 +137,14 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id)
         ->getChainId();
 }
 
-std::pair<bool, bool>
-get_monomer_connector_diamonds(const RDKit::Bond* bond,
-                               bool is_secondary_connection)
+MonomerConnectorKind
+get_monomer_connector_kind(const RDKit::Bond* bond,
+                           bool is_secondary_connection)
 {
     std::string custom_linkage;
     bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
-    // Hydrogen bonds are drawn without diamonds, regardless of their endpoints.
     if (custom_linkage == HYDROGEN_BOND_LINKAGE) {
-        return {false, false};
+        return MonomerConnectorKind::H_BOND;
     }
 
     const auto* begin_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
@@ -153,7 +152,7 @@ get_monomer_connector_diamonds(const RDKit::Bond* bond,
     const auto* end_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
         bond->getEndAtom()->getMonomerInfo());
     if (begin_residue == nullptr || end_residue == nullptr) {
-        return {false, false};
+        return MonomerConnectorKind::CHEM;
     }
 
     const auto& begin_id = begin_residue->getChainId();
@@ -164,23 +163,27 @@ get_monomer_connector_diamonds(const RDKit::Bond* bond,
     const bool end_is_rna = end_id.starts_with("RNA");
     const bool both_are_peptide_or_rna =
         (begin_is_peptide || begin_is_rna) && (end_is_peptide || end_is_rna);
-    if (!both_are_peptide_or_rna ||
-        (!begin_is_peptide && !end_is_peptide)) {
-        return {false, false};
+    if (!both_are_peptide_or_rna) {
+        return MonomerConnectorKind::CHEM;
+    }
+    if (!begin_is_peptide && !end_is_peptide) {
+        return MonomerConnectorKind::NUCLEIC_ACID;
     }
 
     std::string linkage;
     bond->getPropIfPresent(is_secondary_connection ? CUSTOM_BOND : LINKAGE,
                            linkage);
     if (linkage == PEPTIDE_SIDE_CHAIN_LINKAGE) {
-        return {true, true};
+        return MonomerConnectorKind::PEPTIDE_SIDE_CHAIN;
     }
 
     bool begin_is_branch = false;
     bool end_is_branch = false;
     bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
     bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-    return {begin_is_branch, end_is_branch};
+    return begin_is_branch || end_is_branch
+               ? MonomerConnectorKind::PEPTIDE_BRANCHING
+               : MonomerConnectorKind::PEPTIDE_LINEAR;
 }
 
 [[nodiscard]] unsigned int get_residue_number(const ::RDKit::Atom* atom)
