@@ -148,25 +148,24 @@ get_monomer_connector_diamonds(const RDKit::Bond* bond,
         return {false, false};
     }
 
-    enum class PolymerType { CHEM, PEPTIDE, RNA };
-    const auto polymer_type = [](const RDKit::Atom* atom) {
-        const auto* residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-            atom->getMonomerInfo());
-        if (residue == nullptr) {
-            return PolymerType::CHEM;
-        }
-        const auto& id = residue->getChainId();
-        if (id.starts_with("PEPTIDE")) {
-            return PolymerType::PEPTIDE;
-        }
-        return id.starts_with("RNA") ? PolymerType::RNA : PolymerType::CHEM;
-    };
+    const auto* begin_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getBeginAtom()->getMonomerInfo());
+    const auto* end_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getEndAtom()->getMonomerInfo());
+    if (begin_residue == nullptr || end_residue == nullptr) {
+        return {false, false};
+    }
 
-    const auto begin_type = polymer_type(bond->getBeginAtom());
-    const auto end_type = polymer_type(bond->getEndAtom());
-    if (begin_type == PolymerType::CHEM || end_type == PolymerType::CHEM ||
-        (begin_type != PolymerType::PEPTIDE &&
-         end_type != PolymerType::PEPTIDE)) {
+    const auto& begin_id = begin_residue->getChainId();
+    const auto& end_id = end_residue->getChainId();
+    const bool begin_is_peptide = begin_id.starts_with("PEPTIDE");
+    const bool end_is_peptide = end_id.starts_with("PEPTIDE");
+    const bool begin_is_rna = begin_id.starts_with("RNA");
+    const bool end_is_rna = end_id.starts_with("RNA");
+    const bool both_are_peptide_or_rna =
+        (begin_is_peptide || begin_is_rna) && (end_is_peptide || end_is_rna);
+    if (!both_are_peptide_or_rna ||
+        (!begin_is_peptide && !end_is_peptide)) {
         return {false, false};
     }
 
