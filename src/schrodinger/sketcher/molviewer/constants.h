@@ -359,6 +359,10 @@ const qreal MAPPING_ARROW_HEAD_HALF_WIDTH = 3;
 // selection highlighting
 const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
 
+// The corner size for the rounding drawn around non-molecular objects for
+// predictive and selection highlighting
+const qreal NON_MOLECULAR_HIGHLIGHT_ROUNDING = 2.0;
+
 // The width of the path drawn around substance groups for predictive and
 // selection highlighting
 const qreal S_GROUP_HIGHLIGHT_PADDING = 6.0;
