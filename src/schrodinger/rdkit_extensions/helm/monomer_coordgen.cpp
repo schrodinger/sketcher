@@ -2250,11 +2250,11 @@ static std::pair<double, double> get_polymer_bounds(const RDKit::ROMol& polymer,
 }
 
 /** Position a polymer beside its reference without changing its internal shape. */
-static void place_polymer_beside_reference(const RDKit::ROMol& monomer_mol,
-                                           RDKit::ROMol& polymer,
+static void place_polymer_beside_reference(RDKit::ROMol& polymer,
                                            const RDKit::ROMol& reference,
                                            const BOND_IDX_VEC& bonds,
-                                           PolymerPlacement side)
+                                           PolymerPlacement side,
+                                           double clearance)
 {
     const auto& child_pos = polymer.getConformer().getPositions();
     const auto& parent_pos = reference.getConformer().getPositions();
@@ -2301,8 +2301,6 @@ static void place_polymer_beside_reference(const RDKit::ROMol& monomer_mol,
                 outward.x = 1;
                 break;
         }
-        const double clearance =
-            get_interpolymer_clearance(monomer_mol, polymer, reference, bonds);
         offset = parent_anchor - child_anchor + outward * clearance;
         double extra = 0;
         for (const auto& child : child_pos) {
@@ -2464,6 +2462,11 @@ orient_polymer(RDKit::ROMol& polymer_to_orient,
         best_score;
     const std::array sides{PolymerPlacement::BELOW, PolymerPlacement::ABOVE,
                            PolymerPlacement::LEFT, PolymerPlacement::RIGHT};
+    const double preferred_clearance = get_interpolymer_clearance(
+        monomer_mol, polymer_to_orient, reference_polymer, parent_bonds);
+    // Keep the wider spacing available if a compact connector causes a clash.
+    const int clearance_count =
+        preferred_clearance < INTERPOLYMER_RESIDUE_CLEARANCE ? 2 : 1;
     // Preserve the orientation of bases on unpaired DNA/RNA strands. The
     // 180 degree rotation of a paired nucleic acid is intentional.
     const int reflection_count = polymer_was_rotated
@@ -2472,24 +2475,30 @@ orient_polymer(RDKit::ROMol& polymer_to_orient,
                                                                             : 4);
     for (auto side : sides) {
         for (int reflection = 0; reflection < reflection_count; ++reflection) {
-            for (size_t i = 0; i < original.size(); ++i) {
-                auto pos = original[i];
-                if (reflection & 1) {
-                    pos.x = -pos.x;
+            for (int clearance_idx = 0; clearance_idx < clearance_count;
+                 ++clearance_idx) {
+                for (size_t i = 0; i < original.size(); ++i) {
+                    auto pos = original[i];
+                    if (reflection & 1) {
+                        pos.x = -pos.x;
+                    }
+                    if (reflection & 2) {
+                        pos.y = -pos.y;
+                    }
+                    conf.setAtomPos(i, pos);
                 }
-                if (reflection & 2) {
-                    pos.y = -pos.y;
+                const double clearance = clearance_idx == 0
+                                             ? preferred_clearance
+                                             : INTERPOLYMER_RESIDUE_CLEARANCE;
+                place_polymer_beside_reference(polymer_to_orient,
+                                               reference_polymer, parent_bonds,
+                                               side, clearance);
+                auto score = score_polymer_placement(
+                    monomer_mol, polymer_to_orient, side, placed_polymers);
+                if (!best_score || score < *best_score) {
+                    best_score = score;
+                    best_positions = conf.getPositions();
                 }
-                conf.setAtomPos(i, pos);
-            }
-            place_polymer_beside_reference(monomer_mol, polymer_to_orient,
-                                           reference_polymer, parent_bonds,
-                                           side);
-            auto score = score_polymer_placement(
-                monomer_mol, polymer_to_orient, side, placed_polymers);
-            if (!best_score || score < *best_score) {
-                best_score = score;
-                best_positions = conf.getPositions();
             }
         }
     }
