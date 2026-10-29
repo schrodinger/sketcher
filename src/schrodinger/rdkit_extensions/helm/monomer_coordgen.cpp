@@ -2449,7 +2449,7 @@ orient_polymer(RDKit::ROMol& polymer_to_orient,
     std::optional<std::tuple<unsigned int, unsigned int, int, double, int>>
         best_score;
     const std::array sides{PolymerPlacement::BELOW, PolymerPlacement::ABOVE,
-                           PolymerPlacement::LEFT, PolymerPlacement::RIGHT};
+                           PolymerPlacement::RIGHT, PolymerPlacement::LEFT};
     const double preferred_clearance = get_interpolymer_clearance(
         monomer_mol, polymer_to_orient, reference_polymer, parent_bonds);
     // Keep the wider spacing available if a compact connector causes a clash.
