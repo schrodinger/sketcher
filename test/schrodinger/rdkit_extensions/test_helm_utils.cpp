@@ -82,6 +82,24 @@ BOOST_AUTO_TEST_CASE(TestAtomisticMolsAreUnsupported)
                       std::invalid_argument);
 }
 
+BOOST_AUTO_TEST_CASE(TestDisulfideConnectorType)
+{
+    using schrodinger::rdkit_extensions::ConnectorType;
+    using schrodinger::rdkit_extensions::get_connector_type;
+
+    for (const auto& [second_residue, expected_type] :
+         std::vector<std::pair<std::string, ConnectorType>>{
+             {"C", ConnectorType::PEPTIDE_DISULFIDE},
+             {"S", ConnectorType::PEPTIDE_SIDE_CHAIN}}) {
+        const auto helm =
+            "PEPTIDE1{C." + second_residue + "}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$";
+        const auto mol = helm_to_rdkit(helm);
+        const auto* bond = mol->getBondBetweenAtoms(0, 1);
+        BOOST_REQUIRE(bond != nullptr);
+        BOOST_CHECK(get_connector_type(bond, true) == expected_type);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(TestGetInterpolymerConnections)
 {
     auto mol = helm_to_rdkit("PEPTIDE1{C.C}|PEPTIDE2{C}|PEPTIDE3{C}$"

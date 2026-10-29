@@ -46,7 +46,7 @@ using rdkit_extensions::get_connector_type;
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, X_OR_S = 3 };
+enum { N = 1, C = 2, X_OR_S = rdkit_extensions::PEPTIDE_R3_ATTACHMENT_POINT };
 }
 
 namespace NASugarAP
