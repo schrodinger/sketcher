@@ -47,6 +47,11 @@ class SKETCHER_API SketcherTopBar : public SketcherView
      */
     bool handleShortcutAction(const QKeySequence& key_seq);
 
+    /**
+     * Set whether the "Load Monomer Database..." action is visible
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
+
     MoreActionsMenu* m_more_actions_menu = nullptr;
 
   signals:

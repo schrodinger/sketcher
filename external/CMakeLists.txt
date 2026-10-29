@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 include(ExternalProject)
 
 project(schrodinger_sketcher_external)
@@ -24,6 +24,35 @@ function(set_cmake_arg VAR_NAME)
   string(REPLACE ";" "$<SEMICOLON>" CMAKE_ARG "${CMAKE_ARG}")
   set(${VAR_NAME}
       "${CMAKE_ARG}"
+      PARENT_SCOPE)
+endfunction()
+
+# generate_git_patch_command(<var_name> [SUBMODULE <submodule>]
+# <patch_file_names>...)
+#
+# Create a command to apply a list of patches to the local clone of a git
+# repository. Before applying the patches, the repo is reset to ensure that
+# repeated calls to this command don't result in an error. The optional
+# SUBMODULE argument selects the git submodule to reset and patch.
+function(generate_git_patch_command VAR_NAME)
+  cmake_parse_arguments(PATCH "" "SUBMODULE" "" ${ARGN})
+  set(GIT_COMMAND git)
+  if(PATCH_SUBMODULE)
+    list(APPEND GIT_COMMAND -C "${PATCH_SUBMODULE}")
+  endif()
+  set(PATCH_COMMAND ${GIT_COMMAND} reset --hard HEAD)
+  foreach(PATCH_FILE IN LISTS PATCH_UNPARSED_ARGUMENTS)
+    list(
+      APPEND
+      PATCH_COMMAND
+      &&
+      ${GIT_COMMAND}
+      apply
+      --ignore-whitespace
+      "${CMAKE_CURRENT_SOURCE_DIR}/${PATCH_FILE}")
+  endforeach()
+  set(${VAR_NAME}
+      "${PATCH_COMMAND}"
       PARENT_SCOPE)
 endfunction()
 
@@ -58,15 +87,24 @@ function(generate_sqlite_urls VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    -DCMAKE_BUILD_TYPE=Release)
+
 if(EMSCRIPTEN)
+  # All dependencies must use the same exception and setjmp/longjmp model as Qt
+  # and Sketcher. Include C libraries that use longjmp as well as C++ code.
+  set(WASM_EXCEPTION_FLAGS "-fwasm-exceptions -sSUPPORT_LONGJMP=wasm")
+  list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+       "-DCMAKE_C_FLAGS=${WASM_EXCEPTION_FLAGS}"
+       "-DCMAKE_CXX_FLAGS=${WASM_EXCEPTION_FLAGS}")
   set(EXTRA_BOOST_CMAKE_ARGS
-      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
-  )
+      "-DCMAKE_CXX_FLAGS=${WASM_EXCEPTION_FLAGS} -fdeclspec -pthread")
   set(EXTRA_QT_CMAKE_ARGS
-      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
-  set(EXTRA_RDKIT_CMAKE_ARGS
-      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
-      -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
+      -DFEATURE_wasm_jspi=ON -DFEATURE_wasm_exceptions=ON)
+  set(EXTRA_RDKIT_CMAKE_ARGS ${EXTRA_BOOST_CMAKE_ARGS}
+                             -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
 
@@ -75,10 +113,6 @@ else()
          -DFEATURE_xcb_xlib=ON -DFEATURE_xkbcommon=ON)
   endif()
 endif()
-
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
-    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
-    -DCMAKE_BUILD_TYPE=Release)
 
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
@@ -262,27 +296,21 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/expat-${EXPAT_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
-set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
-
-# Prevent RDKit from trying to build shared libs
-list(
-  APPEND
+generate_git_patch_command(
   RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
-
-# Fix expat.h header propagation. This breaks the Windows and wasm builds
-list(
-  APPEND
-  RDKIT_PATCH_COMMAND
-  &&
-  git
-  apply
-  --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_expat_public_includes.patch)
+  # Prevent RDKit from trying to build shared libs
+  rdkit_static_build.patch
+  # Fix expat.h header propagation. This breaks the Windows and wasm builds
+  rdkit_expat_public_includes.patch
+  rdkit_pr_9563.patch
+  rdkit_pr_9550.patch
+  rdkit_pr_9536.patch
+  rdkit_molecular_templates_pr_29.patch
+  rdkit_pr_9639.patch
+  rdkit_pr_9649.patch
+  rdkit_pr_9650.patch
+  rdkit_pr_9630.patch
+  rdkit_revert_pr_9414.patch)
 
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
@@ -327,6 +355,19 @@ else()
   set(QT_GIT_SUBMODULES qtbase qtsvg)
 endif()
 
+generate_git_patch_command(
+  QT_PATCH_COMMAND
+  SUBMODULE
+  qtbase
+  # QTBUG-151280 is fixed in Qt 6.13; appears likely to be backported to Qt
+  # 6.12.1 as well.
+  qt_QTBUG-151280.patch
+  # Give PNG clipboard blobs their required MIME type to fix QTBUG-151788. This
+  # is fixed upstream in Qt 6.12.1 and 6.13.
+  qt_QTBUG-151788.patch
+  # Support the $CFGDIR paths written by Emscripten 6.0.4 and later.
+  qt_emsdk_cfgdir.patch)
+
 set_cmake_arg(QT_BUILD_SUBMODULES ${QT_GIT_SUBMODULES})
 ExternalProject_Add(
   qt
@@ -334,8 +375,7 @@ ExternalProject_Add(
   GIT_TAG v${QT_VERSION}
   GIT_SUBMODULES ${QT_GIT_SUBMODULES}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND ${CMAKE_COMMAND} -P
-                ${CMAKE_CURRENT_SOURCE_DIR}/qt_yield_acle_patch.cmake
+  PATCH_COMMAND ${QT_PATCH_COMMAND}
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}

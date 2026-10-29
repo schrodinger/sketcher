@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
 import {
-  clickMenuButtonRow,
+  activateAction,
   clickPopupTool,
   getExportedSmiles,
-  isWidgetVisible,
   loadStructure,
   openContextMenu,
   selectAll,
@@ -17,10 +16,7 @@ test.describe('Playwright bridge top-level Qt surfaces', () => {
   test('reports text and style from the foreground Paste in Text dialog', async ({ page }) => {
     await waitForSketcherReady(page);
     await loadStructure(page, SOURCE);
-    await clickMenuButtonRow(page, 'import_btn', 'Paste in Text...');
-    // The dialog opens on a later event loop iteration, and until then
-    // status_lbl would resolve to a hidden label of the same name.
-    await expect.poll(() => isWidgetVisible(page, 'structure_text_edit')).toBe(true);
+    await activateAction(page, 'Paste in Text...');
 
     const status = await widgetState(page, 'status_lbl');
     expect(status.text).toBe('Specified structure will <b>replace</b> Sketcher content');

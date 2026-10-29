@@ -8,6 +8,7 @@
 #include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/amino_acid_item.h"
@@ -34,6 +35,7 @@ using MonomericNucleotide = std::tuple<QString, QString, QString>;
 Q_DECLARE_METATYPE(CustomMonomer);
 Q_DECLARE_METATYPE(MonomericNucleotide);
 Q_DECLARE_METATYPE(schrodinger::sketcher::NucleicAcidMutation);
+Q_DECLARE_METATYPE(schrodinger::rdkit_extensions::MonomerID);
 
 namespace schrodinger
 {
@@ -89,6 +91,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::DNA_NUCLEOBASE,
         ModelKey::CUSTOM_NUCLEOTIDE,
         ModelKey::CUSTOM_MONOMER,
+        ModelKey::MONOMER_DB_MONOMER,
         ModelKey::INTERFACE_TYPE,
         ModelKey::TOOL_SET,
         ModelKey::MOLECULE_TYPE,
@@ -287,6 +290,9 @@ void SketcherModel::reset()
         {ModelKey::CUSTOM_MONOMER,
          QVariant::fromValue(
              CustomMonomer{"", rdkit_extensions::ChainType::PEPTIDE})},
+        {ModelKey::MONOMER_DB_MONOMER,
+         QVariant::fromValue(rdkit_extensions::MonomerID{
+             "", rdkit_extensions::ChainType::PEPTIDE})},
         {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
         {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},

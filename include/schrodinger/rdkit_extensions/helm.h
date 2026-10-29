@@ -16,6 +16,7 @@ const std::string ATOM_LABEL{"atomLabel"};
 const std::string SUPPLEMENTARY_INFORMATION{"SUPPLEMENTARY_INFORMATION"};
 const std::string BRANCH_LINKAGE{"R3-R1"};
 const std::string BACKBONE_LINKAGE{"R2-R1"};
+const std::string PEPTIDE_SIDE_CHAIN_LINKAGE{"R3-R3"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
@@ -31,7 +32,7 @@ const std::string EXTENDED_ANNOTATIONS{"extended_annotations"};
 const std::string ARM_PAIR_KEY{"Antibody arms"};
 const std::string STRAND_PAIR_KEY{"Double Helix"};
 
-const std::string PDB_TO_HELM{"pdbToHelmChainMap"};
+const std::string ST_TO_MOL_MONOMERIC_MAPPING{"stToMolMonomericMapping"};
 
 // Properties excluded from CopyMolProperties - these are
 // representation-specific and should be regenerated during conversions rather
@@ -47,7 +48,7 @@ const std::vector<std::string> PRIVATE_PROPERTIES = {
     ANNOTATION,
     SUPPLEMENTARY_INFORMATION,
     HELM_MODEL,
-    PDB_TO_HELM,
+    ST_TO_MOL_MONOMERIC_MAPPING,
 
     // Structural pairing metadata
     EXTENDED_ANNOTATIONS,

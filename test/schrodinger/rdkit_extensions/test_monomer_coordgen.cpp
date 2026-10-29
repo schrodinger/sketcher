@@ -6,9 +6,11 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
-#include <vector>
+#include <array>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
@@ -602,6 +604,27 @@ BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)
     BOOST_CHECK_NO_THROW(compute_monomer_mol_coords(*mol));
 }
 
+BOOST_AUTO_TEST_CASE(TestChainsLeavingCycleStartInCardinalDirections)
+{
+    const auto mol = helm_to_rdkit(
+        R"(CHEM1{[*CCC(N1CN(C(CC*)=O)CN(C(CC\*)=O)C1)=O |$_R1;;;;;;;;;;_R2;;;;;;;_R3;;;;$|]}|PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$PEPTIDE1,CHEM1,4:R3-1:R1|PEPTIDE1,CHEM1,11:R3-1:R2|CHEM1,PEPTIDE1,1:R3-18:R3$$$V2.0)");
+
+    compute_monomer_mol_coords(*mol);
+    const auto& conformer = mol->getConformer();
+    const auto first_tail_offset =
+        conformer.getAtomPos(3) - conformer.getAtomPos(4);
+    const auto second_tail_offset =
+        conformer.getAtomPos(19) - conformer.getAtomPos(18);
+
+    // Both tails leave the right side of the cycle. Their first monomers should
+    // be horizontal with their respective ring atoms instead of retaining the
+    // close, diagonal coordinates produced by RDKit.
+    BOOST_CHECK_SMALL(first_tail_offset.y, 1e-6);
+    BOOST_CHECK_SMALL(second_tail_offset.y, 1e-6);
+    BOOST_CHECK_GT(first_tail_offset.x, 0.0);
+    BOOST_CHECK_GT(second_tail_offset.x, 0.0);
+}
+
 BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
 
 static RDKit::RWMol
@@ -835,6 +858,94 @@ BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
                 static_cast<int>(i), *mol, turns);
         BOOST_CHECK_CLOSE(score, scores[i], 1e-4);
     }
+}
+
+BOOST_AUTO_TEST_CASE(MonomerSizesAreClampedToMinimum)
+{
+    auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    schrodinger::rdkit_extensions::compute_monomer_mol_coords(*mol);
+
+    std::unordered_map<int, RDGeom::Point3D> undersized_monomers{
+        {0, {0.1, 0.2, 0.0}}, {1, {0.3, 0.4, 0.0}}};
+    const auto check_stored_sizes = [&]() {
+        for (const auto* atom : mol->atoms()) {
+            const auto stored_size = atom->getProp<std::array<double, 3>>(
+                schrodinger::rdkit_extensions::MONOMER_ITEM_SIZE);
+            BOOST_CHECK_EQUAL(
+                stored_size[0],
+                schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE);
+            BOOST_CHECK_EQUAL(
+                stored_size[1],
+                schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE);
+        }
+    };
+
+    schrodinger::rdkit_extensions::store_initial_monomer_sizes(
+        *mol, undersized_monomers);
+    check_stored_sizes();
+
+    const auto original_positions = mol->getConformer().getPositions();
+    schrodinger::rdkit_extensions::resize_monomers(*mol, undersized_monomers);
+    check_stored_sizes();
+    for (const auto* atom : mol->atoms()) {
+        const auto displacement =
+            mol->getConformer().getAtomPos(atom->getIdx()) -
+            original_positions[atom->getIdx()];
+        BOOST_CHECK_SMALL(displacement.length(), 1e-6);
+    }
+}
+
+/**
+ * Verify that calculating the connection offset matches the results of resizing
+ * a two-monomer molecule.  Check this for all eight cardinal and diagonal
+ * directions for a variety of monomer widths, including widths below the
+ * minimum bead size, for both backbone and branch connections. Confirm that
+ * repeating the resize leaves the coordinates unchanged.
+ */
+BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
+                     bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({-1.0, 0.0, 1.0}) *
+                         bdata::make({0.1, 0.8, 4.0}) *
+                         bdata::make({0.1, 0.8, 2.0}) *
+                         bdata::make({false, true}),
+                     dx, dy, start_width, end_width, is_branch)
+{
+    if (dx == 0 && dy == 0) {
+        // skip the test case where the monomers would be on top of each other
+        return;
+    }
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit(is_branch ? "RNA1{R(A)}$$$$V2.0"
+                                       : "PEPTIDE1{A.C}$$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    const RDGeom::Point3D offset(dx * 1.5, dy * 1.5, 0);
+    auto& conf = mol->getConformer();
+    conf.setAtomPos(0, {0, 0, 0});
+    conf.setAtomPos(1, offset);
+    const RDGeom::Point3D start_size(start_width, 0.8, 0);
+    const RDGeom::Point3D end_size(end_width, 0.8, 0);
+    const auto expected =
+        get_monomer_connection_offset(offset, start_size, end_size);
+
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    const auto actual = conf.getAtomPos(1) - conf.getAtomPos(0);
+    BOOST_CHECK_SMALL((actual - expected).length(), 1e-6);
+    if (dx != 0) {
+        // Both horizontal and diagonal connections must clear the label
+        // widths with the standard 0.7-unit gap along the horizontal axis.
+        BOOST_CHECK_CLOSE(
+            std::abs(actual.x),
+            0.7 + (std::max(start_width, 0.8) + std::max(end_width, 0.8)) / 2,
+            1e-6);
+    } else {
+        BOOST_CHECK_SMALL(actual.x, 1e-6);
+        BOOST_CHECK_CLOSE(std::abs(actual.y), 1.5, 1e-6);
+    }
+
+    // repeating the same resize call must not change the coordinates
+    resize_monomers(*mol, {{0, start_size}, {1, end_size}});
+    BOOST_CHECK_SMALL(
+        (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

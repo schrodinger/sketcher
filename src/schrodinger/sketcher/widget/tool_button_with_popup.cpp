@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "schrodinger/sketcher/sketcher_css_style.h"
+#include "schrodinger/sketcher/widget/widget_utils.h"
 
 namespace schrodinger
 {
@@ -52,6 +53,7 @@ void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
         throw std::runtime_error("The popup widget has already been set.");
     }
     m_popup_wdg = popup_wdg;
+    configure_button_popup(this, popup_wdg);
 
     updateStyle();
 }
