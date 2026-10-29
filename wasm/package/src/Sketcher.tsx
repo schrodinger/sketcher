@@ -62,7 +62,10 @@ export type SketcherWASM = {
   sketcher_export_image: (format: SketcherWasmImageFormat) => string;
   sketcher_clear: () => void;
   sketcher_is_empty: () => boolean;
-  sketcher_load_custom_monomers: (json: string) => { succeeded: string[]; failed: string[] };
+  sketcher_load_custom_monomers: (
+    json: string,
+    runSmilesCanonicalization?: boolean,
+  ) => { succeeded: string[]; failed: string[] };
   sketcher_has_monomers: () => boolean;
   sketcher_allow_monomeric: (allowMonomeric: boolean) => void;
   sketcher_changed_callback?: () => void;

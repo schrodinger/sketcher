@@ -132,10 +132,21 @@ monomer_defs_insertion_result_to_js(const MonomerDefsInsertionResult& result)
     return object;
 }
 
-emscripten::val sketcher_load_custom_monomers(const std::string& json)
+/**
+ * Replace the custom monomer database contents with definitions from JSON.
+ * @param json JSON string containing the new monomer definitions.
+ * @param run_smiles_canonicalization Whether to run SMILES canonicalization for
+ * the new database contents. This may only be set to false if all SMILES in the
+ * provided JSON string have already been canonicalized using the same
+ * canonicalization scheme as used by the Sketcher.
+ * @return An object containing succeeded and failed insertion logs.
+ */
+emscripten::val
+sketcher_load_custom_monomers(const std::string& json,
+                              bool run_smiles_canonicalization = true)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    auto result = db.loadMonomersFromJson(json);
+    auto result = db.loadMonomersFromJson(json, run_smiles_canonicalization);
     get_sketcher_instance().setLoadMonomerDatabaseVisible(false);
 
     return monomer_defs_insertion_result_to_js(result);
@@ -223,6 +234,11 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function(
+        "sketcher_load_custom_monomers",
+        emscripten::optional_override([](const std::string& json) {
+            return sketcher_load_custom_monomers(json);
+        }));
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     // see sketcher_changed_callback above
