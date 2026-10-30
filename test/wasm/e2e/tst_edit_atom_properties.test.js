@@ -18,17 +18,9 @@ test.describe('tst_edit_atom_properties', () => {
     await sk.open();
     await sk.import_menu('paste_in_text', SOURCE);
     await sk.map_imported_atom_indexes();
-    // Preserve the live rendered-item identity across edits; modified/query
-    // atom exports cannot be remapped through the original V3000 parser.
-    const atomRect = await sk.rendered_object_rect('atom', sk.replay_atom_indices.get(4) || 4);
-    // Keep the live screen point as the source does after its coordinate
-    // rebuild: atom 4 becomes a query during this test and can no longer be
-    // remapped through the original V3000 atom identity.
-    const target = {
-      type: 'screen_point',
-      x: atomRect.x + atomRect.width / 2,
-      y: atomRect.y + atomRect.height / 2,
-    };
+    // Resolve the current label for every click: editing an atom changes its
+    // highlighting bounds, so their original center can become empty space.
+    const target = { type: 'atom', index: 4 };
     await sk.click_atom(4, true, 'shift');
 
     // Source: selection context menu -> Replace with -> Allowed List.
@@ -99,19 +91,12 @@ test.describe('tst_edit_atom_properties', () => {
     await sk.import_menu('paste_in_text', SOURCE);
     await sk.map_imported_atom_indexes();
     await sk.click_atom(4, true);
-    // Squish keeps this initial screen point after atom 4 is converted to a
-    // query and uses it for each following context-menu invocation.
-    const atomRect = await sk.rendered_object_rect('atom', sk.replay_atom_indices.get(4) || 4);
-    const atomX = atomRect.x + atomRect.width / 2;
-    const atomY = atomRect.y + atomRect.height / 2;
+    const target = { type: 'atom', index: 4 };
     await checkpoint(page, 'before_cancelling_query_tab');
 
     // Mirror the Squish reset sequence: alter the General query fields while
     // the dialog stays open, reset them, then accept the restored defaults.
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -140,10 +125,7 @@ test.describe('tst_edit_atom_properties', () => {
     await sk.edit_atom_properties({ set_as: 'query', query_type: 'general' });
     await checkpoint(page, 'after_resetting_query_tab');
 
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -154,10 +136,7 @@ test.describe('tst_edit_atom_properties', () => {
 
     // The current dialog implementation swaps the visible input and disables
     // isotope plus unpaired electrons; charge remains editable.
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -176,10 +155,7 @@ test.describe('tst_edit_atom_properties', () => {
     });
     await checkpoint(page, 'change_allowed_list_to_CNS');
 
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -202,10 +178,7 @@ test.describe('tst_edit_atom_properties', () => {
 
     // Source accepts the Wildcard configuration (its exhaustive per-wildcard
     // loop is itself commented out), then reopens this dialog for R-Group.
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -220,10 +193,7 @@ test.describe('tst_edit_atom_properties', () => {
     expect((await sk.widget_state('query_stereo_combo')).enabled).toBe(false);
     await sk.edit_atom_properties({ set_as: 'query', query_type: 'general' });
 
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -234,10 +204,7 @@ test.describe('tst_edit_atom_properties', () => {
 
     // As in Squish, choosing C immediately applies it to the selected atom.
     await sk.click_tool('C');
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -248,10 +215,7 @@ test.describe('tst_edit_atom_properties', () => {
       unpaired_electrons: 1,
     });
     await checkpoint(page, 'change_all_fields');
-    await sk.selection_context_menu(
-      { type: 'screen_point', x: atomX, y: atomY },
-      'edit_atom_properties',
-    );
+    await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({
       set_as: 'query',
       query_type: 'general',
@@ -277,12 +241,7 @@ test.describe('tst_edit_atom_properties', () => {
     await sk.import_menu('paste_in_text', SOURCE);
     await sk.map_imported_atom_indexes();
     await sk.click_atom(4, true);
-    const atomRect = await sk.rendered_object_rect('atom', sk.replay_atom_indices.get(4) || 4);
-    const target = {
-      type: 'screen_point',
-      x: atomRect.x + atomRect.width / 2,
-      y: atomRect.y + atomRect.height / 2,
-    };
+    const target = { type: 'atom', index: 4 };
     await sk.selection_context_menu(target, 'edit_atom_properties');
     await sk.edit_atom_properties({ set_as: 'query', query_type: 'advanced', click_ok: false });
     expect((await sk.widget_state('total_h_combo')).text).toBe('(any)');

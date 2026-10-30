@@ -1,10 +1,14 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
+#include <algorithm>
+#include <utility>
+
 #include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/PeriodicTable.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/RDGeneral/types.h>
 
+#include <QLineF>
 #include <QPainter>
 #include <QPointF>
 #include <QString>
@@ -123,10 +127,6 @@ void AtomItem::updateCachedData()
     // bounding rect changes.
     prepareGeometryChange();
     clearLabels();
-    m_selection_highlighting_path =
-        get_selection_highlighting_path_for_atom(m_atom);
-    m_predictive_highlighting_path =
-        get_predictive_highlighting_path_for_atom(m_atom);
     m_squiggle_pen.setWidthF(m_settings.m_squiggle_pen_width);
 
     bool needs_additional_labels, show_Hs;
@@ -208,16 +208,75 @@ void AtomItem::updateCachedData()
         m_settings.m_simplified_stereo_annotation.empty()) {
         updateChiralityLabel();
     }
-    // merge all of the subrects with the predictive highlighting path to create
-    // the shape and bounding rect
-    m_shape = QPainterPath(m_predictive_highlighting_path);
-    m_shape.setFillRule(Qt::WindingFill);
-    for (QRectF rect : getSubrects()) {
-        m_shape.addRect(rect);
-    }
+    updateHighlightingPaths();
+    m_shape = m_predictive_highlighting_path;
     m_bounding_rect = m_shape.boundingRect();
 
     setToolTip(getTooltip());
+}
+
+void AtomItem::updateHighlightingPaths()
+{
+    m_selection_highlighting_path =
+        get_selection_highlighting_path_for_atom(m_atom);
+    m_predictive_highlighting_path =
+        get_predictive_highlighting_path_for_atom(m_atom);
+    const auto rects = getSubrects();
+    if (rects.empty()) {
+        // if this is an unlabeled carbon
+        return;
+    }
+    const auto highlighting_paths = {
+        std::make_pair(&m_predictive_highlighting_path, 0.0),
+        std::make_pair(&m_selection_highlighting_path,
+                       ATOM_HIGHLIGHTING_ADDITIONAL_SELECTION_RADIUS)};
+    if (rects.size() == 1 && rects.front() == m_main_label_rect &&
+        ((m_atom->getAtomicNum() > 0 &&
+          m_main_label_text == QString::fromStdString(m_atom->getSymbol())) ||
+         m_main_label_text.size() <= 1)) {
+        // if the label is just the element name and nothing else, or if it's a
+        // single character (e.g. "A" or "M" wildcards, "D" or "T" isotopes),
+        // then we use a circular label
+        const auto label_radius =
+            QLineF(m_main_label_rect.center(), m_main_label_rect.bottomRight())
+                .length() +
+            TEXT_RECT_MARGIN;
+        if (label_radius > ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS) {
+            for (auto [path, padding] : highlighting_paths) {
+                // if the default circle size is too small to cover the entire
+                // text (e.g., a multi-letter element like "Cl"), enlarge the
+                // circle just enough to cover
+                path->clear();
+                path->addEllipse(m_main_label_rect.center(),
+                                 label_radius + padding,
+                                 label_radius + padding);
+            }
+        }
+        return;
+    }
+    // there are additional components to the label, so we use a rounded
+    // rectangle large enough to cover everything
+    QRectF label_rect;
+    if (!m_label_is_visible) {
+        // Offset labels must not exclude the atom's default highlighting area.
+        label_rect = m_predictive_highlighting_path.boundingRect();
+    }
+    for (const auto& rect : rects) {
+        label_rect |= rect;
+    }
+    label_rect.adjust(-ATOM_LABEL_MARGIN, -ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN,
+                      ATOM_LABEL_MARGIN);
+    // use the default rectangle rounding unless that's too big for this
+    // rectangle, in which case use the largest rounding that can fit
+    const auto corner_radius =
+        std::min({ATOM_LABEL_HIGHLIGHTING_CORNER_RADIUS,
+                  label_rect.width() * 0.5, label_rect.height() * 0.5});
+    for (auto [path, padding] : highlighting_paths) {
+        path->clear();
+        path->addRoundedRect(
+            label_rect.adjusted(-padding, -padding, padding, padding),
+            corner_radius + padding, corner_radius + padding);
+    }
 }
 
 QString AtomItem::advancedPropertiesSmarts() const
