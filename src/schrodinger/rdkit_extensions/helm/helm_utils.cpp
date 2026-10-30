@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <boost/dynamic_bitset.hpp>
+#include <cctype>
 #include <optional>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/MolOps.h>
@@ -19,7 +20,11 @@
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/helm/dynamic_bitset_on_bits_wrapper.h"
+#include "schrodinger/rdkit_extensions/attachment_points.h"
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 using ::RDKit::RWMol;
 
@@ -135,6 +140,191 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id)
 
     return static_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info)
         ->getChainId();
+}
+
+std::optional<unsigned int>
+get_attachment_point_num_from_atom_label(const RDKit::Atom& atom)
+{
+    std::string label;
+    atom.getPropIfPresent(RDKit::common_properties::atomLabel, label);
+    if (label.starts_with("_R")) {
+        try {
+            const int number = std::stoi(label.substr(2));
+            if (number > 0) {
+                return static_cast<unsigned int>(number);
+            }
+        } catch (const std::logic_error&) {
+            // The label is not a numbered attachment point.
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<unsigned int> get_attachment_point_num(const RDKit::Atom& atom)
+{
+    unsigned int number = 0;
+    if (atom.getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                              number) &&
+        number > 0) {
+        return number;
+    }
+    if (const auto label_number =
+            get_attachment_point_num_from_atom_label(atom)) {
+        return label_number;
+    }
+    if (atom.getAtomicNum() == 0 && atom.getIsotope() > 0) {
+        return atom.getIsotope();
+    }
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol)
+{
+    std::vector<std::pair<int, std::string>> points;
+    for (const auto* atom : mol.atoms()) {
+        const auto number = get_attachment_point_num(*atom);
+        if (!number) {
+            continue;
+        }
+        const RDKit::Atom* heavy_atom = atom;
+        if (atom->getAtomicNum() <= 1) {
+            heavy_atom = nullptr;
+            for (const auto* neighbor : mol.atomNeighbors(atom)) {
+                if (neighbor->getAtomicNum() > 1) {
+                    heavy_atom = neighbor;
+                    break;
+                }
+            }
+        }
+        if (heavy_atom != nullptr) {
+            points.emplace_back(*number, heavy_atom->getSymbol());
+        }
+    }
+    std::ranges::sort(points);
+    return points;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles)
+{
+    const auto mol = to_rdkit(smiles, Format::EXTENDED_SMILES);
+    return get_attachment_points_for_atomistic_mol(*mol);
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_res(const std::string& resname,
+                              const ChainType chain_type)
+{
+    const auto smiles =
+        MonomerDatabase::instance().getMonomerSmiles(resname, chain_type);
+    if (!smiles) {
+        if (chain_type == ChainType::RNA && resname == "N") {
+            return {{1, ""}};
+        }
+        return {{1, ""}, {2, ""}};
+    }
+    return get_attachment_points_for_smiles(*smiles);
+}
+
+std::vector<std::pair<int, std::string>>
+get_numbered_attachment_points_for_monomer(const RDKit::Atom* monomer)
+{
+    bool is_smiles = false;
+    monomer->getPropIfPresent(SMILES_MONOMER, is_smiles);
+    if (is_smiles) {
+        return get_attachment_points_for_smiles(
+            monomer->getProp<std::string>(ATOM_LABEL));
+    }
+    const auto* residue = static_cast<const RDKit::AtomPDBResidueInfo*>(
+        monomer->getMonomerInfo());
+    return get_attachment_points_for_res(residue->getResidueName(),
+                                         getChainType(*monomer));
+}
+
+std::optional<std::string>
+get_attachment_point_element_for_monomer(const RDKit::Atom* monomer,
+                                         unsigned int attachment_point_num)
+{
+    std::optional<std::string> found_element;
+    for (const auto& [number, element] :
+         get_numbered_attachment_points_for_monomer(monomer)) {
+        if (number >= 0 &&
+            static_cast<unsigned int>(number) == attachment_point_num) {
+            found_element = element;
+        }
+    }
+    return found_element;
+}
+
+static bool is_na_base(const RDKit::AtomPDBResidueInfo* residue)
+{
+    const auto& name = residue->getResidueName();
+    if (name.empty()) {
+        return true;
+    }
+    const auto last = std::tolower(static_cast<unsigned char>(name.back()));
+    return last != 'p' && last != 'r';
+}
+
+ConnectorType get_connector_type(const RDKit::Bond* bond,
+                                 bool is_secondary_connection)
+{
+    std::string custom_linkage;
+    bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
+    if (custom_linkage == HYDROGEN_BOND_LINKAGE) {
+        return ConnectorType::H_BOND;
+    }
+
+    if (bond->getBeginAtom()->getMonomerInfo() == nullptr ||
+        bond->getEndAtom()->getMonomerInfo() == nullptr) {
+        throw std::runtime_error("Atom has no monomer info");
+    }
+    const auto* begin_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getBeginAtom()->getMonomerInfo());
+    const auto* end_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getEndAtom()->getMonomerInfo());
+    if (begin_residue == nullptr || end_residue == nullptr) {
+        return ConnectorType::CHEM;
+    }
+
+    const auto& begin_id = begin_residue->getChainId();
+    const auto& end_id = end_residue->getChainId();
+    const bool begin_is_peptide = begin_id.starts_with("PEPTIDE");
+    const bool end_is_peptide = end_id.starts_with("PEPTIDE");
+    const bool begin_is_rna = begin_id.starts_with("RNA");
+    const bool end_is_rna = end_id.starts_with("RNA");
+    const bool both_are_peptide_or_rna =
+        (begin_is_peptide || begin_is_rna) && (end_is_peptide || end_is_rna);
+    if (!both_are_peptide_or_rna) {
+        return ConnectorType::CHEM;
+    }
+    if (!begin_is_peptide && !end_is_peptide) {
+        return is_na_base(begin_residue) || is_na_base(end_residue)
+                   ? ConnectorType::NA_BACKBONE_TO_BASE
+                   : ConnectorType::NA_BACKBONE;
+    }
+
+    std::string linkage;
+    bond->getPropIfPresent(is_secondary_connection ? CUSTOM_BOND : LINKAGE,
+                           linkage);
+    if (linkage == PEPTIDE_SIDE_CHAIN_LINKAGE) {
+        const auto begin_element = get_attachment_point_element_for_monomer(
+            bond->getBeginAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+        const auto end_element = get_attachment_point_element_for_monomer(
+            bond->getEndAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+        return begin_element.value_or("") == "S" &&
+                       end_element.value_or("") == "S"
+                   ? ConnectorType::PEPTIDE_DISULFIDE
+                   : ConnectorType::PEPTIDE_SIDE_CHAIN;
+    }
+
+    bool begin_is_branch = false;
+    bool end_is_branch = false;
+    bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
+    bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
+    return begin_is_branch || end_is_branch ? ConnectorType::PEPTIDE_BRANCHING
+                                            : ConnectorType::PEPTIDE_LINEAR;
 }
 
 [[nodiscard]] unsigned int get_residue_number(const ::RDKit::Atom* atom)
