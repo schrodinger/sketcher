@@ -55,7 +55,7 @@ using schrodinger::rdkit_extensions::Direction;
 constexpr double MAX_BOND_STRETCH = 3.0;
 constexpr double NON_BACKBONE_BOND_FLEXIBILITY = 2.0;
 
-constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
+constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 2;
 constexpr unsigned int MAX_MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
 
