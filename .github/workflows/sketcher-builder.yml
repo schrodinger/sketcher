@@ -17,6 +17,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  DEPENDENCY_SOURCE_CODE_CACHE_DIR: build/dependency-source
 
 jobs:
   pre-commit:
@@ -119,13 +120,15 @@ jobs:
         run: |
           ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
               cmake -B build/external/ -S external/ -G Ninja \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+              -DSKETCHER_DEPENDENCY_SOURCE_CODE_CACHE_DIR="$GITHUB_WORKSPACE/$DEPENDENCY_SOURCE_CODE_CACHE_DIR"
 
       - name: Configure host Qt CMake
         if: matrix.build-name == 'wasm'
         run: |
           cmake -B build/external/host/ -S external/ -G Ninja \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON \
+              -DSKETCHER_DEPENDENCY_SOURCE_CODE_CACHE_DIR="$GITHUB_WORKSPACE/$DEPENDENCY_SOURCE_CODE_CACHE_DIR"
 
       - name: Fetch fmt
         id: fetch-fmt
