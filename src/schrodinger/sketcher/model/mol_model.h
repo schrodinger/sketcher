@@ -711,11 +711,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param enforce_monomer_validity If true (default), confirm that all
      * monomer names exist in the monomer database and that all inline SMILES
      * can be successfully parsed before importing.
+     * @param render_peptides_linearly If coordinates need to be generated, lay
+     * peptide backbones out as horizontal chains.
      *
      */
     void addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
                   const QString& description = "Import molecule",
-                  const bool enforce_monomer_validity = true);
+                  const bool enforce_monomer_validity = true,
+                  const bool render_peptides_linearly = false);
 
     /**
      * This method imports the specified RDKit::RWMol into the current model.
@@ -736,6 +739,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param enforce_monomer_validity If true (default), confirm that all
      * monomer names exist in the monomer database and that all inline SMILES
      * can be successfully parsed before importing.
+     * @param render_peptides_linearly If coordinates need to be generated, lay
+     * peptide backbones out as horizontal chains.
      */
 
     void addMol(RDKit::RWMol mol,
@@ -743,7 +748,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                 const bool reposition_mol = true,
                 const bool new_mol_added = true,
                 const bool enforce_size_limit = true,
-                const bool enforce_monomer_validity = true);
+                const bool enforce_monomer_validity = true,
+                const bool render_peptides_linearly = false);
 
     /**
      * Undoably add the given reaction to the model.  All reactants and products
@@ -1742,6 +1748,9 @@ convert_text_to_mol_or_reaction(const std::string& text,
  * origin if the scene is empty.
  * @param enforce_monomer_validity If true (default), validate monomer
  * database identities and inline SMILES before importing a molecule.
+ * @param render_peptides_linearly If mol_or_reaction is a molecule and its
+ * coordinates need to be generated, lay peptide backbones out as horizontal
+ * chains.
  */
 SKETCHER_API void add_mol_or_reaction_to_mol_model(
     MolModel& mol_model,
@@ -1749,7 +1758,8 @@ SKETCHER_API void add_mol_or_reaction_to_mol_model(
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
     const std::optional<RDGeom::Point3D> position, const bool recenter_view,
-    const bool enforce_monomer_validity = true);
+    const bool enforce_monomer_validity = true,
+    const bool render_peptides_linearly = false);
 
 /**
  * Add the molecule or reaction to the given MolModel.  See
@@ -1764,8 +1774,8 @@ SKETCHER_API void add_text_to_mol_model(
     const rdkit_extensions::Format format =
         rdkit_extensions::Format::AUTO_DETECT,
     const std::optional<RDGeom::Point3D> position = std::nullopt,
-    const bool recenter_view = true,
-    const bool enforce_monomer_validity = true);
+    const bool recenter_view = true, const bool enforce_monomer_validity = true,
+    const bool render_peptides_linearly = false);
 
 /**
  * Determine the appropriate residue number to use for a new monomer that will

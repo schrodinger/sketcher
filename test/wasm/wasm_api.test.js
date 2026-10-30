@@ -166,6 +166,7 @@ test.describe('WASM Sketcher API', () => {
         trim_image: false,
         font_size: 24,
         bond_width_scale: 1.5,
+        render_peptides_linearly: false,
         rdatom_index_to_label: { 0: 'AtomZero' },
         rdatom_index_to_halo_color: { 0: '#ff0000' },
         rdbond_index_to_halo_color: { 0: '#00ff00' },

@@ -1,6 +1,12 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 
+#include <algorithm>
 #include <memory>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <QBitmap>
 #include <QColor>
@@ -87,6 +93,135 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
     }
 }
 
+namespace
+{
+
+using ConnectorLaneMap = std::unordered_map<const RDKit::Bond*, int>;
+
+struct LinearPeptideConnectorLanes {
+    ConnectorLaneMap primary;
+    ConnectorLaneMap secondary;
+
+    int getLane(const RDKit::Bond* bond,
+                const bool is_secondary_connection) const
+    {
+        const auto& lanes = is_secondary_connection ? secondary : primary;
+        const auto lane = lanes.find(bond);
+        return lane == lanes.end() ? 0 : lane->second;
+    }
+};
+
+/**
+ * The horizontal span occupied by one custom connection. Connections with
+ * overlapping spans must use different lanes when they are routed on the same
+ * side of a linear peptide.
+ */
+struct LinearPeptideConnectorSpan {
+    const RDKit::Bond* bond;
+    bool is_secondary_connection;
+    std::string polymer_id;
+    double left_x;
+    double right_x;
+    int lane = 0;
+};
+
+/**
+ * Return true when two side-bond intervals overlap. This includes both
+ * interleaving and nested intervals, since either would draw coincident
+ * horizontal connector segments if both were placed on the same side.
+ */
+bool connector_spans_overlap(const LinearPeptideConnectorSpan& first,
+                             const LinearPeptideConnectorSpan& second)
+{
+    return std::max(first.left_x, second.left_x) <
+           std::min(first.right_x, second.right_x);
+}
+
+LinearPeptideConnectorLanes
+assign_linear_peptide_connector_lanes(const RDKit::ROMol& mol,
+                                      const RDKit::Conformer& conformer)
+{
+    std::vector<LinearPeptideConnectorSpan> connector_spans;
+    for (const auto* bond : mol.bonds()) {
+        // Backbone connections always use the default connector lane of zero.
+        if (!bond->hasProp(CUSTOM_BOND)) {
+            continue;
+        }
+
+        const auto* begin_atom = bond->getBeginAtom();
+        const auto* end_atom = bond->getEndAtom();
+        if (get_monomer_type(begin_atom) != MonomerType::PEPTIDE ||
+            get_monomer_type(end_atom) != MonomerType::PEPTIDE) {
+            continue;
+        }
+
+        const auto* begin_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            begin_atom->getMonomerInfo());
+        const auto* end_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            end_atom->getMonomerInfo());
+        if (begin_info == nullptr || end_info == nullptr ||
+            begin_info->getChainId() != end_info->getChainId()) {
+            continue;
+        }
+
+        const auto begin_x = conformer.getAtomPos(begin_atom->getIdx()).x;
+        const auto end_x = conformer.getAtomPos(end_atom->getIdx()).x;
+        // If the bond has two connections, only the secondary connection needs
+        // a lane: the primary connection is a backbone connection.
+        const bool is_secondary_connection =
+            contains_two_monomer_linkages(bond);
+        connector_spans.push_back(
+            {bond, is_secondary_connection, begin_info->getChainId(),
+             std::min(begin_x, end_x), std::max(begin_x, end_x)});
+    }
+
+    // Place shorter connectors first. For nested intervals, this causes the
+    // enclosing connector to consider the inner connector's lane occupied and
+    // therefore keeps the outer connector at least as far from the backbone.
+    // Position provides a deterministic tie-breaker for equal-length spans.
+    std::sort(connector_spans.begin(), connector_spans.end(),
+              [](const auto& lhs, const auto& rhs) {
+                  if (lhs.polymer_id != rhs.polymer_id) {
+                      return lhs.polymer_id < rhs.polymer_id;
+                  }
+                  const auto lhs_length = lhs.right_x - lhs.left_x;
+                  const auto rhs_length = rhs.right_x - rhs.left_x;
+                  return std::tie(lhs_length, lhs.left_x, lhs.right_x) <
+                         std::tie(rhs_length, rhs.left_x, rhs.right_x);
+              });
+
+    for (auto& span : connector_spans) {
+        std::unordered_set<int> occupied_lanes;
+        for (const auto& previous : connector_spans) {
+            if (previous.lane != 0 && previous.polymer_id == span.polymer_id &&
+                connector_spans_overlap(previous, span)) {
+                occupied_lanes.insert(previous.lane);
+            }
+        }
+
+        // Try the closest lanes first: top, bottom, raised top, lowered bottom,
+        // and so on. Positive lanes are above the backbone and negative lanes
+        // are below it.
+        int candidate_lane = 1;
+        while (occupied_lanes.count(candidate_lane) != 0) {
+            candidate_lane =
+                candidate_lane > 0 ? -candidate_lane : -candidate_lane + 1;
+        }
+        span.lane = candidate_lane;
+    }
+
+    LinearPeptideConnectorLanes connector_lanes;
+    for (const auto& connector : connector_spans) {
+        auto& lanes = connector.is_secondary_connection
+                          ? connector_lanes.secondary
+                          : connector_lanes.primary;
+        lanes.emplace(connector.bond, connector.lane);
+    }
+    return connector_lanes;
+}
+
+} // namespace
+
 RDGeom::Point3D
 get_monomer_graphics_item_size(const RDKit::Atom* atom, const Fonts& fonts,
                                const AtomDisplaySettings& atom_display_settings,
@@ -107,7 +242,8 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
                               const BondDisplaySettings& bond_display_settings,
                               const bool is_dark_mode,
-                              const bool draw_attachment_points)
+                              const bool draw_attachment_points,
+                              const bool render_peptides_linearly)
 {
     unsigned int num_atoms = mol->getNumAtoms();
     if (num_atoms == 0) {
@@ -125,6 +261,15 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         bond_to_secondary_connection_item;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
         s_group_to_s_group_items;
+
+    LinearPeptideConnectorLanes connector_lanes;
+    if (render_peptides_linearly) {
+        // Coordinates place the peptide backbone horizontally. This second
+        // stage assigns custom connections to non-overlapping lanes above or
+        // below that backbone; MonomerConnectorItem draws the bends.
+        connector_lanes =
+            assign_linear_peptide_connector_lanes(*mol, conformer);
+    }
 
     // create atom items
     for (std::size_t i = 0; i < num_atoms; ++i) {
@@ -171,15 +316,21 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             bond_to_bond_item[bond] = bond_item;
             all_items.push_back(bond_item);
         } else if (from_monomer_item != nullptr && to_monomer_item != nullptr) {
+            const auto primary_lane = connector_lanes.getLane(
+                bond, /* is_secondary_connection = */ false);
             auto connector_item = new MonomerConnectorItem(
                 bond, *from_monomer_item, *to_monomer_item,
-                /* is_secondary_connection = */ false, is_dark_mode);
+                /* is_secondary_connection = */ false, is_dark_mode,
+                primary_lane);
             bond_to_bond_item[bond] = connector_item;
             all_items.push_back(connector_item);
             if (contains_two_monomer_linkages(bond)) {
+                const auto secondary_lane = connector_lanes.getLane(
+                    bond, /* is_secondary_connection = */ true);
                 auto secondary_connector_item = new MonomerConnectorItem(
                     bond, *from_monomer_item, *to_monomer_item,
-                    /* is_secondary_connection = */ true, is_dark_mode);
+                    /* is_secondary_connection = */ true, is_dark_mode,
+                    secondary_lane);
                 bond_to_secondary_connection_item[bond] =
                     secondary_connector_item;
                 all_items.push_back(secondary_connector_item);
