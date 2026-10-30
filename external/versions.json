@@ -8,5 +8,9 @@
     "rdkit": "2026.03.6",
     "sqlite": "3.42.0",
     "zlib": "1.3.1",
-    "zstd": "1.5.5"
+    "zstd": "1.5.5",
+    "source_archive_sha256": {
+        "eigen": "b4c198460eba6f28d34894e3a5710998818515104d6e74e5cc331ce31e46e626",
+        "sqlite": "1cc824d0f5e675829fa37018318fda833ea56f7e9de2b41eddd9f7643b5ec29e"
+    }
 }
