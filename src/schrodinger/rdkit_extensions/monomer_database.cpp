@@ -404,7 +404,8 @@ void canonicalize_db(sqlite3* db)
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
-insert_monomers_from_json(sqlite3* db, std::string_view json)
+insert_monomers_from_json(sqlite3* db, std::string_view json,
+                          bool run_smiles_canonicalization = true)
 {
     // Prepare the INSERT statement once for reuse
     static constexpr std::string_view insert_sql =
@@ -480,17 +481,21 @@ insert_monomers_from_json(sqlite3* db, std::string_view json)
         // From here on, note that some of the reported fields (smiles,
         // core_smiles, pdbcode) may be different from the original inputs.
 
-        try {
-            // Canonicalize SMILES and derive CORE_SMILES only when the user
-            // did not supply it.
-            auto [new_smiles, new_core_smiles] = canonicalize_monomer_smiles(
-                m.smiles.value().c_str(), m.core_smiles.value_or("").c_str());
-            m.smiles = new_smiles;
-            m.core_smiles = new_core_smiles;
-        } catch (const std::runtime_error&) {
-            failed.push_back(create_log_message(
-                m, i, "Could not canonicalize monomer SMILES"));
-            continue;
+        if (run_smiles_canonicalization) {
+            try {
+                // Canonicalize SMILES and derive CORE_SMILES only when the user
+                // did not supply it.
+                auto [new_smiles, new_core_smiles] =
+                    canonicalize_monomer_smiles(
+                        m.smiles.value().c_str(),
+                        m.core_smiles.value_or("").c_str());
+                m.smiles = new_smiles;
+                m.core_smiles = new_core_smiles;
+            } catch (const std::runtime_error&) {
+                failed.push_back(create_log_message(
+                    m, i, "Could not canonicalize monomer SMILES"));
+                continue;
+            }
         }
 
         if (!m.pdbcode.has_value()) {
@@ -694,12 +699,14 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
-MonomerDatabase::loadMonomersFromJson(std::string_view json)
+MonomerDatabase::loadMonomersFromJson(std::string_view json,
+                                      bool run_smiles_canonicalization)
 {
 
     managed_db_t db = create_empty_monomer_db();
 
-    auto result = insert_monomers_from_json(db.get(), json);
+    auto result =
+        insert_monomers_from_json(db.get(), json, run_smiles_canonicalization);
 
     if (auto custom_db_path = getMonomerDbPath(); custom_db_path.has_value()) {
         dumpToFile(db.get(), *custom_db_path);

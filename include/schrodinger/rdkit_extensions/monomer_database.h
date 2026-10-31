@@ -122,17 +122,24 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     //    or the resulting table is missing some required columns.
     void loadMonomersFromSql(std::string_view sql);
 
-    // Populate the custom monomers table with the definitions
-    // parsed from the JSON. Note that if the JSON definitions can
-    // successfully parsed, any prior custom definitions
-    // will be dropped (they will be preserved if an exception is
-    // thrown during the import process).
-    // @returns a pair of vectors of strings containing the logs for
-    //    successful and failed insertions.
-    // @throws std::runtime_error if the JSON fails to parse or due to
-    //    DB related problems.
+    /**
+     * Populate the custom monomers table with definitions parsed from JSON.
+     * Any prior custom definitions will be dropped if the import succeeds and
+     * preserved if an exception is thrown during the import process.
+     * @param json JSON string containing the new monomer definitions.
+     * @param run_smiles_canonicalization Run SMILES canonicalization for the
+     * new database contents. Defaults to true. Set this to false to skip
+     * canonicalization only when all SMILES in the JSON string have been
+     * canonicalized using the same
+     * canonicalization scheme as the Sketcher.
+     * @return A pair of vectors of strings containing the logs for successful
+     * and failed insertions.
+     * @throw std::runtime_error if the JSON fails to parse or due to DB related
+     * problems.
+     */
     std::pair<std::vector<std::string>, std::vector<std::string>>
-    loadMonomersFromJson(std::string_view json);
+    loadMonomersFromJson(std::string_view json,
+                         bool run_smiles_canonicalization = true);
 
     // use the indicated SQLite DB file as the source for custom
     // monomer definitions.
