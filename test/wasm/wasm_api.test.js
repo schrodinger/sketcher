@@ -314,7 +314,6 @@ test.describe('Custom Monomer DB', () => {
 
     const result = await page.evaluate((json) => {
       return Module.sketcher_load_custom_monomers(json);
-      const arr = [];
     }, incomplete);
 
     expect(result.succeeded.length).toBe(0);
@@ -322,7 +321,7 @@ test.describe('Custom Monomer DB', () => {
     expect(result.failed[0]).toContain('missing');
   });
 
-  test('loading monomer with unknown fields throws', async ({ page }) => {
+  test('loading monomer with unknown fields rejects', async ({ page }) => {
     const extraFields = JSON.stringify([
       {
         SYMBOL: 'Extra',
@@ -337,17 +336,135 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    const result = await page.evaluate((json) => {
+    const result = await page.evaluate(async (json) => {
       try {
-        Module.sketcher_load_custom_monomers(json);
-        return { threw: false };
+        await Module.sketcher_load_custom_monomers(json);
+        return { rejected: false };
       } catch (e) {
-        const [type, message] = Module.getExceptionMessage(e);
-        return { threw: true, type, message };
+        return { rejected: true, isError: e instanceof Error, message: e.message };
       }
     }, extraFields);
 
-    expect(result.threw).toBe(true);
+    expect(result.rejected).toBe(true);
+    expect(result.isError).toBe(true);
     expect(result.message).toContain('exception');
+  });
+
+  test('large monomer imports leave the main thread available', async ({ page }) => {
+    test.setTimeout(120000);
+    const result = await page.evaluate(async () => {
+      const json = JSON.stringify(
+        Array.from({ length: 10000 }, (_, i) => ({
+          SYMBOL: `Responsive${i}`,
+          POLYMER_TYPE: 'PEPTIDE',
+          NATURAL_ANALOG: 'A',
+          SMILES: 'CC(N)C(=O)O',
+          NAME: `Responsive monomer ${i}`,
+          MONOMER_TYPE: 'Backbone',
+          AUTHOR: 'test',
+        })),
+      );
+      const started = performance.now();
+      let lastTick = started;
+      let maxTickInterval = 0;
+      const recordTick = () => {
+        const now = performance.now();
+        maxTickInterval = Math.max(maxTickInterval, now - lastTick);
+        lastTick = now;
+      };
+      const timer = setInterval(recordTick, 10);
+      try {
+        const pending = Module.sketcher_load_custom_monomers(json);
+        const isPromise = pending instanceof Promise;
+        const imported = await pending;
+        // Include any blocking work between the last tick and import completion.
+        recordTick();
+        return {
+          isPromise,
+          duration: lastTick - started,
+          maxTickInterval,
+          succeeded: imported.succeeded.length,
+        };
+      } finally {
+        clearInterval(timer);
+      }
+    });
+    expect(result.isPromise).toBe(true);
+    // Require a meaningful observation window and allow some timer scheduling jitter.
+    expect(result.duration).toBeGreaterThanOrEqual(100);
+    expect(result.maxTickInterval).toBeLessThanOrEqual(50);
+    expect(result.succeeded).toBe(10000);
+  });
+
+  test('imports stay ordered and recover after a rejected request', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const order = [];
+      const first = Module.sketcher_load_custom_monomers('[]').then(() => order.push('first'));
+      const invalid = Module.sketcher_load_custom_monomers('invalid JSON').catch(() =>
+        order.push('invalid'),
+      );
+      const last = Module.sketcher_load_custom_monomers('[]').then(() => order.push('last'));
+      await Promise.all([first, invalid, last]);
+      return order;
+    });
+    expect(result).toEqual(['first', 'invalid', 'last']);
+  });
+
+  test('imports share compiled code and terminate each worker before settling', async ({
+    page,
+  }) => {
+    let binaryRequests = 0;
+    page.context().on('request', (request) => {
+      if (request.url().includes('MonomerLoader.wasm')) {
+        ++binaryRequests;
+      }
+    });
+    const result = await page.evaluate(async () => {
+      const NativeWorker = window.Worker;
+      const workers = [];
+      window.Worker = class extends NativeWorker {
+        constructor(...args) {
+          super(...args);
+          this.terminated = false;
+          workers.push(this);
+        }
+        terminate() {
+          this.terminated = true;
+          super.terminate();
+        }
+        postMessage(message) {
+          this.receivedCompiledModule = message.compiledModule instanceof WebAssembly.Module;
+          super.postMessage(message);
+        }
+      };
+      try {
+        await Module.sketcher_load_custom_monomers('[]');
+        const terminatedAfterSuccess = workers[0].terminated;
+        let terminatedAfterFailure = false;
+        try {
+          await Module.sketcher_load_custom_monomers('invalid JSON');
+        } catch {
+          terminatedAfterFailure = workers[1].terminated;
+        }
+        await Module.sketcher_load_custom_monomers('[]');
+        return {
+          created: workers.length,
+          terminatedAfterSuccess,
+          terminatedAfterFailure,
+          allTerminated: workers.every((worker) => worker.terminated),
+          receivedCompiledModule: workers.map((worker) => worker.receivedCompiledModule),
+        };
+      } finally {
+        window.Worker = NativeWorker;
+      }
+    });
+    expect(result).toEqual({
+      created: 3,
+      terminatedAfterSuccess: true,
+      terminatedAfterFailure: true,
+      allTerminated: true,
+      receivedCompiledModule: [false, true, true],
+    });
+    expect(binaryRequests).toBe(1);
   });
 });
