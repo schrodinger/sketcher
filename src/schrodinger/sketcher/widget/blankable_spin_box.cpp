@@ -94,22 +94,15 @@ void BlankableSpinBox::updateClearButtonVisibility()
 
 void BlankableSpinBox::resizeEvent(QResizeEvent* event)
 {
-    // The clear button needs to be moved to the left if the arrows are present.
-    auto space_for_arrows = 0;
-    if (buttonSymbols() == QAbstractSpinBox::UpDownArrows) {
-        QStyleOptionSpinBox opt;
-        space_for_arrows =
-            style()
-                ->subControlRect(QStyle::CC_SpinBox, &opt, QStyle::SC_SpinBoxUp)
-                .width();
-    }
     QSpinBox::resizeEvent(event);
+    QStyleOptionSpinBox opt;
+    initStyleOption(&opt);
+    // The edit field excludes both arrows, regardless of their arrangement.
+    auto edit_rect = style()->subControlRect(QStyle::CC_SpinBox, &opt,
+                                             QStyle::SC_SpinBoxEditField, this);
     auto size_hint = m_clear_btn->sizeHint();
-    auto frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
-    auto sb_rect = rect();
-    auto x =
-        sb_rect.right() - frame_width - size_hint.width() - space_for_arrows;
-    auto y = (sb_rect.bottom() + 1 - size_hint.height()) / 2;
+    auto x = edit_rect.right() + 1 - size_hint.width();
+    auto y = edit_rect.top() + (edit_rect.height() - size_hint.height()) / 2;
     m_clear_btn->move(x, y);
 }
 

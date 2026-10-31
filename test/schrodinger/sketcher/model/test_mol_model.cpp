@@ -4337,6 +4337,89 @@ BOOST_AUTO_TEST_CASE(test_clean_up_restores_valid_distorted_monomer_SKETCH_2849,
 }
 
 /**
+ * SKETCH-2874: Join a forward chain to a chain drawn from C to N. Clean Up
+ * should produce the same layout as importing the final HELM, without changing
+ * the model's atom order or the connectivity. Include a scene so label sizing
+ * and redraw run as they do in the application.
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_joined_chains_SKETCH_2874)
+{
+    const std::string helm =
+        "PEPTIDE1{C.G.A.A.T.C}$PEPTIDE1,PEPTIDE1,1:R3-6:R3$$$V2.0";
+    QUndoStack imported_undo_stack;
+    TestMolModel imported_model(&imported_undo_stack);
+    SketcherModel imported_settings;
+    TestScene imported_scene(&imported_model, &imported_settings);
+    import_mol_text(&imported_model, helm);
+    imported_model.regenerateCoordinates();
+    const auto& expected_conf = imported_model.getMol()->getConformer();
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    SketcherModel settings;
+    TestScene scene(&model, &settings);
+    import_mol_text(&model, "PEPTIDE1{C.G.A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    model.addMonomer("C", ChainType::PEPTIDE, {0, -3, 0});
+    model.addBoundMonomer("T", ChainType::PEPTIDE, {1.5, -3, 0}, "R2",
+                          mol->getAtomWithIdx(3), "R1");
+    model.addBoundMonomer("A", ChainType::PEPTIDE, {3, -3, 0}, "R2",
+                          mol->getAtomWithIdx(4), "R1");
+    model.addMonomericConnection(mol->getAtomWithIdx(0), "R3",
+                                 mol->getAtomWithIdx(3), "R3");
+    model.addMonomericConnection(mol->getAtomWithIdx(2), "R2",
+                                 mol->getAtomWithIdx(5), "R1");
+    BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 6);
+    BOOST_REQUIRE_EQUAL(mol->getNumBonds(), 6);
+    const std::vector<unsigned int> residue_numbers{1, 2, 3, 6, 5, 4};
+    auto check_atom_order = [&]() {
+        for (unsigned int idx = 0; idx < mol->getNumAtoms(); ++idx) {
+            BOOST_TEST(rdkit_extensions::get_residue_number(
+                           mol->getAtomWithIdx(idx)) == residue_numbers[idx]);
+        }
+        BOOST_TEST(get_mol_text(&model, Format::HELM) == helm);
+    };
+    check_atom_order();
+
+    auto check_layout = [&]() {
+        BOOST_REQUIRE_EQUAL(mol->getNumConformers(), 1);
+        const auto& actual_conf = mol->getConformer();
+        BOOST_TEST(!actual_conf.is3D());
+        for (const auto* atom : mol->atoms()) {
+            const auto residue_idx =
+                rdkit_extensions::get_residue_number(atom) - 1;
+            const auto actual = actual_conf.getAtomPos(atom->getIdx()) -
+                                actual_conf.getAtomPos(0);
+            const auto expected = expected_conf.getAtomPos(residue_idx) -
+                                  expected_conf.getAtomPos(0);
+            BOOST_CHECK_SMALL(actual.x - expected.x, 1e-6);
+            BOOST_CHECK_SMALL(actual.y - expected.y, 1e-6);
+        }
+    };
+
+    const auto original_positions = mol->getConformer().getPositions();
+    model.regenerateCoordinates();
+    check_layout();
+    check_atom_order();
+    undo_stack.undo();
+    for (unsigned int idx = 0; idx < mol->getNumAtoms(); ++idx) {
+        const auto delta =
+            mol->getConformer().getAtomPos(idx) - original_positions[idx];
+        BOOST_CHECK_SMALL(delta.length(), 1e-6);
+    }
+    undo_stack.redo();
+    check_layout();
+    check_atom_order();
+    model.regenerateCoordinates();
+    check_layout();
+    check_atom_order();
+
+    model.clear();
+    import_mol_text(&model, helm);
+    check_layout();
+}
+
+/**
  * Reproduce the bug where placing a monomer, deleting it, then placing an
  * atomistic atom and copy/cutting it throws "Atom does not have monomer info".
  *
@@ -4914,6 +4997,47 @@ BOOST_AUTO_TEST_CASE(test_addBoundMonomer)
 }
 
 /**
+ * Removing a peptide backbone connection splits the HELM chain at that point.
+ */
+BOOST_AUTO_TEST_CASE(test_removing_monomeric_connection_splits_peptide_chain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "PEPTIDE1{A.A.A.A.A.A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 6);
+    BOOST_REQUIRE(mol->getNumBonds() == 5);
+
+    const auto* connection = mol->getBondBetweenAtoms(2, 3);
+    BOOST_REQUIRE(connection != nullptr);
+    model.remove({}, {connection}, {}, {}, {});
+
+    const auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.A.A}|PEPTIDE2{A.A.A}$$$$V2.0");
+}
+
+/**
+ * Removing a peptide monomer splits the HELM chain at that point.
+ */
+BOOST_AUTO_TEST_CASE(test_removing_monomer_splits_peptide_chain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "PEPTIDE1{A.A.A.A.A.A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 6);
+    BOOST_REQUIRE(mol->getNumBonds() == 5);
+
+    const auto* monomer = mol->getAtomWithIdx(2);
+    model.remove({monomer}, {}, {}, {}, {});
+
+    const auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.A}|PEPTIDE2{A.A.A}$$$$V2.0");
+}
+
+/**
  * Use addBoundMonomer to extend a peptide chain in the opposite direction,
  * building from C terminus to N terminus. We also add a side chain interaction
  * to a new chain and confirm that the new chain remains separate
@@ -5330,6 +5454,230 @@ BOOST_AUTO_TEST_CASE(test_addMonomericConnection_pairing_two_nucleotides)
     auto helm = get_mol_text(&model, Format::HELM);
     BOOST_TEST(helm ==
                "RNA1{R(A)P}|RNA2{R(C)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * Single RNA base → one antiparallel complement nucleotide on a new RNA
+ * chain, paired via the standard "pair" connection. Confirms the HELM
+ * round-trip captures both the new chain and the pair annotation.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_single_RNA_base)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Atom 1 is the A base (sugar=0, base=1, phosphate=2).
+    model.addComplementaryStrand({mol->getAtomWithIdx(1)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm ==
+               "RNA1{R(A)P}|RNA2{R(U)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * DNA strand (sugar = dR) selects the DNA complement table: A→T, C→G.
+ * Antiparallel order: original 5'-AC-3' produces complement 5'-GT-3'.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_DNA_strand)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{[dR](A)P.[dR](C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (A) and 4 (C) for [dR](A)P.[dR](C)P.
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{[dR](A)P.[dR](C)P}|RNA2{[dR](G)P.[dR](T)P}$"
+                       "RNA1,RNA2,5:pair-2:pair|"
+                       "RNA1,RNA2,2:pair-5:pair$$$V2.0");
+}
+
+/**
+ * Selecting only one base of a multi-base strand complements just that
+ * base — the spec is "complement only the selected bases".
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_partial_selection)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Pick only the second base (C at atom 4); first base (A at atom 1)
+    // should be left unpaired.
+    model.addComplementaryStrand({mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R(C)P}|RNA2{R(G)P}$"
+                       "RNA1,RNA2,5:pair-2:pair$$$V2.0");
+}
+
+/**
+ * The whole construction lives in one undo macro: a single QUndoStack
+ * undo() reverses the entire complement strand and all pair connections.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_grouped_undo)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    auto before = get_mol_text(&model, Format::HELM);
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+    auto after = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(after != before);
+
+    undo_stack.undo();
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == before);
+}
+
+/**
+ * Non-base atoms (sugars, phosphates) in the input are filtered out and
+ * the molecule is unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_filters_non_base_atoms)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Pass the sugar (atom 0) — wrong type, should be ignored entirely.
+    model.addComplementaryStrand({mol->getAtomWithIdx(0)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == "RNA1{R(A)P}$$$$V2.0");
+}
+
+/**
+ * Bases selected from two different polymers each get their own
+ * antiparallel complement chain, with pair connections targeting the
+ * correct source.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_multi_polymer)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (RNA1's A) and 4 (RNA2's C).
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P}|RNA2{R(C)P}|RNA3{R(U)P}|RNA4{R(G)P}$"
+                       "RNA1,RNA3,2:pair-2:pair|"
+                       "RNA2,RNA4,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * Chimeric polymer (R and dR sugars in one chain) — each base picks its
+ * own sugar type for the complement, so we get e.g. dR for the DNA base
+ * and R for the RNA base in the same complement strand.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_chimeric_chain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // RNA sugar + A base, then DNA sugar + C base, in one chain.
+    add_text_to_mol_model(model, "RNA1{R(A)P.[dR](C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (RNA A) and 4 (DNA C).
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    // Antiparallel: complement strand 5'→3' starts from the partner of
+    // the original 3' end, so [dR](G) (DNA G, paired with the dR-C)
+    // comes first, then R(U) (RNA U, paired with the R-A).
+    BOOST_TEST(helm == "RNA1{R(A)P.[dR](C)P}|RNA2{[dR](G)P.R(U)P}$"
+                       "RNA1,RNA2,5:pair-2:pair|"
+                       "RNA1,RNA2,2:pair-5:pair$$$V2.0");
+}
+
+/**
+ * If none of the given bases have a Watson-Crick complement, nothing is added
+ * and no (empty) entry is pushed onto the undo stack.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_no_complementable_bases)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(N)P}$$$$V2.0");
+    const auto undo_count = undo_stack.count();
+
+    const auto* mol = model.getMol();
+    // Atom 1 is the N (unknown) base, which has no complement
+    model.addComplementaryStrand({mol->getAtomWithIdx(1)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == "RNA1{R(N)P}$$$$V2.0");
+    BOOST_TEST(undo_stack.count() == undo_count);
+}
+
+/**
+ * A selected base with no complement (N) splits the complement into one chain
+ * per run of neighboring complementable bases, so that we never bond together
+ * complement nucleotides across the gap.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_non_complementable_gap)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P.R(N)P.R(G)P.R(U)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    const auto num_orig_atoms = mol->getNumAtoms();
+    // Bases are at atoms 1 (A), 4 (C), 7 (N), 10 (G), and 13 (U)
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4), mol->getAtomWithIdx(7),
+         mol->getAtomWithIdx(10), mol->getAtomWithIdx(13)});
+
+    // Antiparallel: the chain pairing with the original's 3' end comes first
+    BOOST_TEST(get_mol_text(&model, Format::HELM) ==
+               "RNA1{R(A)P.R(C)P.R(N)P.R(G)P.R(U)P}|RNA2{R(A)P.R(C)P}|"
+               "RNA3{R(G)P.R(U)P}$"
+               "RNA1,RNA2,14:pair-2:pair|RNA1,RNA2,11:pair-5:pair|"
+               "RNA1,RNA3,5:pair-2:pair|RNA1,RNA3,2:pair-5:pair$$$V2.0");
+
+    // None of the new bonds should be stretched across the gap
+    for (const auto* bond : mol->bonds()) {
+        if (bond->getBeginAtomIdx() < num_orig_atoms ||
+            bond->getEndAtomIdx() < num_orig_atoms) {
+            continue;
+        }
+        BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(),
+                                                bond->getBeginAtomIdx(),
+                                                bond->getEndAtomIdx()) <=
+                   rdkit_extensions::MONOMER_BOND_LENGTH + 0.001);
+    }
+}
+
+/**
+ * Selecting bases that aren't in neighboring nucleotides (here, A and G but
+ * not the C between them) gives a separate complement chain for each.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_unselected_gap)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (A), 4 (C), and 7 (G)
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(7)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) ==
+               "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{R(C)P}|RNA3{R(U)P}$"
+               "RNA1,RNA2,8:pair-2:pair|RNA1,RNA3,2:pair-2:pair$$$V2.0");
 }
 
 /**

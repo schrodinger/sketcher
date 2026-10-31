@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <variant>
 
 #include <fmt/format.h>
@@ -9,6 +10,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
@@ -27,6 +29,7 @@
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/sgroup.h"
@@ -677,39 +680,47 @@ create_monomer(const std::string_view res_name, const std::string_view chain_id,
     return monomer;
 }
 
+/**
+ * Store the measured size of the monomer that was just appended to the
+ * molecule.
+ */
+static void store_initial_size_for_new_monomer(
+    RDKit::ROMol& mol, const std::optional<RDGeom::Point3D>& initial_size)
+{
+    if (initial_size.has_value()) {
+        rdkit_extensions::store_initial_monomer_sizes(
+            mol, {{static_cast<int>(mol.getNumAtoms() - 1), *initial_size}});
+    }
+}
+
+/*
+ * Run rdkit_extensions::assignChains on the given molecule and then clear the
+ * structure-level HELM_MODEL flag that rdkit_extensions::assignChains sets.
+ * MolModel uses per-atom flags to identify monomeric versus atomistic atoms, so
+ * we intentionally avoid setting the structure-level flag until export.
+ */
+static void assign_chains(RDKit::RWMol& mol)
+{
+    rdkit_extensions::assignChains(mol);
+    mol.clearProp(HELM_MODEL);
+}
+
 void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords,
-                          const bool is_smiles_monomer)
+                          const bool is_smiles_monomer,
+                          std::optional<RDGeom::Point3D> initial_size)
 {
     auto chain_id = get_first_available_chain_name(m_mol, chain_type);
     auto create_atom = std::bind(create_monomer, res_name_or_smiles, chain_id,
                                  1, is_smiles_monomer);
-    auto cmd_func = [this, create_atom, coords]() {
+    auto cmd_func = [this, create_atom, coords, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
-        rdkit_extensions::assignChains(m_mol);
-        // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
-        // source of truth inside MolModel; clearing it here keeps it from
-        // leaking into export copies after monomers are removed.
-        m_mol.clearProp(HELM_MODEL);
+        store_initial_size_for_new_monomer(m_mol, initial_size);
+        assign_chains(m_mol);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
-}
-
-static MonomerType
-get_monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
-                                 const std::string_view res_name)
-{
-    using rdkit_extensions::ChainType;
-    switch (chain_type) {
-        case (ChainType::PEPTIDE):
-            return MonomerType::PEPTIDE;
-        case (ChainType::CHEM):
-            return MonomerType::CHEM;
-        default:
-            return get_na_monomer_type_from_res_name(res_name);
-    }
 }
 
 /**
@@ -742,7 +753,7 @@ int get_residue_number_for_new_monomer(
 {
     using rdkit_extensions::ChainType;
 
-    auto monomer_type = get_monomer_type_from_chain_type(chain_type, res_name);
+    auto monomer_type = get_monomer_type(res_name, chain_type);
     auto existing_res_nums =
         get_all_residue_numbers_in_polymer(bound_to_monomer);
 
@@ -803,7 +814,8 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                const std::string_view new_monomer_ap_name,
                                const RDKit::Atom* const bound_to_monomer,
                                const std::string_view bound_to_monomer_ap_name,
-                               const bool is_smiles_monomer)
+                               const bool is_smiles_monomer,
+                               std::optional<RDGeom::Point3D> initial_size)
 {
     auto [linkage, flip_monomer_order] =
         build_linkage_string(bound_to_monomer_ap_name, new_monomer_ap_name);
@@ -838,9 +850,10 @@ void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                  res_num, is_smiles_monomer);
 
     auto cmd_func = [this, create_atom, coords, bond_start_idx, bond_end_idx,
-                     linkage, is_custom_bond]() {
+                     linkage, is_custom_bond, initial_size]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
+        store_initial_size_for_new_monomer(m_mol, initial_size);
         addMonomericConnectionCommandFunc(bond_start_idx, bond_end_idx, linkage,
                                           is_custom_bond);
     };
@@ -872,9 +885,7 @@ void MolModel::addMonomericConnectionCommandFunc(const size_t bond_start_idx,
             break;
         }
     }
-    rdkit_extensions::assignChains(m_mol);
-    // see note in addMonomer about why we clear this here
-    m_mol.clearProp(HELM_MODEL);
+    assign_chains(m_mol);
 }
 
 /**
@@ -941,6 +952,123 @@ void MolModel::addMonomericConnection(const RDKit::Atom* const monomer_one,
                                           is_custom_bond);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomeric connection",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::addComplementaryStrand(
+    const std::unordered_set<const RDKit::Atom*>& selected_bases)
+{
+    // Resolve the complement chains before opening the undo macro so that we
+    // don't push an empty undo entry if none of the bases have a complement
+    const auto complement_chains = get_complement_chains(selected_bases);
+    if (complement_chains.empty()) {
+        return;
+    }
+    // One undo entry covers all of the complement chains
+    auto undo_macro = createUndoMacro("Add Complementary Sequence");
+    for (const auto& complement_nucleotides : complement_chains) {
+        addComplementChain(complement_nucleotides);
+    }
+}
+
+void MolModel::addComplementChain(
+    const std::vector<ComplementNucleotide>& complement_nucleotides)
+{
+    // Capture base positions and the pairing axis up front: every modifying
+    // call below replaces m_mol's contents via snapshot restore, which
+    // invalidates any held conformer reference.
+    std::vector<RDGeom::Point3D> orig_base_positions;
+    orig_base_positions.reserve(complement_nucleotides.size());
+    for (const auto& complement : complement_nucleotides) {
+        orig_base_positions.push_back(
+            m_mol.getConformer().getAtomPos(complement.original_base_idx));
+    }
+    const RDGeom::Point3D pair_dir =
+        get_complement_pairing_direction(m_mol, complement_nucleotides);
+    // Backbone axis: perpendicular to the pairing axis (-x for the canonical
+    // downward pair_dir).
+    const RDGeom::Point3D backbone_dir(pair_dir.y, -pair_dir.x, 0.0);
+    // Lay the complement out one monomer bond at a time so the spacing matches
+    // the rest of the monomer layout.
+    auto along = [](const RDGeom::Point3D& origin, const RDGeom::Point3D& dir,
+                    double dist) {
+        return RDGeom::Point3D(origin.x + dir.x * dist, origin.y + dir.y * dist,
+                               0.0);
+    };
+
+    // Build the complement chain antiparallel: iterate
+    // `complement_nucleotides` in reverse so the complement is constructed
+    // 5'→3' (paired with original 3'→5'). Record new atoms in chain order for
+    // the residue renumber below, so HELM PAIR sections round-trip without
+    // mis-targeting pairs.
+    size_t prev_phos_idx = std::numeric_limits<size_t>::max();
+    std::vector<size_t> new_chain_atom_idxs;
+    new_chain_atom_idxs.reserve(3 * complement_nucleotides.size());
+    for (size_t j = 0; j < complement_nucleotides.size(); ++j) {
+        const bool is_first = (j == 0);
+        const size_t complement_idx = complement_nucleotides.size() - 1 - j;
+        const auto& complement = complement_nucleotides[complement_idx];
+        const auto& orig_base_pos = orig_base_positions[complement_idx];
+
+        // Complement base sits across the pairing gap; its sugar one step
+        // further out so the new base faces back toward the original.
+        // Phosphate offsets along the backbone axis.
+        RDGeom::Point3D base_coord = along(
+            orig_base_pos, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D sugar_coord =
+            along(base_coord, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D phos_coord = along(
+            sugar_coord, backbone_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+
+        if (is_first) {
+            addMonomer(complement.sugar_symbol,
+                       rdkit_extensions::ChainType::RNA, sugar_coord);
+        } else {
+            addBoundMonomer(complement.sugar_symbol,
+                            rdkit_extensions::ChainType::RNA, sugar_coord,
+                            ap_model_name_for(NASugarAP::FIVE_PRIME),
+                            m_mol.getAtomWithIdx(prev_phos_idx),
+                            ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR));
+        }
+        const size_t new_sugar_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_sugar_idx);
+
+        addBoundMonomer(complement.base_symbol,
+                        rdkit_extensions::ChainType::RNA, base_coord,
+                        ap_model_name_for(NA_BASE_AP_N1_9),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::ONE_PRIME));
+        const size_t new_base_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_base_idx);
+
+        addBoundMonomer("P", rdkit_extensions::ChainType::RNA, phos_coord,
+                        ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::THREE_PRIME));
+        prev_phos_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(prev_phos_idx);
+
+        addMonomericConnection(
+            m_mol.getAtomWithIdx(complement.original_base_idx),
+            H_BOND_AP_MODEL_NAME, m_mol.getAtomWithIdx(new_base_idx),
+            H_BOND_AP_MODEL_NAME);
+    }
+
+    // Renumber the new chain's residues 1..N in chain order so the HELM PAIR
+    // section (which references residue numbers) maps to the correct monomer
+    // after round-tripping through the parser.
+    auto renumber = [this, new_chain_atom_idxs]() {
+        for (size_t i = 0; i < new_chain_atom_idxs.size(); ++i) {
+            auto* atom = m_mol.getAtomWithIdx(new_chain_atom_idxs[i]);
+            auto* info = dynamic_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            if (info == nullptr) {
+                continue;
+            }
+            info->setResidueNumber(static_cast<int>(i + 1));
+        }
+    };
+    doCommandUsingSnapshots(renumber, "Renumber monomer residues",
                             WhatChanged::MOLECULE);
 }
 
@@ -2855,6 +2983,16 @@ void MolModel::removeCommandFunc(
     }
     for (auto cur_tag : non_molecular_tags) {
         removeNonMolecularObjectCommandFunc(cur_tag);
+    }
+
+    if ((!all_atom_tags_to_delete.empty() || !bond_tags_with_atoms.empty()) &&
+        contains_monomeric_atom(m_mol)) {
+        // If we've removed any monomeric backbone connections (which can happen
+        // implicitly if we removed a monomer), then we need to split up the
+        // associated chain into two separate chains. Otherwise, a HELM export
+        // will still show the removed bond since it assumes that adjacent
+        // monomers in a chain must have a backbone connection.
+        assign_chains(m_mol);
     }
 }
 

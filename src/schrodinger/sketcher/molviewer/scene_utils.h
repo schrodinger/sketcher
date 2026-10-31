@@ -21,6 +21,11 @@ class QPainterPath;
 class QPixmap;
 class QString;
 
+namespace RDGeom
+{
+class Point3D;
+}
+
 namespace RDKit
 {
 class Atom;
@@ -60,6 +65,15 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
                           const AtomDisplaySettings& atom_display_settings,
                           const BondDisplaySettings& bond_display_settings,
                           const bool is_dark_mode = false);
+
+/**
+ * Create a temporary graphics item for the given monomer and return its size
+ * converted to RDKit coordinates.
+ */
+SKETCHER_API RDGeom::Point3D get_monomer_graphics_item_size(
+    const RDKit::Atom* atom, const Fonts& fonts,
+    const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings);
 
 /**
  * Create all graphics items needed to represent the given molecule

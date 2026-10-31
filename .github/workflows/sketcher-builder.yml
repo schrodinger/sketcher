@@ -17,6 +17,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  DEPENDENCY_SOURCE_CODE_CACHE_DIR: build/dependency-source
 
 jobs:
   pre-commit:
@@ -80,7 +81,7 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
+        run: python3 -m pip install cmake==3.31.10 ninja==1.13.0 pytest pytest-cpp pytest-xdist
 
       - name: Install valgrind
         if: matrix.build-name == 'memtest'
@@ -119,13 +120,15 @@ jobs:
         run: |
           ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
               cmake -B build/external/ -S external/ -G Ninja \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+              -DSKETCHER_DEPENDENCY_SOURCE_CODE_CACHE_DIR="$GITHUB_WORKSPACE/$DEPENDENCY_SOURCE_CODE_CACHE_DIR"
 
       - name: Configure host Qt CMake
         if: matrix.build-name == 'wasm'
         run: |
           cmake -B build/external/host/ -S external/ -G Ninja \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON \
+              -DSKETCHER_DEPENDENCY_SOURCE_CODE_CACHE_DIR="$GITHUB_WORKSPACE/$DEPENDENCY_SOURCE_CODE_CACHE_DIR"
 
       - name: Fetch fmt
         id: fetch-fmt
@@ -239,9 +242,12 @@ jobs:
             ${{ steps.fetch-rdkit.outputs.path }};\
             ${{ steps.fetch-sqlite.outputs.path }};\
             ${{ steps.fetch-qt.outputs.path }}"
+        # For the WASM build, we need to invoke both the emscripten environment
+        # and Qt's CMake wrapper
         run: |
-          ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
-          cmake -B build -S . -G Ninja \
+          ${{ matrix.build-name == 'wasm' && 'source emsdk_env.sh && ' || '' }}\
+          ${{ matrix.build-name == 'wasm' && format('"{0}/bin/qt-cmake"', steps.fetch-qt.outputs.path) || 'cmake' }} \
+                -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \

@@ -31,6 +31,7 @@ import {
   setClipboardText,
   setFilePickerResult,
   setWidgetText,
+  selectWidgetCombo,
   widgetRect,
   widgetState,
 } from './sketcher_wasm.js';
@@ -438,6 +439,7 @@ const COPY_ALL_AS_NAMES = {
   inchi: 'InChI',
   pdb: 'PDB',
   sdf: 'MDL SD V3000',
+  helm: 'HELM',
   smi: 'SMILES',
 };
 
@@ -478,6 +480,7 @@ const CONTEXT_MENU_NAMES = {
 
 const IMPORT_MENU_NAMES = {
   import_from_file: 'Import from File...',
+  load_monomer_database: 'Load Monomer Database...',
   paste_in_text: 'Paste in Text...',
   replace_current_content: 'Replace Current Content',
 };
@@ -784,8 +787,24 @@ export class Sketcher {
 
   /** Equivalent to Squish `click_tool(tool, click_and_hold=False)`. */
   async click_tool(tool, click_and_hold = false) {
+    if (['rect_btn', 'lasso_btn', 'ellipse_btn'].includes(tool)) {
+      // Clear and keyboard shortcuts can change the active tool without
+      // updating current_tool. Re-clicking an active Select button opens its
+      // popup and consumes the next canvas click, so inspect the live shape.
+      if (!(await widgetState(this.page, tool)).checked) {
+        if (!(await widgetState(this.page, 'select_tool_btn')).checked) {
+          await clickWidget(this.page, 'select_tool_btn');
+        }
+        if (!(await widgetState(this.page, tool)).checked) {
+          await clickWidget(this.page, 'select_tool_btn');
+          await this.page.waitForTimeout(100);
+          await clickWidget(this.page, tool);
+        }
+      }
+      this.record_current_tool(tool);
+      return;
+    }
     // Squish tracks sticky tools and avoids re-clicking the current tool.
-    // In particular, repeated rect_btn clicks interrupt Shift-add selection.
     if (this.current_tool === tool) return;
     if (WILDCARD_TOOL_NAMES[tool]) {
       const [parent, child] = WILDCARD_TOOL_NAMES[tool];
@@ -881,22 +900,6 @@ export class Sketcher {
       } finally {
         await this.page.mouse.up();
       }
-      this.record_current_tool(tool);
-      return;
-    }
-    if (tool === 'lasso_btn' || tool === 'ellipse_btn') {
-      // A checked ToolButtonWithPopup opens its visible selector popup on a
-      // second ordinary click.  Choose the real popup child with the mouse.
-      if (
-        this.current_tool !== 'rect_btn' &&
-        this.current_tool !== 'lasso_btn' &&
-        this.current_tool !== 'ellipse_btn'
-      ) {
-        await clickWidget(this.page, 'select_tool_btn');
-      }
-      await clickWidget(this.page, 'select_tool_btn');
-      await this.page.waitForTimeout(100);
-      await clickWidget(this.page, tool);
       this.record_current_tool(tool);
       return;
     }
@@ -1135,9 +1138,11 @@ export class Sketcher {
         unpaired_electrons,
       );
     if (enhanced_stereo !== undefined) {
-      await clickWidget(this.page, set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo');
-      await this.page.keyboard.type(String(enhanced_stereo));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(
+        this.page,
+        set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo',
+        enhanced_stereo,
+      );
     }
     if (enhanced_stereo_label !== undefined)
       await setWidgetText(
@@ -1150,17 +1155,13 @@ export class Sketcher {
     // specific-element field above.
     if (element_list !== undefined) await setWidgetText(this.page, 'element_list_le', element_list);
     if (wildcard_type !== undefined) {
-      await clickWidget(this.page, 'wildcard_combo');
-      await this.page.keyboard.type(String(wildcard_type));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(this.page, 'wildcard_combo', wildcard_type);
     }
     if (rgroup !== undefined) await setWidgetText(this.page, 'rgroup_sb', rgroup);
     if (num_connections !== undefined)
       await setWidgetText(this.page, 'num_connections_sb', num_connections);
     const selectAdvancedCombo = async (objectName, value) => {
-      await clickWidget(this.page, objectName);
-      await this.page.keyboard.type(String(value));
-      await this.page.keyboard.press('Enter');
+      await selectWidgetCombo(this.page, objectName, value);
     };
     if (total_h !== undefined) await selectAdvancedCombo('total_h_combo', total_h);
     if (aromaticity !== undefined) await selectAdvancedCombo('aromaticity_combo', aromaticity);
@@ -1372,13 +1373,15 @@ export class Sketcher {
     // lookup can overlap it in unoptimized local artifacts and abort the app.
     // A fresh Sketcher/import dialog has no popup to clean up at this point.
     const menuItem = IMPORT_MENU_NAMES[button] || button;
-    if (button === 'import_from_file' && text !== null) {
+    const fileImport = ['import_from_file', 'load_monomer_database'].includes(button);
+    if (fileImport && text !== null) {
       await setFilePickerResult(this.page, String(text));
     }
     const importRows = {
       import_from_file: 12,
       paste_in_text: 35,
       replace_current_content: 58,
+      load_monomer_database: 85,
     };
     if (importRows[button] !== undefined) {
       let lastError;
@@ -1386,7 +1389,7 @@ export class Sketcher {
         await clickWidget(this.page, 'import_btn');
         await new Promise((resolve) => setTimeout(resolve, 100));
         try {
-          await clickPopupRow(this.page, 0, importRows[button]);
+          await clickPopupRow(this.page, 'latest', importRows[button]);
           // A Qt popup can accept the browser click while it is still
           // transitioning, dismissing the menu without activating its row.
           // Do not treat that as success: for Paste in Text, wait until the
@@ -1416,7 +1419,7 @@ export class Sketcher {
       await this.page.waitForTimeout(100);
     }
 
-    if (button === 'import_from_file' && text !== null) {
+    if (fileImport && text !== null) {
       await this.page.waitForTimeout(100);
       return;
     }
@@ -1495,6 +1498,7 @@ export class Sketcher {
         inchi: 155,
         inchikey: 179,
         pdb: 202,
+        helm: 274,
         // Image follows the 13 standard export formats and a separator.
         image: 322,
       };

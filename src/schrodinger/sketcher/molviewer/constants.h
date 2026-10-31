@@ -112,15 +112,35 @@ const qreal RADICAL_DISTANCE_FROM_HIDDEN_LABEL_RATIO = 3.;
 // Ratios between paired dots and their size for radicals
 const qreal PAIRED_ELECTRONS_DISTANCE_RATIO = 0.75;
 
-// The radius of the circle drawn around atoms for predictive highlighting
+// The default radius of the circle drawn around atoms for predictive
+// highlighting. Note that the circle will automatically be enlarged if it
+// doesn't cover the entire label.
 const qreal ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS = 10;
 
 // The half-width of the rectangle drawn around bonds for predictive
 // highlighting
 const qreal BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH = 10;
 
-// The radius of the circle drawn around atoms for selection highlighting
+// The default radius of the circle drawn around atoms for selection
+// highlighting. Note that the circle will automatically be enlarged if it
+// doesn't cover the entire label.
 const qreal ATOM_SELECTION_HIGHLIGHTING_RADIUS = 11;
+
+// When highlighting atoms with additional label components (e.g. charges,
+// implicit hydrogens, atom mapping numbers, etc.), we use a rounded rectangle
+// in place of a circle. This value is the preferred radius for rounding the
+// rectangle's corners. Note that the radius wil automatically be reduced for
+// rectangles that are too small to fit this radius.
+const qreal ATOM_LABEL_HIGHLIGHTING_CORNER_RADIUS = 8.0;
+
+// The additional radius or padding for selection highlighting around oversized
+// atom labels, beyond the predictive highlighting. Note that this value does
+// not apply when the default circular highlighting (i.e.
+// ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS and ATOM_SELECTION_HIGHLIGHTING_RADIUS)
+// is used. It only applies to rounded rectangle highlighting (for atoms with
+// additional label components) or enlarged circles (for elements with
+// multi-character names that don't fit within the standard highlighting radii)
+const qreal ATOM_HIGHLIGHTING_ADDITIONAL_SELECTION_RADIUS = 1;
 
 // The half-width of the rectangle drawn around bonds for selection highlighting
 const qreal BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH = 8;
@@ -338,6 +358,10 @@ const qreal MAPPING_ARROW_HEAD_HALF_WIDTH = 3;
 // The width of the path drawn around non-molecular objects for predictive and
 // selection highlighting
 const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
+
+// The corner size for the rounding drawn around non-molecular objects for
+// predictive and selection highlighting
+const qreal NON_MOLECULAR_HIGHLIGHT_ROUNDING = 2.0;
 
 // The width of the path drawn around substance groups for predictive and
 // selection highlighting
