@@ -34,6 +34,7 @@
 #include <QUndoStack>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
@@ -1171,17 +1172,112 @@ BOOST_AUTO_TEST_CASE(test_addMol_attachment_points)
 }
 
 /**
- * Make sure that we can load molecules of up to MAX_NUM_ATOMS_FOR_IMPORT size,
- * but not larger
+ * SKETCH-1924: Make sure that there's no limit on the number of atoms that can
+ * be added through any of the import paths
  */
-BOOST_AUTO_TEST_CASE(test_addMol_size_cutoff)
+BOOST_AUTO_TEST_CASE(test_add_no_size_limit)
+{
+    const unsigned int num_atoms = 1000;
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    import_mol_text(&model, std::string(num_atoms, 'C'));
+    BOOST_TEST(model.getMol()->getNumAtoms() == num_atoms);
+
+    model.addMolAt(*rdkit_extensions::to_rdkit(std::string(num_atoms, 'C')),
+                   RDGeom::Point3D(10, 10, 0));
+    BOOST_TEST(model.getMol()->getNumAtoms() == 2 * num_atoms);
+
+    model.clear();
+    auto big_reactant = std::string(num_atoms, 'C');
+    import_reaction_text(&model, big_reactant + "." + big_reactant + ">>" +
+                                     big_reactant + big_reactant);
+    BOOST_TEST(model.getMol()->getNumAtoms() == 4 * num_atoms);
+}
+
+/**
+ * @return atomistic SMILES for the given HELM string
+ */
+static std::string get_atomistic_smiles(const std::string& helm)
+{
+    auto monomer_mol = rdkit_extensions::to_rdkit(helm, Format::HELM);
+    auto atomistic_mol = rdkit_extensions::toAtomistic(*monomer_mol);
+    return rdkit_extensions::to_string(*atomistic_mol, Format::SMILES);
+}
+
+/**
+ * @return HELM for a peptide with the given one-letter sequence, optionally
+ * cyclized head-to-tail
+ */
+static std::string get_peptide_helm(const std::string& sequence,
+                                    const bool cyclic = false)
+{
+    std::string helm = "PEPTIDE1{";
+    for (auto residue : sequence) {
+        helm += std::string(1, residue) + ".";
+    }
+    helm.back() = '}';
+    helm += "$";
+    if (cyclic) {
+        helm +=
+            "PEPTIDE1,PEPTIDE1,1:R1-" + std::to_string(sequence.size()) + ":R2";
+    }
+    return helm + "$$$V2.0";
+}
+
+const std::string ALL_AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY";
+
+// SMILES, number of atoms, number of stereocenters
+std::vector<std::tuple<std::string, unsigned int, unsigned int>> large_mols{
+    {get_atomistic_smiles(get_peptide_helm(std::string(30, 'A'), true)), 150,
+     30},
+    {get_atomistic_smiles(get_peptide_helm(std::string(50, 'A'), true)), 250,
+     50},
+    {get_atomistic_smiles(get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS)),
+     335, 42},
+    {get_atomistic_smiles(get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS +
+                                           ALL_AMINO_ACIDS + ALL_AMINO_ACIDS)),
+     669, 84},
+};
+
+/**
+ * SKETCH-1924: Make sure that large peptides and macrocycles can be imported,
+ * edited, moved, and exported with the correct stereochemistry
+ */
+BOOST_DATA_TEST_CASE(test_large_mol_import_update_export,
+                     boost::unit_test::data::make(large_mols), smiles,
+                     num_atoms, num_stereocenters)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-    import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT, 'C'));
-    BOOST_CHECK_THROW(
-        import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT + 1, 'C')),
-        std::runtime_error);
+    auto count_cip_labels = [&model]() {
+        auto atoms = model.getMol()->atoms();
+        return std::count_if(atoms.begin(), atoms.end(), [](auto* atom) {
+            return atom->hasProp(RDKit::common_properties::_CIPCode);
+        });
+    };
+
+    // import
+    import_mol_text(&model, smiles);
+    BOOST_TEST(model.getMol()->getNumAtoms() == num_atoms);
+    BOOST_TEST(count_cip_labels() == num_stereocenters);
+
+    // update the molecule by adding an atom
+    model.addAtom(Element::C, RDGeom::Point3D(0, 0, 0));
+    BOOST_TEST(model.getMol()->getNumAtoms() == num_atoms + 1);
+    BOOST_TEST(count_cip_labels() == num_stereocenters);
+
+    // move all atoms, which updates the molecule on every mouse move event
+    // during a drag
+    for (int i = 0; i < 10; ++i) {
+        model.translateByVector(RDGeom::Point3D(0.1, 0.1, 0));
+    }
+    BOOST_TEST(count_cip_labels() == num_stereocenters);
+
+    // export
+    auto expected = rdkit_extensions::to_string(
+        *rdkit_extensions::to_rdkit(smiles + ".C"), Format::SMILES);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == expected);
 }
 
 /**
@@ -1203,7 +1299,7 @@ BOOST_AUTO_TEST_CASE(test_addMol_monomer_validity)
     BOOST_TEST(undo_stack.count() == undo_count);
 
     model.clear();
-    BOOST_CHECK_NO_THROW(model.addMol(*mol, "Import molecule", true, true, true,
+    BOOST_CHECK_NO_THROW(model.addMol(*mol, "Import molecule", true, true,
                                       /* enforce_monomer_validity = */ false));
     BOOST_TEST(model.getMol()->getNumAtoms() == 1);
 }
@@ -2839,25 +2935,13 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
 }
 
 /**
- * Make sure that addReaction allows us to add a single reaction that contains
- * up to MAX_NUM_ATOMS_FOR_IMPORT atoms
+ * Make sure that addReaction allows us to add a single reaction
  */
 BOOST_AUTO_TEST_CASE(test_addReaction)
 {
-    auto big_reactant = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 4, 'C');
-    auto big_product = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 2, 'C');
-    auto big_reaction = big_reactant + "." + big_reactant + ">>" + big_product;
-    // sanity check in case MAX_NUM_ATOMS_FOR_IMPORT isn't divisible by 4
-    BOOST_REQUIRE(big_reactant.size() * 2 + big_product.size() ==
-                  MAX_NUM_ATOMS_FOR_IMPORT);
-
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-    // reaction contains one too many atoms
-    BOOST_CHECK_THROW(import_reaction_text(&model, big_reaction + "C"),
-                      std::runtime_error);
-    // reaction contains the exact maximum number of atoms
-    import_reaction_text(&model, big_reaction);
+    import_reaction_text(&model, "CC.CC>>CCCC");
     // we can't have two reactions at once
     BOOST_CHECK_THROW(import_reaction_text(&model, "C.C>>CC"),
                       std::runtime_error);
