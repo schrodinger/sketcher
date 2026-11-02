@@ -1227,16 +1227,15 @@ static std::string get_peptide_helm(const std::string& sequence,
 
 const std::string ALL_AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY";
 
-// SMILES, number of atoms, number of stereocenters
+// HELM, number of atoms, number of stereocenters. These are converted to
+// atomistic SMILES inside the test, since the dataset is built during static
+// initialization, before RDKit is safe to use.
 std::vector<std::tuple<std::string, unsigned int, unsigned int>> large_mols{
-    {get_atomistic_smiles(get_peptide_helm(std::string(30, 'A'), true)), 150,
-     30},
-    {get_atomistic_smiles(get_peptide_helm(std::string(50, 'A'), true)), 250,
-     50},
-    {get_atomistic_smiles(get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS)),
-     335, 42},
-    {get_atomistic_smiles(get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS +
-                                           ALL_AMINO_ACIDS + ALL_AMINO_ACIDS)),
+    {get_peptide_helm(std::string(30, 'A'), true), 150, 30},
+    {get_peptide_helm(std::string(50, 'A'), true), 250, 50},
+    {get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS), 335, 42},
+    {get_peptide_helm(ALL_AMINO_ACIDS + ALL_AMINO_ACIDS + ALL_AMINO_ACIDS +
+                      ALL_AMINO_ACIDS),
      669, 84},
 };
 
@@ -1245,9 +1244,10 @@ std::vector<std::tuple<std::string, unsigned int, unsigned int>> large_mols{
  * edited, moved, and exported with the correct stereochemistry
  */
 BOOST_DATA_TEST_CASE(test_large_mol_import_update_export,
-                     boost::unit_test::data::make(large_mols), smiles,
-                     num_atoms, num_stereocenters)
+                     boost::unit_test::data::make(large_mols), helm, num_atoms,
+                     num_stereocenters)
 {
+    auto smiles = get_atomistic_smiles(helm);
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     auto count_cip_labels = [&model]() {
