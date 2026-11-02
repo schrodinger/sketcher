@@ -1013,6 +1013,10 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
     return std::make_pair(first_offset, second_offset);
 }
 
+/**
+ * Resizing wide labels on a ring and two attached chains must leave both
+ * interpolymer bonds vertical and keep the polymers separated.
+ */
 BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
 {
     double separation = 0;
@@ -1025,6 +1029,10 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
                        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
 }
 
+/**
+ * Reversing the HELM bond order must give the same alignment and clearance;
+ * neither connection may be tilted by correcting the other one.
+ */
 BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
 {
     double separation = 0;

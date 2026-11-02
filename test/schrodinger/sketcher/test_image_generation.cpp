@@ -224,6 +224,10 @@ BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
     }
 }
 
+/**
+ * Exercise Sketcher's measured label widths: resizing three connected
+ * polymers must preserve both vertical bonds and a bond-length label gap.
+ */
 BOOST_AUTO_TEST_CASE(test_wide_labels_keep_vertical_interpolymer_bonds)
 {
     const std::string helm =
