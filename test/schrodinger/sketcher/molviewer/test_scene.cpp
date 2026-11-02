@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <string>
@@ -350,6 +351,62 @@ BOOST_AUTO_TEST_CASE(test_arrow_plus_tool_no_crash)
     BOOST_TEST(mol_model->getNonMolecularObjects().size() == 1);
     BOOST_TEST(sketcher_model->getEnumerationTool() ==
                EnumerationTool::RXN_PLUS);
+}
+
+/**
+ * Make sure that clicking on empty space with the remove mapping tool after
+ * removing a mapping doesn't use the deleted atom item from the previous click
+ */
+BOOST_AUTO_TEST_CASE(test_remove_mapping_tool_click_after_removal)
+{
+    auto scene = TestScene::getScene();
+    auto* mol_model = scene->m_mol_model;
+    import_reaction_text(mol_model, "[CH3:1][CH3:2]>>[CH3:1][CH3:2]",
+                         Format::SMILES);
+    scene->m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ENUMERATION)},
+         {ModelKey::ENUMERATION_TOOL,
+          QVariant::fromValue(EnumerationTool::REMOVE_MAPPING)}});
+
+    auto click = [&scene](const QPointF& pos) {
+        QGraphicsSceneMouseEvent press_event(QEvent::GraphicsSceneMousePress);
+        QGraphicsSceneMouseEvent release_event(
+            QEvent::GraphicsSceneMouseRelease);
+        for (auto* event : {&press_event, &release_event}) {
+            event->setScenePos(pos);
+            event->setButton(Qt::LeftButton);
+            event->setButtons(Qt::LeftButton);
+        }
+        scene->mousePressEvent(&press_event);
+        scene->mouseReleaseEvent(&release_event);
+    };
+    auto get_mapping_numbers = [mol_model]() {
+        std::vector<int> mapping_numbers;
+        for (const auto* atom : mol_model->getMol()->atoms()) {
+            mapping_numbers.push_back(atom->getAtomMapNum());
+        }
+        return mapping_numbers;
+    };
+
+    const RDKit::Atom* reactant_atom = nullptr;
+    for (const auto* atom : mol_model->getMol()->atoms()) {
+        if (atom->getAtomMapNum() == 1 && !mol_model->isProductAtom(atom)) {
+            reactant_atom = atom;
+        }
+    }
+    BOOST_REQUIRE(reactant_atom != nullptr);
+    // clicking a reactant atom removes its mapping from all atoms
+    click(scene->m_atom_to_atom_item.at(reactant_atom)->scenePos());
+    auto exp_mapping_numbers = get_mapping_numbers();
+    BOOST_TEST(std::count(exp_mapping_numbers.begin(),
+                          exp_mapping_numbers.end(), 1) == 0);
+    BOOST_TEST(std::count(exp_mapping_numbers.begin(),
+                          exp_mapping_numbers.end(), 2) == 2);
+
+    // clicking on empty space must not change anything
+    click(QPointF(10000, 10000));
+    BOOST_TEST(get_mapping_numbers() == exp_mapping_numbers,
+               boost::test_tools::per_element());
 }
 
 /**
