@@ -1987,34 +1987,32 @@ void SketcherWidget::onMolModelChanged(const bool molecule_changed)
     // copy of the molecule no matter what
     m_copy_of_mol_model_mol = nullptr;
 
-    if (molecule_changed) {
-        // update MOLECULE_TYPE (i.e. is the Sketcher workspace empty,
-        // atomistic, or monomeric) and TOOL_SET (i.e. does the side bar
-        // currently display atomistic or monomeric tools). Note that we don't
-        // allow the workspace to contain both atomistic and monomeric models at
-        // the same time; it must be one or the other (or empty).
-        std::unordered_map<ModelKey, QVariant> kv_pairs;
-        auto interface = m_sketcher_model->getInterfaceType();
-        if (!m_mol_model->hasMolecularObjects()) {
-            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
-                             QVariant::fromValue(MoleculeType::EMPTY));
-        } else if (m_mol_model->isMonomeric()) {
-            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
-                             QVariant::fromValue(MoleculeType::MONOMERIC));
-            if (interface & InterfaceType::MONOMERIC) {
-                kv_pairs.emplace(ModelKey::TOOL_SET,
-                                 QVariant::fromValue(ToolSet::MONOMERIC));
-            }
-        } else {
-            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
-                             QVariant::fromValue(MoleculeType::ATOMISTIC));
-            if (interface & InterfaceType::ATOMISTIC) {
-                kv_pairs.emplace(ModelKey::TOOL_SET,
-                                 QVariant::fromValue(ToolSet::ATOMISTIC));
-            }
+    // update MOLECULE_TYPE (i.e. is the Sketcher workspace empty,
+    // atomistic, or monomeric) and TOOL_SET (i.e. does the side bar
+    // currently display atomistic or monomeric tools). Note that we don't
+    // allow the workspace to contain both atomistic and monomeric models at
+    // the same time; it must be one or the other (or empty).
+    std::unordered_map<ModelKey, QVariant> kv_pairs;
+    auto interface = m_sketcher_model->getInterfaceType();
+    if (m_mol_model->isEmpty()) {
+        kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                         QVariant::fromValue(MoleculeType::EMPTY));
+    } else if (m_mol_model->isMonomeric()) {
+        kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                         QVariant::fromValue(MoleculeType::MONOMERIC));
+        if (interface & InterfaceType::MONOMERIC) {
+            kv_pairs.emplace(ModelKey::TOOL_SET,
+                             QVariant::fromValue(ToolSet::MONOMERIC));
         }
-        m_sketcher_model->setValues(kv_pairs);
+    } else {
+        kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                         QVariant::fromValue(MoleculeType::ATOMISTIC));
+        if (interface & InterfaceType::ATOMISTIC) {
+            kv_pairs.emplace(ModelKey::TOOL_SET,
+                             QVariant::fromValue(ToolSet::ATOMISTIC));
+        }
     }
+    m_sketcher_model->setValues(kv_pairs);
 
     if (molecule_changed) {
         emit moleculeChanged();
