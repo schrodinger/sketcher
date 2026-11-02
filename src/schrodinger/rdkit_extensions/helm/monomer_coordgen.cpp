@@ -3545,7 +3545,10 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
         monomer_mol_copy.getRingInfo()->reset();
         auto [units, parent_unit] =
             break_into_topological_units(monomer_mol_copy);
-        lay_out_polymers(monomer_mol_copy, units, parent_unit);
+        // The topological-unit copy has synthetic chain IDs. Use the original
+        // molecule for connector classification while keeping the extracted
+        // units and their coordinates from the copy.
+        lay_out_polymers(monomer_mol, units, parent_unit);
         monomer_mol_copy.clearConformers();
         copy_polymer_coords_to_monomer_mol(monomer_mol_copy, units);
         if (coordinates_are_valid(monomer_mol_copy)) {
