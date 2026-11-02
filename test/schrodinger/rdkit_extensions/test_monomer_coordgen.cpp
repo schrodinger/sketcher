@@ -970,18 +970,14 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
         const double minimum_size =
             schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE;
         const double h = bond_length * std::sqrt(3.0) / 2;
-        const std::array<RDGeom::Point3D, 8> ring_and_middle{
-            RDGeom::Point3D{0, 0, 0},
-            {bond_length, 0, 0},
-            {1.5 * bond_length, h, 0},
-            {bond_length, 2 * h, 0},
-            {0, 2 * h, 0},
-            {-0.5 * bond_length, h, 0},
-            {1.5 * bond_length, h - 2 * bond_length, 0},
-            {2.5 * bond_length, h - 2 * bond_length, 0}};
-        for (unsigned int i = 0; i < ring_and_middle.size(); ++i) {
-            conf.setAtomPos(i, ring_and_middle[i]);
-        }
+        conf.setAtomPos(0, {0, 0, 0});
+        conf.setAtomPos(1, {bond_length, 0, 0});
+        conf.setAtomPos(2, {1.5 * bond_length, h, 0});
+        conf.setAtomPos(3, {bond_length, 2 * h, 0});
+        conf.setAtomPos(4, {0, 2 * h, 0});
+        conf.setAtomPos(5, {-0.5 * bond_length, h, 0});
+        conf.setAtomPos(6, {1.5 * bond_length, h - 2 * bond_length, 0});
+        conf.setAtomPos(7, {2.5 * bond_length, h - 2 * bond_length, 0});
         for (unsigned int i = 8; i < 12; ++i) {
             conf.setAtomPos(
                 i, {bond_length * (0.5 + i - 8), h - 4 * bond_length, 0});
@@ -993,13 +989,8 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
             *mol, {{0, {4, minimum_size, 0}},
                    {6, {2.5, minimum_size, 0}},
                    {8, {3.5, minimum_size, 0}}});
-        BOOST_TEST_CONTEXT("reverse bond order: " << reverse_bond_order)
-        {
-            BOOST_CHECK_SMALL(conf.getAtomPos(2).x - conf.getAtomPos(6).x,
-                              1e-6);
-            BOOST_CHECK_SMALL(conf.getAtomPos(7).x - conf.getAtomPos(10).x,
-                              1e-6);
-        }
+        BOOST_CHECK_SMALL(conf.getAtomPos(2).x - conf.getAtomPos(6).x, 1e-6);
+        BOOST_CHECK_SMALL(conf.getAtomPos(7).x - conf.getAtomPos(10).x, 1e-6);
     }
 }
 
