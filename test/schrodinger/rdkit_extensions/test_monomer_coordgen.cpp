@@ -1071,13 +1071,11 @@ BOOST_AUTO_TEST_CASE(VerticalAlignmentPreservesNearbyPolymerClearance)
     conf.setAtomPos(5, {bond_length / 2, -half_height, 0});
     conf.setAtomPos(6, {-bond_length, -bond_length, 0});
     conf.setAtomPos(7, {-minimum_size / 2, -bond_length, 0});
-    conf.setAtomPos(8, {-bond_length + minimum_size / 2,
-                        -3 * bond_length, 0});
+    conf.setAtomPos(8, {-bond_length + minimum_size / 2, -3 * bond_length, 0});
 
     const double initial_separation =
         std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
-    resize_monomers(*mol,
-                    {{8, {minimum_size + 3.0, minimum_size, 0}}});
+    resize_monomers(*mol, {{8, {minimum_size + 3.0, minimum_size, 0}}});
 
     const double final_separation =
         std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);

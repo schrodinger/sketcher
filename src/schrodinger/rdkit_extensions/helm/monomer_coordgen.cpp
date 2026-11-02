@@ -3502,8 +3502,7 @@ void resize_monomers(
     // polymers that are outside the vertical-connection graph. For each pair
     // whose labels overlap vertically, preserve the existing horizontal gap
     // up to the standard gap used by monomer connections.
-    const double minimum_label_gap =
-        MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
+    const double minimum_label_gap = MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
     double max_alignment_fraction = 1.0;
     const auto num_atoms = mol.getNumAtoms();
     std::vector<std::string> atom_polymer_ids(num_atoms);
@@ -3516,10 +3515,9 @@ void resize_monomers(
                                       linear_displacements[idx] +
                                       ring_displacements[idx];
         const auto size_it = clamped_monomer_sizes.find(idx);
-        sizes_after_resize[idx] =
-            size_it == clamped_monomer_sizes.end()
-                ? get_monomer_size(mol, idx)
-                : size_it->second;
+        sizes_after_resize[idx] = size_it == clamped_monomer_sizes.end()
+                                      ? get_monomer_size(mol, idx)
+                                      : size_it->second;
     }
     for (unsigned int i = 0; i < num_atoms; ++i) {
         for (unsigned int j = i + 1; j < num_atoms; ++j) {
@@ -3560,8 +3558,7 @@ void resize_monomers(
 
     for (const auto& [id, translation] : translations) {
         for (const auto idx : polymer_atoms[id]) {
-            linear_displacements[idx].x +=
-                translation * max_alignment_fraction;
+            linear_displacements[idx].x += translation * max_alignment_fraction;
         }
     }
 
