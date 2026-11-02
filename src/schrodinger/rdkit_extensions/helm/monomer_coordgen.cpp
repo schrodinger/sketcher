@@ -2326,11 +2326,10 @@ struct LayoutBond {
     RDGeom::Point3D end;
     unsigned int begin_id;
     unsigned int end_id;
-    bool involves_new_polymer;
 };
 
 static void append_polymer_bonds(std::vector<LayoutBond>& bonds,
-                                 const RDKit::ROMol& polymer, bool is_new)
+                                 const RDKit::ROMol& polymer)
 {
     const auto& conf = polymer.getConformer();
     for (const auto* bond : polymer.bonds()) {
@@ -2339,13 +2338,13 @@ static void append_polymer_bonds(std::vector<LayoutBond>& bonds,
         bonds.push_back({conf.getAtomPos(begin->getIdx()),
                          conf.getAtomPos(end->getIdx()),
                          begin->getProp<unsigned int>(ORIGINAL_INDEX),
-                         end->getProp<unsigned int>(ORIGINAL_INDEX), is_new});
+                         end->getProp<unsigned int>(ORIGINAL_INDEX)});
     }
 }
 
 static void append_connections(std::vector<LayoutBond>& bonds,
                                const RDKit::ROMol& from, const RDKit::ROMol& to,
-                               bool is_new, double* total_length = nullptr)
+                               double* total_length = nullptr)
 {
     const auto& from_conf = from.getConformer();
     const auto& to_conf = to.getConformer();
@@ -2356,12 +2355,28 @@ static void append_connections(std::vector<LayoutBond>& bonds,
             {begin, end,
              from.getAtomWithIdx(from_idx)->getProp<unsigned int>(
                  ORIGINAL_INDEX),
-             to.getAtomWithIdx(to_idx)->getProp<unsigned int>(ORIGINAL_INDEX),
-             is_new});
+             to.getAtomWithIdx(to_idx)->getProp<unsigned int>(ORIGINAL_INDEX)});
         if (total_length != nullptr) {
             *total_length += (end - begin).length();
         }
     }
+}
+
+static bool layout_bonds_are_too_close(const LayoutBond& a, const LayoutBond& b)
+{
+    if (a.begin_id == b.begin_id) {
+        return adjacent_bonds_are_too_close(a.end, a.begin, b.end);
+    }
+    if (a.begin_id == b.end_id) {
+        return adjacent_bonds_are_too_close(a.end, a.begin, b.begin);
+    }
+    if (a.end_id == b.begin_id) {
+        return adjacent_bonds_are_too_close(a.begin, a.end, b.end);
+    }
+    if (a.end_id == b.end_id) {
+        return adjacent_bonds_are_too_close(a.begin, a.end, b.begin);
+    }
+    return bonds_are_too_close(a.begin, a.end, b.begin, b.end);
 }
 
 /** Keep a left-to-right chain when crossing and clearance scores tie,
@@ -2392,32 +2407,29 @@ score_polymer_placement(const RDKit::ROMol& monomer_mol,
         }
     }
 
-    std::vector<LayoutBond> bonds;
-    append_polymer_bonds(bonds, polymer, true);
+    std::vector<LayoutBond> new_bonds;
+    std::vector<LayoutBond> placed_bonds;
+    append_polymer_bonds(new_bonds, polymer);
     double total_length = 0;
     for (size_t i = 0; i < placed_polymers.size(); ++i) {
-        append_polymer_bonds(bonds, *placed_polymers[i], false);
-        append_connections(bonds, polymer, *placed_polymers[i], true,
+        append_polymer_bonds(placed_bonds, *placed_polymers[i]);
+        append_connections(new_bonds, polymer, *placed_polymers[i],
                            &total_length);
         for (size_t j = 0; j < i; ++j) {
-            append_connections(bonds, *placed_polymers[i], *placed_polymers[j],
-                               false);
+            append_connections(placed_bonds, *placed_polymers[i],
+                               *placed_polymers[j]);
         }
     }
 
     unsigned int crossings = 0;
-    for (size_t i = 0; i < bonds.size(); ++i) {
-        for (size_t j = i + 1; j < bonds.size(); ++j) {
-            const auto& a = bonds[i];
-            const auto& b = bonds[j];
-            if (!a.involves_new_polymer && !b.involves_new_polymer) {
-                continue;
+    for (size_t i = 0; i < new_bonds.size(); ++i) {
+        for (size_t j = i + 1; j < new_bonds.size(); ++j) {
+            if (layout_bonds_are_too_close(new_bonds[i], new_bonds[j])) {
+                ++crossings;
             }
-            const bool shares_atom =
-                a.begin_id == b.begin_id || a.begin_id == b.end_id ||
-                a.end_id == b.begin_id || a.end_id == b.end_id;
-            if (!shares_atom &&
-                bonds_are_too_close(a.begin, a.end, b.begin, b.end)) {
+        }
+        for (const auto& placed_bond : placed_bonds) {
+            if (layout_bonds_are_too_close(new_bonds[i], placed_bond)) {
                 ++crossings;
             }
         }
@@ -3418,14 +3430,25 @@ void resize_monomers(
 
     // Ring expansion moves attached monomers with the ring, but the separate
     // linear resize pass can shift connected polymers by different amounts.
-    // That can tilt an interpolymer bond aligned vertically during placement.
-    // If a polymer pair has one such bond, shift the polymer with fewer
-    // monomers in X to preserve the alignment without changing its shape.
+    // Keep bonds placed vertically aligned by translating whole polymers in X.
+    // Calculate all translations before applying them so fixing one bond cannot
+    // tilt another bond attached to the same polymer.
     std::map<std::pair<std::string, std::string>, unsigned int> bond_counts;
-    std::map<std::string, unsigned int> polymer_sizes;
+    std::map<std::string, std::vector<unsigned int>> polymer_atoms;
+    std::vector<std::string> polymer_ids;
     for (const auto* atom : mol.atoms()) {
-        ++polymer_sizes[get_polymer_id(atom)];
+        const auto id = get_polymer_id(atom);
+        if (!polymer_atoms.contains(id)) {
+            polymer_ids.push_back(id);
+        }
+        polymer_atoms[id].push_back(atom->getIdx());
     }
+    auto final_x = [&](unsigned int idx) {
+        return mol.getConformer().getAtomPos(idx).x +
+               linear_displacements[idx].x + ring_displacements[idx].x;
+    };
+    std::map<std::string, std::vector<std::pair<std::string, double>>>
+        vertical_connections;
     for (const auto* bond : mol.bonds()) {
         const auto begin_id = get_polymer_id(bond->getBeginAtom());
         const auto end_id = get_polymer_id(bond->getEndAtom());
@@ -3445,19 +3468,39 @@ void resize_monomers(
                      mol.getConformer().getAtomPos(end_idx).x) > EPSILON) {
             continue;
         }
-        const bool move_begin = polymer_sizes[begin_id] < polymer_sizes[end_id];
-        const auto moving_idx = move_begin ? begin_idx : end_idx;
-        const auto fixed_idx = move_begin ? end_idx : begin_idx;
-        const auto moving_id = move_begin ? begin_id : end_id;
-        auto final_x = [&](unsigned int idx) {
-            return mol.getConformer().getAtomPos(idx).x +
-                   linear_displacements[idx].x + ring_displacements[idx].x;
-        };
-        const double correction = final_x(fixed_idx) - final_x(moving_idx);
-        for (const auto* atom : mol.atoms()) {
-            if (get_polymer_id(atom) == moving_id) {
-                linear_displacements[atom->getIdx()].x += correction;
+        const double correction = final_x(begin_idx) - final_x(end_idx);
+        vertical_connections[begin_id].emplace_back(end_id, correction);
+        vertical_connections[end_id].emplace_back(begin_id, -correction);
+    }
+    // Anchor the largest polymer in each connected group, then carry its
+    // translation through all vertically connected polymers.
+    std::stable_sort(polymer_ids.begin(), polymer_ids.end(),
+                     [&](const auto& a, const auto& b) {
+                         return polymer_atoms[a].size() >
+                                polymer_atoms[b].size();
+                     });
+    std::map<std::string, double> translations;
+    for (const auto& root : polymer_ids) {
+        if (translations.contains(root)) {
+            continue;
+        }
+        translations[root] = 0;
+        std::queue<std::string> pending;
+        pending.push(root);
+        while (!pending.empty()) {
+            const auto id = pending.front();
+            pending.pop();
+            for (const auto& [neighbor, offset] : vertical_connections[id]) {
+                if (!translations.contains(neighbor)) {
+                    translations[neighbor] = translations[id] + offset;
+                    pending.push(neighbor);
+                }
             }
+        }
+    }
+    for (const auto& [id, translation] : translations) {
+        for (const auto idx : polymer_atoms[id]) {
+            linear_displacements[idx].x += translation;
         }
     }
 
