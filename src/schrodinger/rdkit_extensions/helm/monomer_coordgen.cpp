@@ -3551,8 +3551,8 @@ void resize_monomers(
             const double allowed_fraction =
                 (std::abs(dx) - required_x_separation) /
                 std::abs(relative_translation);
-            max_alignment_fraction =
-                std::min(max_alignment_fraction, allowed_fraction);
+            max_alignment_fraction = std::min(
+                max_alignment_fraction, std::clamp(allowed_fraction, 0.0, 1.0));
         }
     }
 

@@ -1046,14 +1046,15 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
 }
 
 /**
- * Aligning a polymer vertically to a ring must not move it into a nearby
- * unconnected polymer and reduce their existing label clearance.
+ * A diagonally overlapping label pair must not reverse vertical alignment
+ * and move nearby polymers on either side closer together.
  */
-BOOST_AUTO_TEST_CASE(VerticalAlignmentPreservesNearbyPolymerClearance)
+BOOST_AUTO_TEST_CASE(VerticalAlignmentDoesNotReverseForDiagonalLabels)
 {
     using namespace schrodinger::rdkit_extensions;
     auto mol = helm_to_rdkit(
-        "PEPTIDE1{A.C.C.C.C.C}|PEPTIDE2{A}|PEPTIDE3{A}|PEPTIDE4{A}$"
+        "PEPTIDE1{A.C.C.C.C.C}|PEPTIDE2{A}|PEPTIDE3{A}|PEPTIDE4{A}|"
+        "PEPTIDE5{A}|PEPTIDE6{A}$"
         "PEPTIDE1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,PEPTIDE2,4:R3-1:R3$$$V2.0");
     compute_monomer_mol_coords(*mol);
     auto& conf = mol->getConformer();
@@ -1070,19 +1071,28 @@ BOOST_AUTO_TEST_CASE(VerticalAlignmentPreservesNearbyPolymerClearance)
     conf.setAtomPos(4, {-bond_length / 2, -half_height, 0});
     conf.setAtomPos(5, {bond_length / 2, -half_height, 0});
     conf.setAtomPos(6, {-bond_length, -bond_length, 0});
-    conf.setAtomPos(7, {-minimum_size / 2, -bond_length, 0});
-    conf.setAtomPos(8, {-bond_length + minimum_size / 2, -3 * bond_length, 0});
+    // Two diagonal label overlaps on opposite sides force the computed
+    // alignment fraction below zero unless it is clamped.
+    conf.setAtomPos(7, {-bond_length + 0.8, -bond_length + 0.8, 0});
+    conf.setAtomPos(8, {-bond_length - 0.8, -bond_length + 0.8, 0});
+    conf.setAtomPos(9, {-bond_length - 2.0, -bond_length, 0});
+    conf.setAtomPos(10, {-bond_length + 2.0, -bond_length, 0});
 
-    const double initial_separation =
-        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
+    const double initial_left_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(9).x);
+    const double initial_right_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(10).x);
     std::unordered_map<int, RDGeom::Point3D> resize_sizes;
     resize_sizes.emplace(8,
                          RDGeom::Point3D(minimum_size + 3.0, minimum_size, 0));
     resize_monomers(*mol, resize_sizes);
 
-    const double final_separation =
-        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
-    BOOST_CHECK_SMALL(final_separation - initial_separation, 1e-6);
+    const double final_left_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(9).x);
+    const double final_right_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(10).x);
+    BOOST_CHECK_GE(final_left_separation, initial_left_separation - 1e-6);
+    BOOST_CHECK_GE(final_right_separation, initial_right_separation - 1e-6);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
