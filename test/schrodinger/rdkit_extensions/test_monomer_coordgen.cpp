@@ -955,7 +955,8 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
                                         double& minimum_polymer_separation)
 {
     const std::string polymers =
-        "PEPTIDE1{C.C.C.C.C.C}|PEPTIDE2{C.C}|PEPTIDE3{C.C.C.C}$";
+        "PEPTIDE1{[Phe_34diCl].C.C.C.C.C}|PEPTIDE2{[D-2Nal].C}|"
+        "PEPTIDE3{[Phe_4F].C.C.C}$";
     const std::string ring_bond = "PEPTIDE1,PEPTIDE1,6:R2-1:R1";
     const std::string first_bond = "PEPTIDE1,PEPTIDE2,3:R3-1:R3";
     const std::string second_bond = "PEPTIDE2,PEPTIDE3,2:R3-3:R3";
@@ -969,7 +970,8 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
     compute_monomer_mol_coords(*mol);
     auto& conf = mol->getConformer();
     // Put the two chains below the cyclic polymer with both interpolymer
-    // bonds vertical. The sizes below simulate wider residue labels.
+    // bonds vertical. The sizes below are controlled resize inputs for the
+    // three wide labels; the Sketcher image test uses their measured sizes.
     const double bond_length =
         schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH;
     const double minimum_size =
