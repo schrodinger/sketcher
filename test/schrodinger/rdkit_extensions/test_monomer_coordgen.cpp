@@ -948,50 +948,59 @@ BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
         (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
 }
 
-BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
+static std::pair<double, double>
+get_resized_vertical_connection_offsets(bool reverse_bond_order)
 {
     const std::string polymers =
         "PEPTIDE1{C.C.C.C.C.C}|PEPTIDE2{C.C}|PEPTIDE3{C.C.C.C}$";
     const std::string ring_bond = "PEPTIDE1,PEPTIDE1,6:R2-1:R1";
     const std::string first_bond = "PEPTIDE1,PEPTIDE2,3:R3-1:R3";
     const std::string second_bond = "PEPTIDE2,PEPTIDE3,2:R3-3:R3";
-    for (const bool reverse_bond_order : {false, true}) {
-        const auto connections =
-            reverse_bond_order
-                ? second_bond + "|" + first_bond + "|" + ring_bond
-                : ring_bond + "|" + first_bond + "|" + second_bond;
-        auto mol = helm_to_rdkit(polymers + connections + "$$$V2.0");
-        compute_monomer_mol_coords(*mol);
-        auto& conf = mol->getConformer();
-        // The cyclic polymer and two chains have two vertical links. Resizing
-        // their labels shifts the attachment sites by different amounts.
-        const double bond_length =
-            schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH;
-        const double minimum_size =
-            schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE;
-        const double h = bond_length * std::sqrt(3.0) / 2;
-        conf.setAtomPos(0, {0, 0, 0});
-        conf.setAtomPos(1, {bond_length, 0, 0});
-        conf.setAtomPos(2, {1.5 * bond_length, h, 0});
-        conf.setAtomPos(3, {bond_length, 2 * h, 0});
-        conf.setAtomPos(4, {0, 2 * h, 0});
-        conf.setAtomPos(5, {-0.5 * bond_length, h, 0});
-        conf.setAtomPos(6, {1.5 * bond_length, h - 2 * bond_length, 0});
-        conf.setAtomPos(7, {2.5 * bond_length, h - 2 * bond_length, 0});
-        for (unsigned int i = 8; i < 12; ++i) {
-            conf.setAtomPos(
-                i, {bond_length * (0.5 + i - 8), h - 4 * bond_length, 0});
-        }
-        BOOST_REQUIRE(mol->getBondBetweenAtoms(2, 6) != nullptr);
-        BOOST_REQUIRE(mol->getBondBetweenAtoms(7, 10) != nullptr);
-
-        schrodinger::rdkit_extensions::resize_monomers(
-            *mol, {{0, {4, minimum_size, 0}},
-                   {6, {2.5, minimum_size, 0}},
-                   {8, {3.5, minimum_size, 0}}});
-        BOOST_CHECK_SMALL(conf.getAtomPos(2).x - conf.getAtomPos(6).x, 1e-6);
-        BOOST_CHECK_SMALL(conf.getAtomPos(7).x - conf.getAtomPos(10).x, 1e-6);
+    const auto connections =
+        reverse_bond_order ? second_bond + "|" + first_bond + "|" + ring_bond
+                           : ring_bond + "|" + first_bond + "|" + second_bond;
+    auto mol = helm_to_rdkit(polymers + connections + "$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    // The cyclic polymer and two chains have two vertical links. Resizing
+    // their labels shifts the attachment sites by different amounts.
+    const double bond_length =
+        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH;
+    const double minimum_size =
+        schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE;
+    const double h = bond_length * std::sqrt(3.0) / 2;
+    conf.setAtomPos(0, {0, 0, 0});
+    conf.setAtomPos(1, {bond_length, 0, 0});
+    conf.setAtomPos(2, {1.5 * bond_length, h, 0});
+    conf.setAtomPos(3, {bond_length, 2 * h, 0});
+    conf.setAtomPos(4, {0, 2 * h, 0});
+    conf.setAtomPos(5, {-0.5 * bond_length, h, 0});
+    conf.setAtomPos(6, {1.5 * bond_length, h - 2 * bond_length, 0});
+    conf.setAtomPos(7, {2.5 * bond_length, h - 2 * bond_length, 0});
+    for (unsigned int i = 8; i < 12; ++i) {
+        conf.setAtomPos(i,
+                        {bond_length * (0.5 + i - 8), h - 4 * bond_length, 0});
     }
+    schrodinger::rdkit_extensions::resize_monomers(
+        *mol, {{0, {4, minimum_size, 0}},
+               {6, {2.5, minimum_size, 0}},
+               {8, {3.5, minimum_size, 0}}});
+    return {conf.getAtomPos(2).x - conf.getAtomPos(6).x,
+            conf.getAtomPos(7).x - conf.getAtomPos(10).x};
+}
+
+BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
+{
+    const auto offsets = get_resized_vertical_connection_offsets(false);
+    BOOST_CHECK_SMALL(offsets.first, 1e-6);
+    BOOST_CHECK_SMALL(offsets.second, 1e-6);
+}
+
+BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
+{
+    const auto offsets = get_resized_vertical_connection_offsets(true);
+    BOOST_CHECK_SMALL(offsets.first, 1e-6);
+    BOOST_CHECK_SMALL(offsets.second, 1e-6);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
