@@ -956,10 +956,13 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order)
     const std::string ring_bond = "PEPTIDE1,PEPTIDE1,6:R2-1:R1";
     const std::string first_bond = "PEPTIDE1,PEPTIDE2,3:R3-1:R3";
     const std::string second_bond = "PEPTIDE2,PEPTIDE3,2:R3-3:R3";
-    const auto connections =
-        reverse_bond_order ? second_bond + "|" + first_bond + "|" + ring_bond
-                           : ring_bond + "|" + first_bond + "|" + second_bond;
-    auto mol = helm_to_rdkit(polymers + connections + "$$$V2.0");
+    std::string helm = polymers;
+    if (reverse_bond_order) {
+        helm += second_bond + "|" + first_bond + "|" + ring_bond;
+    } else {
+        helm += ring_bond + "|" + first_bond + "|" + second_bond;
+    }
+    auto mol = helm_to_rdkit(helm + "$$$V2.0");
     compute_monomer_mol_coords(*mol);
     auto& conf = mol->getConformer();
     // The cyclic polymer and two chains have two vertical links. Resizing
@@ -981,12 +984,14 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order)
         conf.setAtomPos(i,
                         {bond_length * (0.5 + i - 8), h - 4 * bond_length, 0});
     }
-    schrodinger::rdkit_extensions::resize_monomers(
-        *mol, {{0, {4, minimum_size, 0}},
-               {6, {2.5, minimum_size, 0}},
-               {8, {3.5, minimum_size, 0}}});
-    return {conf.getAtomPos(2).x - conf.getAtomPos(6).x,
-            conf.getAtomPos(7).x - conf.getAtomPos(10).x};
+    std::unordered_map<int, RDGeom::Point3D> sizes;
+    sizes.emplace(0, RDGeom::Point3D(4, minimum_size, 0));
+    sizes.emplace(6, RDGeom::Point3D(2.5, minimum_size, 0));
+    sizes.emplace(8, RDGeom::Point3D(3.5, minimum_size, 0));
+    schrodinger::rdkit_extensions::resize_monomers(*mol, sizes);
+    const double first_offset = conf.getAtomPos(2).x - conf.getAtomPos(6).x;
+    const double second_offset = conf.getAtomPos(7).x - conf.getAtomPos(10).x;
+    return std::make_pair(first_offset, second_offset);
 }
 
 BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
