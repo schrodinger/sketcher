@@ -1,2 +1,7 @@
 # Always keep main's version of version.json during merges
 version.json merge=ours
+
+# Allow blank context lines in patches and ensure that the Windows GitHub
+# runner doesn't try to convert line endings, as that can lead to "corrupt
+# patch" errors
+external/*.patch text eol=lf whitespace=-blank-at-eol

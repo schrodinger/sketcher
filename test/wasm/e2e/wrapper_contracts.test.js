@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Sketcher } from './sketcher/wrappers/sketcher.js';
+import { setClipboardText } from './sketcher/wrappers/sketcher_wasm.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 test.setTimeout(90_000);
@@ -34,13 +35,78 @@ test.describe('Sketcher wrapper contracts', () => {
     await expect(await sk.copy_all_as_text('smi')).toBe(SOURCE_STRUCTURE);
   });
 
-  test('Select tool dropdown exposes lasso and ellipse choices', async ({ page }) => {
+  test('Select tool dropdown switches between lasso, ellipse, and rectangle', async ({ page }) => {
     const sk = new Sketcher(page);
     await sk.open();
     await sk.import_menu('paste_in_text', SOURCE_STRUCTURE);
 
-    await sk.click_tool('lasso_btn');
-    await sk.click_tool('ellipse_btn');
+    for (const tool of ['lasso_btn', 'ellipse_btn', 'rect_btn']) {
+      await sk.click_tool(tool);
+      expect((await sk.widget_state(tool)).checked).toBe(true);
+      await expect.poll(() => visibleQtPopupCount(page)).toBe(0);
+    }
+  });
+
+  test('selection after Clear and keyboard shortcuts preserves the first bond click', async ({
+    page,
+  }) => {
+    const sk = new Sketcher(page);
+    await sk.open();
+    await sk.import_menu('paste_in_text', 'CCO');
+    await sk.click_tool('rect_btn');
+    await sk.click_button('clear');
+    await sk.import_menu('paste_in_text', 'CCO');
+    await sk.type_text('sketcher_area', '<Ctrl+A>');
+    await sk.type_text('sketcher_area', '<Ctrl+D>');
+    expect((await sk.widget_state('select_tool_btn')).checked).toBe(true);
+
+    await sk.click_tool('rect_btn');
+    await expect.poll(() => visibleQtPopupCount(page)).toBe(0);
+    await sk.click_bond(1, true, 'shift');
+    const sentinel = '__playwright_waiting_for_bond_copy__';
+    await setClipboardText(page, sentinel);
+    await sk.type_text('sketcher_area', '<Ctrl+C>');
+    // Qt's copy event can publish the cached import text before Sketcher's
+    // asynchronous clipboard write finishes. Wait for the expected payload,
+    // since merely replacing the sentinel can still return that stale text.
+    await expect
+      .poll(async () => v3000Counts(await sk.clipboard_text()))
+      .toEqual({
+        atoms: 2,
+        bonds: 1,
+      });
+  });
+
+  test('combo choices leave atom properties open and can be cancelled', async ({ page }) => {
+    const sk = new Sketcher(page);
+    await sk.open();
+    await sk.import_menu('paste_in_text', 'C[C@H](F)Cl');
+    const original = await sk.copy_all_as_text('smi');
+    await sk.map_imported_atom_indexes();
+    await sk.click_atom(2, true);
+
+    for (const enhanced_stereo of ['AND', 'OR']) {
+      await sk.selection_context_menu({ type: 'atom', index: 2 }, 'edit_atom_properties');
+      await sk.edit_atom_properties({ enhanced_stereo, click_ok: false });
+      expect((await sk.widget_state('atom_stereo_combo')).text).toBe(enhanced_stereo);
+      await sk.edit_atom_properties({ click_ok: false, click_cancel: true });
+    }
+
+    await sk.selection_context_menu({ type: 'atom', index: 2 }, 'edit_atom_properties');
+    await sk.edit_atom_properties({
+      set_as: 'query',
+      query_type: 'advanced',
+      total_h: '>0',
+      aromaticity: 'Aromatic (a)',
+      ring_count_dropdown: 'exactly',
+      ring_count: 3,
+      click_ok: false,
+    });
+    expect((await sk.widget_state('total_h_combo')).text).toBe('>0');
+    expect((await sk.widget_state('aromaticity_combo')).text).toBe('Aromatic (a)');
+    await sk.edit_atom_properties({ click_ok: false, click_cancel: true });
+    await sk.click_button('clear_selection');
+    expect(await sk.copy_all_as_text('smi')).toBe(original);
   });
 
   test('reset_state restores the Squish sticky-tool defaults', async ({ page }) => {

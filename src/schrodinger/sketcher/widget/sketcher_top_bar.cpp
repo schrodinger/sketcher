@@ -258,14 +258,8 @@ void SketcherTopBar::onImportFromFileClicked()
         }
     };
 
-    QStringList filters;
-    filters.append("All supported formats (*.*)");
-    for (const auto& [_, label, extensions] : get_import_formats()) {
-        filters.append(get_filter_name(label, extensions));
-    }
-    auto name_filter = filters.join(";;");
-
-    QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
+    QFileDialog::getOpenFileContent(get_import_name_filter(),
+                                    file_open_completed, this);
 }
 
 void SketcherTopBar::onLoadMonomerDatabaseClicked()

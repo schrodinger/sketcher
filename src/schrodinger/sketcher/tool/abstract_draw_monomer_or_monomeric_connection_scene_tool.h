@@ -62,6 +62,9 @@ struct HintFragmentMonomerInfo {
     // the atom index for this monomer in the MolModel molecule. Will be
     // NEW_MONOMER_FROM_DRAG if the monomer is not present in MolModel.
     int atom_idx;
+    // measured bead size in molecular coordinates, used for placement and to
+    // prevent the model's first render from expanding the spacing twice
+    RDGeom::Point3D size{};
 };
 
 constexpr int NEW_MONOMER_FROM_DRAG = -1;
@@ -104,13 +107,6 @@ SKETCHER_API std::string get_attachment_point_for_new_monomer(
  */
 SKETCHER_API std::tuple<const RDKit::Atom*, MonomerType>
 get_monomer_and_type(const AbstractMonomerItem* const monomer_item);
-
-/**
- * @overload takes a monomer instead of monomer coordinates
- */
-SKETCHER_API RDGeom::Point3D
-get_default_coords_for_bound_monomer(const RDKit::Atom* const monomer,
-                                     const rdkit_extensions::Direction dir);
 
 /**
  * @return the unbound attachment point graphics item representing the

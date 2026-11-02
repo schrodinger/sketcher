@@ -134,6 +134,12 @@ class SKETCHER_API DrawMonomerFragmentSceneTool
         const UnboundMonomericAttachmentPointItem* hovered_ap_item);
 
     /**
+     * Draw an unbound fragment hint at the mouse press position, with label
+     * spacing adjusted for the specified rotation in radians.
+     */
+    void drawUnboundFragmentHint(const double rotation = 0.0);
+
+    /**
      * @return A copy of the fragment, positioned correctly to interact with the
      * specified monomer and attachment point via the binding described in
      * attachment_info.
@@ -142,6 +148,15 @@ class SKETCHER_API DrawMonomerFragmentSceneTool
     getPositionedFragment(const RDKit::Atom* const hovered_monomer,
                           const UnboundAttachmentPoint& hovered_ap,
                           const MonomerFragmentAttachmentInfo& attachment_info);
+
+    /**
+     * @return A copy of the fragment rotated by rotation radians, with label
+     * spacing adjusted in that orientation and anchor_idx placed at anchor_pos.
+     */
+    std::shared_ptr<RDKit::RWMol>
+    getPositionedFragment(const unsigned int anchor_idx,
+                          const RDGeom::Point3D& anchor_pos,
+                          const double rotation) const;
 
     void addBoundFragmentToMolModel(
         const AbstractMonomerItem* hovered_monomer_item,

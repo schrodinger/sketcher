@@ -1,11 +1,18 @@
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 
+#include <algorithm>
+#include <cctype>
+#include <memory>
+#include <optional>
 #include <queue>
 #include <unordered_map>
-#include <memory>
+#include <unordered_set>
+#include <vector>
 
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/json.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <fmt/format.h>
 
@@ -34,8 +41,14 @@ namespace fs = boost::filesystem;
 const std::string ATOM_PROP_GRAPH_H("_GRAPH_H_TO_REMOVE");
 const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 
-using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
-                               std::pair<unsigned int, unsigned int>>;
+struct AttachmentInfo {
+    unsigned int core_atom;
+    std::vector<unsigned int> leaving_group_atoms;
+};
+
+using AttachmentMap =
+    std::map<std::pair<unsigned int, unsigned int>, AttachmentInfo>;
+using AtomIndexSet = std::unordered_set<unsigned int>;
 
 static const std::string ATOM_PDB_NAME_PROP{"pdbName"};
 
@@ -105,10 +118,226 @@ std::pair<unsigned int, unsigned int> getAttchpts(const std::string& linkage)
             std::stoi(linkage.substr(dash + 2))};
 }
 
-void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
-                            AttachmentMap& attachment_points,
-                            unsigned int residue_num, unsigned int old_mol_size)
+std::optional<unsigned int>
+findMappedAttachmentAtom(const RDKit::ROMol& monomer, unsigned int rgroup_num)
 {
+    for (const auto* atom : monomer.atoms()) {
+        unsigned int map_num = 0;
+        if (atom->getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                                   map_num) &&
+            map_num == rgroup_num) {
+            return atom->getIdx();
+        }
+    }
+    return std::nullopt;
+}
+
+AtomIndexSet matchCoreAtoms(const RDKit::ROMol& new_monomer,
+                            const std::string& core_smiles)
+{
+    std::unique_ptr<RDKit::RWMol> core_mol(
+        RDKit::SmilesToMol(core_smiles, 0, false));
+    if (!core_mol) {
+        throw std::runtime_error(fmt::format(
+            "Invalid CORE_SMILES for R-group matching: {}", core_smiles));
+    }
+
+    // Attachment-point dummies describe bonds leaving the core. Keep the core
+    // atoms as the query and remove the dummies before matching.
+    std::vector<unsigned int> dummy_indices;
+    for (const auto* atom : core_mol->atoms()) {
+        if (atom->getAtomicNum() == 0) {
+            dummy_indices.push_back(atom->getIdx());
+        }
+    }
+    std::sort(dummy_indices.rbegin(), dummy_indices.rend());
+    for (auto atom_idx : dummy_indices) {
+        core_mol->removeAtom(atom_idx);
+    }
+    if (core_mol->getNumAtoms() == 0) {
+        throw std::runtime_error(
+            fmt::format("CORE_SMILES contains no core atoms: {}", core_smiles));
+    }
+
+    const auto core_matches = RDKit::SubstructMatch(new_monomer, *core_mol);
+    if (core_matches.empty()) {
+        throw std::runtime_error(fmt::format(
+            "Could not match CORE_SMILES in monomer: {}", core_smiles));
+    }
+
+    // Multiple query mappings can describe the same set of core atoms (for
+    // example, due to symmetry). They define the same core/non-core split.
+    AtomIndexSet core_atoms;
+    for (const auto& [query_idx, target_idx] : core_matches.front()) {
+        (void)query_idx;
+        core_atoms.insert(static_cast<unsigned int>(target_idx));
+    }
+    for (const auto& core_match : core_matches) {
+        AtomIndexSet matched_core_atoms;
+        for (const auto& [query_idx, target_idx] : core_match) {
+            (void)query_idx;
+            matched_core_atoms.insert(static_cast<unsigned int>(target_idx));
+        }
+        if (matched_core_atoms != core_atoms) {
+            throw std::runtime_error(
+                fmt::format("CORE_SMILES matched multiple core atom sets: {}",
+                            core_smiles));
+        }
+    }
+    return core_atoms;
+}
+
+boost::json::value parseRGroups(const std::string& rgroups)
+{
+    boost::json::value json_rgroups;
+    try {
+        json_rgroups = boost::json::parse(rgroups);
+    } catch (const boost::system::system_error& e) {
+        throw std::runtime_error(
+            fmt::format("Invalid RGROUPS JSON: {}", e.what()));
+    }
+    return json_rgroups;
+}
+
+unsigned int parseRGroup(boost::json::string_view rgroup_name,
+                         const boost::json::value& rgroup_value)
+{
+    if (!rgroup_value.is_string()) {
+        throw std::runtime_error(fmt::format(
+            "RGROUPS entry {} must contain a SMILES string", rgroup_name));
+    }
+
+    auto rgroup_mol = std::unique_ptr<RDKit::RWMol>(
+        RDKit::SmilesToMol(rgroup_value.as_string().c_str(), 0, false));
+    if (!rgroup_mol) {
+        throw std::runtime_error(
+            fmt::format("Invalid SMILES for R-group {}", rgroup_name));
+    }
+
+    RDKit::Atom* rgroup_dummy_atom = nullptr;
+    for (auto* atom : rgroup_mol->atoms()) {
+        if (atom->getAtomicNum() == 0) {
+            if (rgroup_dummy_atom != nullptr) {
+                throw std::runtime_error(fmt::format(
+                    "R-group {} contains multiple dummy atoms", rgroup_name));
+            }
+            rgroup_dummy_atom = atom;
+        }
+    }
+    if (rgroup_dummy_atom == nullptr) {
+        throw std::runtime_error(fmt::format(
+            "R-group {} does not contain a dummy atom", rgroup_name));
+    }
+
+    // The rgroup num matches the atom map num in the mol
+    const auto rgroup_num = static_cast<unsigned int>(
+        std::stoul(std::string(rgroup_name.substr(1))));
+    rgroup_mol->removeAtom(rgroup_dummy_atom->getIdx());
+    if (rgroup_mol->getNumAtoms() == 0) {
+        throw std::runtime_error(
+            fmt::format("R-group {} is empty", rgroup_name));
+    }
+    return rgroup_num;
+}
+
+AtomIndexSet findLeavingGroupAtoms(const RDKit::ROMol& new_monomer,
+                                   const AtomIndexSet& core_atoms,
+                                   unsigned int mapped_attachment_atom)
+{
+    // Traverse the non-core component starting from the R-group's mapped
+    // atom. The core atom set acts as a boundary, so similar groups
+    // elsewhere in the monomer cannot be mistaken for this leaving group.
+    AtomIndexSet lg_atoms;
+    std::queue<unsigned int> atoms_to_visit;
+    lg_atoms.insert(mapped_attachment_atom);
+    atoms_to_visit.push(mapped_attachment_atom);
+    while (!atoms_to_visit.empty()) {
+        const auto atom_idx = atoms_to_visit.front();
+        atoms_to_visit.pop();
+        const auto* atom = new_monomer.getAtomWithIdx(atom_idx);
+        for (const auto* neighbor : new_monomer.atomNeighbors(atom)) {
+            const auto neighbor_idx = neighbor->getIdx();
+            if (core_atoms.count(neighbor_idx) == 0 &&
+                lg_atoms.insert(neighbor_idx).second) {
+                atoms_to_visit.push(neighbor_idx);
+            }
+        }
+    }
+    return lg_atoms;
+}
+
+unsigned int findAttachedCoreAtom(const RDKit::ROMol& new_monomer,
+                                  const AtomIndexSet& lg_atoms,
+                                  boost::json::string_view rgroup_name)
+{
+    AtomIndexSet attach_core_atoms;
+    for (auto group_atom_idx : lg_atoms) {
+        auto* atom = new_monomer.getAtomWithIdx(group_atom_idx);
+        for (auto* neighbor : new_monomer.atomNeighbors(atom)) {
+            if (!lg_atoms.contains(neighbor->getIdx())) {
+                attach_core_atoms.insert(neighbor->getIdx());
+            }
+        }
+    }
+    // The LG should be attached to 1 core atom
+    if (attach_core_atoms.size() != 1) {
+        throw std::runtime_error(fmt::format(
+            "Could not identify the attached core atom for R-group {}",
+            rgroup_name));
+    }
+    return *attach_core_atoms.begin();
+}
+
+void fillAttachmentPointMapFromRGroups(const RDKit::ROMol& new_monomer,
+                                       const std::string& rgroups,
+                                       const std::string& core_smiles,
+                                       AttachmentMap& attachment_points,
+                                       unsigned int residue_num,
+                                       unsigned int old_mol_size)
+{
+    // Match CORE_SMILES first. The atoms outside this core, reachable from
+    // each R-group's mapped atom, make up that R-group's leaving group.
+    const auto core_atoms = matchCoreAtoms(new_monomer, core_smiles);
+    const auto json_rgroups = parseRGroups(rgroups);
+    for (const auto& [rgroup_name, rgroup_value] : json_rgroups.as_object()) {
+        const auto rgroup_num = parseRGroup(rgroup_name, rgroup_value);
+        const auto mapped_attachment_atom =
+            findMappedAttachmentAtom(new_monomer, rgroup_num);
+        if (!mapped_attachment_atom) {
+            throw std::runtime_error(
+                fmt::format("Could not find mapped atom for R-group {} in "
+                            "monomer SMILES",
+                            rgroup_name));
+        }
+        if (core_atoms.count(*mapped_attachment_atom) != 0) {
+            throw std::runtime_error(
+                fmt::format("Mapped atom for R-group {} is part of CORE_SMILES",
+                            rgroup_name));
+        }
+
+        const auto lg_atoms = findLeavingGroupAtoms(new_monomer, core_atoms,
+                                                    *mapped_attachment_atom);
+        const auto attached_core_atom =
+            findAttachedCoreAtom(new_monomer, lg_atoms, rgroup_name);
+
+        // Offset local monomer atom indicies for the overall polymer
+        AttachmentInfo info{old_mol_size + attached_core_atom, {}};
+        info.leaving_group_atoms.reserve(lg_atoms.size());
+        for (auto atom_idx : lg_atoms) {
+            info.leaving_group_atoms.push_back(old_mol_size + atom_idx);
+        }
+        attachment_points[{residue_num, rgroup_num}] = std::move(info);
+    }
+}
+
+void fillAttachmentPointMapFromSmiles(const RDKit::ROMol& new_monomer,
+                                      AttachmentMap& attachment_points,
+                                      unsigned int residue_num,
+                                      unsigned int old_mol_size)
+{
+    // Fallback method to determine attachment point map using SMILES
+    // Only 1 heavy atom LGs are supported, any LG with more than 1
+    // heavy atom neighbor will throw an error.
     for (const auto& atom : new_monomer.atoms()) {
         unsigned int map_num;
         if (atom->getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
@@ -119,17 +348,45 @@ void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
                 if (attachment_points.find({residue_num, map_num}) !=
                     attachment_points.end()) {
                     throw std::runtime_error(
-                        fmt::format("Invalid attachment point at index {}",
+                        fmt::format("Multiple heavy atom LG for attachment "
+                                    "point on atom {}, use RGROUPS + "
+                                    "CORE_SMILES instead.",
                                     atom->getIdx()));
                 }
                 auto atom_to_bond_to =
                     old_mol_size + bnd->getOtherAtomIdx(atom->getIdx());
                 auto atom_to_remove = old_mol_size + atom->getIdx();
-                attachment_points[{residue_num, map_num}] =
-                    std::make_pair(atom_to_bond_to, atom_to_remove);
+                attachment_points[{residue_num, map_num}] = {atom_to_bond_to,
+                                                             {atom_to_remove}};
             }
         }
     }
+}
+
+void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
+                            const MonomerInfo* monomer_info,
+                            AttachmentMap& attachment_points,
+                            unsigned int residue_num, unsigned int old_mol_size)
+{
+    if (monomer_info && monomer_info->rgroups) {
+        auto rgroups = boost::trim_copy(*monomer_info->rgroups);
+        // The default database represents an empty RGROUPS field as the
+        // serialized empty JSON string, rather than as an empty field.
+        if (!rgroups.empty() && rgroups != "\"\"") {
+            if (!monomer_info->core_smiles ||
+                monomer_info->core_smiles->empty()) {
+                throw std::runtime_error(
+                    "CORE_SMILES is required when RGROUPS are defined");
+            }
+            fillAttachmentPointMapFromRGroups(
+                new_monomer, rgroups, *monomer_info->core_smiles,
+                attachment_points, residue_num, old_mol_size);
+            return;
+        }
+    }
+
+    fillAttachmentPointMapFromSmiles(new_monomer, attachment_points,
+                                     residue_num, old_mol_size);
 }
 
 void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
@@ -233,6 +490,7 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     for (const auto monomer_idx : chain.atoms) {
         auto monomer = monomer_mol.getAtomWithIdx(monomer_idx);
         auto monomer_label = monomer->getProp<std::string>(ATOM_LABEL);
+        auto monomer_info = db.getMonomerInfo(monomer_label, chain_type);
 
         std::string smiles;
         if (monomer->getProp<bool>(SMILES_MONOMER)) {
@@ -292,8 +550,10 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         }
 
         auto residue_number = get_residue_number(monomer);
-        fillAttachmentPointMap(*new_monomer, attachment_point_map,
-                               residue_number, atomistic_mol.getNumAtoms());
+        fillAttachmentPointMap(
+            *new_monomer,
+            monomer->getProp<bool>(SMILES_MONOMER) ? nullptr : &monomer_info,
+            attachment_point_map, residue_number, atomistic_mol.getNumAtoms());
         setResidueInfo(*new_monomer, monomer_label, residue_number, chain_id,
                        chain_type, total_residue_count, db);
         ++total_residue_count;
@@ -365,9 +625,9 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
                     bond->getProp<std::string>(LINKAGE), from_res, to_res));
             }
 
-            auto [core_aid1, attachment_point1] =
+            auto [core_aid1, attachment_info1] =
                 attachment_point_map.at({from_res, from_rgroup});
-            auto [core_aid2, attachment_point2] =
+            auto [core_aid2, attachment_info2] =
                 attachment_point_map.at({to_res, to_rgroup});
 
             auto bond_type = bond->getBondType();
@@ -377,8 +637,10 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
                 bond_type = RDKit::Bond::SINGLE;
             }
             atomistic_mol.addBond(core_aid1, core_aid2, bond_type);
-            remove_atoms.push_back(attachment_point1);
-            remove_atoms.push_back(attachment_point2);
+            remove_atoms.insert(remove_atoms.end(), attachment_info1.begin(),
+                                attachment_info1.end());
+            remove_atoms.insert(remove_atoms.end(), attachment_info2.begin(),
+                                attachment_info2.end());
         }
     }
 
@@ -469,9 +731,9 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
                             begin_atom->getIdx(), end_atom->getIdx()));
         }
 
-        auto [core_atom1, attachment_point1] =
+        auto [core_atom1, attachment_info1] =
             begin_attachment_points.at({begin_res, from_rgroup});
-        auto [core_atom2, attachment_point2] =
+        auto [core_atom2, attachment_info2] =
             end_attachment_points.at({end_res, to_rgroup});
         auto bond_type = bnd->getBondType();
         if (bond_type == RDKit::Bond::DATIVE) {
@@ -480,8 +742,10 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
             bond_type = RDKit::Bond::SINGLE;
         }
         atomistic_mol->addBond(core_atom1, core_atom2, bond_type);
-        remove_atoms.push_back(attachment_point1);
-        remove_atoms.push_back(attachment_point2);
+        remove_atoms.insert(remove_atoms.end(), attachment_info1.begin(),
+                            attachment_info1.end());
+        remove_atoms.insert(remove_atoms.end(), attachment_info2.begin(),
+                            attachment_info2.end());
     }
 
     // Remove atoms that represented attachment points/dummy atoms

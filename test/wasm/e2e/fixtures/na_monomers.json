@@ -1,0 +1,26 @@
+[
+    {
+        "SYMBOL": "NA1",
+        "POLYMER_TYPE": "RNA",
+        "NATURAL_ANALOG": "N",
+        "SMILES": "Nc1ncnc2c1ncn2[H:1]",
+        "CORE_SMILES": "Nc1ncnc2ncnc12",
+        "NAME": "NA1",
+        "MONOMER_TYPE": "Branch",
+        "AUTHOR": "Testing",
+        "PDBCODE": "",
+        "RGROUPS": ""
+    },
+    {
+        "SYMBOL": "NA2",
+        "POLYMER_TYPE": "RNA",
+        "NATURAL_ANALOG": "N",
+        "SMILES": "Nc1ccn([H:1])c(=O)n1",
+        "CORE_SMILES": "Nc1ccnc(=O)n1",
+        "NAME": "NA2",
+        "MONOMER_TYPE": "Branch",
+        "AUTHOR": "Testing",
+        "PDBCODE": "",
+        "RGROUPS": ""
+    }
+]

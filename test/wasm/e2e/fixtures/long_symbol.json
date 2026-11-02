@@ -1,0 +1,13 @@
+[
+    {
+        "symbol": "LongAla",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "A",
+        "smiles": "C[C@H](N[H:1])C(=O)[OH:2]",
+        "core_smiles": "C[C@H](N)C(=O)O",
+        "name": "Regression test alanine",
+        "monomer_type": "Backbone",
+        "author": "Test",
+        "pdbcode": "ALA"
+    }
+]

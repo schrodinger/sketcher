@@ -750,6 +750,62 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 }
 
 /**
+ * Reaction arrows and plus signs prevent switching to monomeric tools until
+ * the workspace is empty, including after deleting atoms and undoing edits.
+ */
+BOOST_DATA_TEST_CASE(test_reaction_objects_prevent_monomeric_tools_SKETCH_2925,
+                     boost::unit_test::data::make({false, true}),
+                     reaction_arrow)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    auto* model = sk.m_mol_model;
+    auto* sketcher_model = sk.m_sketcher_model;
+    auto* atomistic_button = sk.findChild<QAbstractButton*>("atomistic_btn");
+    auto* monomeric_button = sk.findChild<QAbstractButton*>("monomeric_btn");
+    BOOST_REQUIRE(atomistic_button != nullptr);
+    BOOST_REQUIRE(monomeric_button != nullptr);
+
+    auto check_workspace_type = [&](bool empty) {
+        BOOST_TEST(model->isEmpty() == empty);
+        BOOST_TEST(sketcher_model->getMoleculeType() ==
+                   (empty ? MoleculeType::EMPTY : MoleculeType::ATOMISTIC));
+        BOOST_TEST(atomistic_button->isEnabled());
+        BOOST_TEST(monomeric_button->isEnabled() == empty);
+    };
+    check_workspace_type(true);
+    model->addNonMolecularObject(reaction_arrow ? NonMolecularType::RXN_ARROW
+                                                : NonMolecularType::RXN_PLUS,
+                                 {0.0, 0.0, 0.0});
+    check_workspace_type(false);
+    monomeric_button->click();
+    BOOST_CHECK(sketcher_model->getToolSet() == ToolSet::ATOMISTIC);
+    BOOST_CHECK_THROW(sk.addFromString("PEPTIDE1{A}$$$$V2.0", Format::HELM),
+                      std::runtime_error);
+
+    sk.m_undo_stack->undo();
+    check_workspace_type(true);
+    monomeric_button->click();
+    BOOST_CHECK(sketcher_model->getToolSet() == ToolSet::MONOMERIC);
+    atomistic_button->click();
+    sk.m_undo_stack->redo();
+    check_workspace_type(false);
+
+    model->addAtom(Element::C, {5.0, 0.0, 0.0});
+    model->remove({model->getMol()->getAtomWithIdx(0)}, {}, {}, {}, {});
+    check_workspace_type(false);
+    model->remove({}, {}, {}, {}, model->getNonMolecularObjects());
+    check_workspace_type(true);
+    sk.m_undo_stack->undo();
+    check_workspace_type(false);
+    sk.m_undo_stack->redo();
+    check_workspace_type(true);
+    sk.m_undo_stack->undo();
+    sk.clear();
+    check_workspace_type(true);
+}
+
+/**
  * Switching to the ATOM palette from a monomeric tool restores the
  * previous atomistic tool, including the tool used for the next canvas click.
  */

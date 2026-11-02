@@ -3,15 +3,14 @@
 #include <stdexcept>
 
 #include <QApplication>
-#include <QMenu>
 #include <QPoint>
 #include <QScreen>
-#include <QStyleOptionButton>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
 #include <QTimer>
 
 #include "schrodinger/sketcher/sketcher_css_style.h"
+#include "schrodinger/sketcher/widget/widget_utils.h"
 
 namespace schrodinger
 {
@@ -45,35 +44,7 @@ void ToolButtonWithPopup::paintEvent(QPaintEvent* event)
         (m_show_popup_indicator_on_hover && hovered && isEnabled())) {
         opt.features |= QStyleOptionToolButton::HasMenu;
     }
-    if (!m_center_contents ||
-        opt.toolButtonStyle != Qt::ToolButtonTextBesideIcon) {
-        p.drawComplexControl(QStyle::CC_ToolButton, opt);
-        return;
-    }
-
-    // The centered painting path (i.e. the code below this comment) is only
-    // used in the "+ Custom" button so that the button is centered, but the
-    // blue background still covers the entire row when the button is pushed.
-
-    // Keep the background and corner indicator at the full button size.
-    auto background = opt;
-    background.text.clear();
-    background.icon = QIcon();
-    p.drawComplexControl(QStyle::CC_ToolButton, background);
-
-    // Push-button label painting centers the icon and text as a group.
-    // Do not reserve menu space: our indicator is in the corner.
-    QStyleOptionButton label;
-    label.initFrom(this);
-    label.rect = opt.rect;
-    label.state = opt.state;
-    label.palette = opt.palette;
-    label.fontMetrics = opt.fontMetrics;
-    label.text = opt.text;
-    label.icon = opt.icon;
-    label.iconSize = opt.iconSize;
-    p.setFont(opt.font);
-    p.drawControl(QStyle::CE_PushButtonLabel, label);
+    p.drawComplexControl(QStyle::CC_ToolButton, opt);
 }
 
 void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
@@ -82,6 +53,7 @@ void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
         throw std::runtime_error("The popup widget has already been set.");
     }
     m_popup_wdg = popup_wdg;
+    configure_button_popup(this, popup_wdg);
 
     updateStyle();
 }
@@ -124,26 +96,9 @@ void ToolButtonWithPopup::showPopupIndicatorOnHover(bool show)
     update();
 }
 
-void ToolButtonWithPopup::setCenterContents(bool center)
-{
-    if (m_center_contents == center) {
-        return;
-    }
-    m_center_contents = center;
-    update();
-}
-
 void ToolButtonWithPopup::showPopup()
 {
     if (m_popup_wdg == nullptr) {
-        return;
-    }
-
-    if (auto* menu = qobject_cast<QMenu*>(m_popup_wdg)) {
-        // A menu offers actions rather than selecting this button's tool.
-        // Suppress the pending click so a long press only opens the menu.
-        setDown(false);
-        menu->popup(mapToGlobal(QPoint(0, height())));
         return;
     }
 
@@ -215,7 +170,6 @@ void ToolButtonWithPopup::onPressed()
 void ToolButtonWithPopup::onClicked(bool checked)
 {
     if (m_was_checked_on_press && m_popup_wdg != nullptr &&
-        qobject_cast<QMenu*>(m_popup_wdg) == nullptr &&
         !m_popup_wdg->isVisibleTo(this)) {
         // If the button was checked when the user clicked it, show popup
         showPopup();

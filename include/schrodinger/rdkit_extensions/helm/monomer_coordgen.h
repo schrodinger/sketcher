@@ -21,6 +21,23 @@ namespace rdkit_extensions
 // measured in scene units
 const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
+// Default width and height used by the coordinate layout until the graphics
+// item has been measured. This is also the minimum supported monomer size.
+inline constexpr double MONOMER_MINIMUM_SIZE = 0.80;
+
+// Center-to-center spacing of default beads, leaving a 0.70-unit visible gap.
+inline constexpr double MONOMER_BOND_LENGTH = MONOMER_MINIMUM_SIZE + 0.70;
+
+/**
+ * Expand a connection offset between default-sized beads to accommodate the
+ * measured sizes of its endpoints. All values are in molecular coordinates.
+ * Uses the same axis spacing as resize_monomers, preserving horizontal and
+ * vertical alignments. Sizes below MONOMER_MINIMUM_SIZE are clamped.
+ */
+RDGeom::Point3D RDKIT_EXTENSIONS_API get_monomer_connection_offset(
+    const RDGeom::Point3D& default_offset, const RDGeom::Point3D& start_size,
+    const RDGeom::Point3D& end_size);
+
 /**
  * Information about a turn in a snaking or coiling chain layout.
  */
@@ -87,9 +104,7 @@ resize_monomers(RDKit::ROMol& monomer_mol,
                 const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
 /**
- * Persist sizes on monomer atoms without computing displacement. Use this for
- * first-time sizing of new monomers; resize_monomers would otherwise treat
- * the default-vs-actual size gap as a resize event.
+ * Persist sizes on monomer atoms without computing displacement.
  */
 void RDKIT_EXTENSIONS_API store_initial_monomer_sizes(
     RDKit::ROMol& monomer_mol,

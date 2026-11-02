@@ -1,0 +1,361 @@
+Backport of Qt commit 3598d71856d1aeb0cf9317eca355084a69eb160a
+wasm: fix pasting rich text (QTBUG-151280)
+https://github.com/qt/qtbase/commit/3598d71856d1aeb0cf9317eca355084a69eb160a
+
+Adapted to Qt 6.12.0, which predates the eventTargetsQtWindow() helper
+replaced by the upstream paste hunk. Includes the upstream Selenium test.
+
+diff --git a/src/plugins/platforms/wasm/qwasmclipboard.cpp b/src/plugins/platforms/wasm/qwasmclipboard.cpp
+index dcfa387..4860166 100644
+--- a/src/plugins/platforms/wasm/qwasmclipboard.cpp
++++ b/src/plugins/platforms/wasm/qwasmclipboard.cpp
+@@ -47,8 +47,27 @@ static void commonCopyEvent(val event)
+     event.call<void>("preventDefault");
+ }
+ 
++// Returns the Qt window element the event originated in, found through the
++// composed path and .qt-window, or null if it did not originate in a Qt window.
++static val eventQtWindow(val event)
++{
++    const val target = Event::composedTarget(event);
++    if (target.isNull() || target.isUndefined() || target["closest"].isUndefined())
++        return val::null();
++    return target.call<val>("closest", val(".qt-window"));
++}
++
++// A window handler also sees child window events, which the child services itself.
++static bool isEventForReceivingHandler(val event)
++{
++    return eventQtWindow(event).strictlyEquals(event["currentTarget"]);
++}
++
+ void QWasmClipboard::cut(val event)
+ {
++    if (!isEventForReceivingHandler(event))
++        return;
++
+     if (!QWasmIntegration::get()->getWasmClipboard()->hasClipboardApi()) {
+         // Send synthetic Ctrl+X to make the app cut data to Qt's clipboard
+          QWindowSystemInterface::handleKeyEvent(
+@@ -60,6 +79,9 @@ void QWasmClipboard::cut(val event)
+ 
+ void QWasmClipboard::copy(val event)
+ {
++    if (!isEventForReceivingHandler(event))
++        return;
++
+     if (!QWasmIntegration::get()->getWasmClipboard()->hasClipboardApi()) {
+         // Send synthetic Ctrl+C to make the app copy data to Qt's clipboard
+             QWindowSystemInterface::handleKeyEvent(
+@@ -70,7 +92,12 @@ void QWasmClipboard::copy(val event)
+ 
+ void QWasmClipboard::paste(val event)
+ {
+-    event.call<void>("preventDefault"); // prevent browser from handling drop event
++    if (!isEventForReceivingHandler(event))
++        return;
++
++    // sendClipboardData() delivers the data via a synthetic Ctrl+V. Cancel the default
++    // paste so the browser does not also insert it via an "insertFromPaste" input event.
++    event.call<void>("preventDefault");
+ 
+     QWasmIntegration::get()->getWasmClipboard()->sendClipboardData(event);
+ }
+@@ -85,12 +112,6 @@ QWasmClipboard::QWasmClipboard()
+     if (m_hasClipboardApi && hasPermissionsApi)
+         initClipboardPermissions();
+ 
+-    if (!shouldInstallWindowEventHandlers()) {
+-        val document = val::global("document");
+-        m_documentCut = QWasmEventHandler(document, "cut", QWasmClipboard::cut);
+-        m_documentCopy = QWasmEventHandler(document, "copy", QWasmClipboard::copy);
+-        m_documentPaste = QWasmEventHandler(document, "paste", QWasmClipboard::paste);
+-    }
+ }
+ 
+ QWasmClipboard::~QWasmClipboard()
+@@ -162,12 +183,6 @@ bool QWasmClipboard::hasClipboardApi()
+     return m_hasClipboardApi;
+ }
+ 
+-bool QWasmClipboard::shouldInstallWindowEventHandlers()
+-{
+-    // Chrome uses global handlers
+-    return val::global("window")["chrome"].isUndefined();
+-}
+-
+ void QWasmClipboard::writeToClipboardApi()
+ {
+     Q_ASSERT(m_hasClipboardApi);
+diff --git a/src/plugins/platforms/wasm/qwasmclipboard.h b/src/plugins/platforms/wasm/qwasmclipboard.h
+index 2e2449a..decb4b1 100644
+--- a/src/plugins/platforms/wasm/qwasmclipboard.h
++++ b/src/plugins/platforms/wasm/qwasmclipboard.h
+@@ -38,7 +38,6 @@ public:
+ 
+     ProcessKeyboardResult processKeyboard(const KeyEvent &event);
+     bool hasClipboardApi();
+-    static bool shouldInstallWindowEventHandlers();
+     void sendClipboardData(emscripten::val event);
+ 
+     static void cut(emscripten::val event);
+@@ -51,9 +50,6 @@ private:
+     void writeToClipboard();
+ 
+     bool m_hasClipboardApi = false;
+-    QWasmEventHandler m_documentCut;
+-    QWasmEventHandler m_documentCopy;
+-    QWasmEventHandler m_documentPaste;
+ };
+ 
+ QT_END_NAMESPACE
+diff --git a/src/plugins/platforms/wasm/qwasmevent.cpp b/src/plugins/platforms/wasm/qwasmevent.cpp
+index 59a039c..26dee7e 100644
+--- a/src/plugins/platforms/wasm/qwasmevent.cpp
++++ b/src/plugins/platforms/wasm/qwasmevent.cpp
+@@ -102,14 +102,18 @@ Event::Event(EventType type, emscripten::val webEvent)
+ {
+ }
+ 
++emscripten::val Event::composedTarget(emscripten::val webEvent)
++{
++    return webEvent.call<emscripten::val>("composedPath")[0];
++}
++
+ bool Event::isTargetedForElement(emscripten::val element) const
+ {
+     // Check event target via composedPath, which returns the true path even
+     // if the browser retargets the event for Qt's shadow DOM container. This
+     // is needed to avoid capturing the pointer in cases where foreign html
+     // elements are embedded inside Qt's shadow DOM.
+-    emscripten::val topTarget = webEvent.call<emscripten::val>("composedPath")[0];
+-    return element == topTarget;
++    return element == composedTarget(webEvent);
+ }
+ 
+ KeyEvent::KeyEvent(EventType type, emscripten::val event) : Event(type, event)
+diff --git a/src/plugins/platforms/wasm/qwasmevent.h b/src/plugins/platforms/wasm/qwasmevent.h
+index 62d7d78..7aab72d 100644
+--- a/src/plugins/platforms/wasm/qwasmevent.h
++++ b/src/plugins/platforms/wasm/qwasmevent.h
+@@ -57,6 +57,8 @@ struct Event
+     Event(EventType type, emscripten::val webEvent);
+ 
+     bool isTargetedForElement(emscripten::val element) const;
++    // The element the event originated at, before shadow DOM retargeting.
++    static emscripten::val composedTarget(emscripten::val webEvent);
+ 
+     emscripten::val webEvent;
+     EventType type;
+diff --git a/src/plugins/platforms/wasm/qwasmwindow.cpp b/src/plugins/platforms/wasm/qwasmwindow.cpp
+index c63d784..8b3862e 100644
+--- a/src/plugins/platforms/wasm/qwasmwindow.cpp
++++ b/src/plugins/platforms/wasm/qwasmwindow.cpp
+@@ -83,11 +83,10 @@ QWasmWindow::QWasmWindow(QWindow *w,
+     m_canvas["classList"].call<void>("add", emscripten::val("qt-window-canvas"));
+ 
+ #if QT_CONFIG(clipboard)
+-    if (QWasmClipboard::shouldInstallWindowEventHandlers()) {
+-        m_cutCallback = QWasmEventHandler(m_canvas, "cut", QWasmClipboard::cut);
+-        m_copyCallback = QWasmEventHandler(m_canvas, "copy", QWasmClipboard::copy);
+-        m_pasteCallback = QWasmEventHandler(m_canvas, "paste", QWasmClipboard::paste);
+-    }
++    // The window is the only ancestor of every focusable child element.
++    m_cutCallback = QWasmEventHandler(m_window, "cut", QWasmClipboard::cut);
++    m_copyCallback = QWasmEventHandler(m_window, "copy", QWasmClipboard::copy);
++    m_pasteCallback = QWasmEventHandler(m_window, "paste", QWasmClipboard::paste);
+ #endif
+ 
+     // Set up m_focusHelper, which is an invisible child element of the window which takes
+diff --git a/tests/auto/wasm/selenium/qwasmwindow.py b/tests/auto/wasm/selenium/qwasmwindow.py
+index 0fbae36..6904d64 100644
+--- a/tests/auto/wasm/selenium/qwasmwindow.py
++++ b/tests/auto/wasm/selenium/qwasmwindow.py
+@@ -860,6 +860,25 @@ class WidgetTestCase(unittest.TestCase):
+         self.assertEqual(len(w1_w1_w1.events), 2)
+         self.assertEqual(len(w1_w1.events), 2)
+ 
++    def test_rich_text_paste(self):
++        screen = Screen(self._driver, ScreenPosition.FIXED,
++                        x=0, y=0, width=600, height=400)
++
++        w0 = Widget(self._driver, "w0", 6)
++        w0.show()
++        w0.activate()
++        w0.focusTextEdit()
++        wait_for_animation_frame(self._driver)
++
++        input_element = screen.find_element(
++            By.CSS_SELECTOR, 'div.qt-window input.qt-window-input-element')
++        paste_html(self._driver, input_element, '<b>Bold text</b>', 'Bold text')
++        wait_for_animation_frame(self._driver)
++
++        state = w0.richTextState()
++        self.assertEqual(state['text'], 'Bold text')
++        self.assertTrue(state['bold'])
++
+     def tearDown(self):
+         self._driver.quit()
+ 
+@@ -999,6 +1018,13 @@ class Widget:
+                 '''
+             )
+ 
++        if isNative == 6:
++            self.driver.execute_script(
++                f'''
++                    instance.createRichTextWidget('{self.name}');
++                '''
++            )
++
+         if isNative == 1:
+             information = self.__window_information()
+             self.screen = Screen(self.driver, screen_name=information['screen']['name'])
+@@ -1024,6 +1050,16 @@ class Widget:
+         focus = call_instance_function_arg(self.driver, 'hasWidgetFocus', self.name)
+         return focus
+ 
++    def focusTextEdit(self):
++        self.driver.execute_script(
++            f'''
++                instance.focusRichTextWidget('{self.name}');
++            '''
++        )
++
++    def richTextState(self):
++        return call_instance_function_arg(self.driver, 'richTextWidgetState', self.name)
++
+     def activate(self):
+         self.driver.execute_script(
+             f'''
+@@ -1376,6 +1412,22 @@ def call_instance_function_arg(driver, name, arg):
+             instance.{name}('{arg}');
+             return eval(result);''')
+ 
++# Dispatches a paste like the browser does, composed so that it leaves the screen's
++# shadow root and is retargeted on the way out.
++def paste_html(driver, element, html, text):
++    driver.execute_script(
++        '''
++            const data = new DataTransfer();
++            data.setData('text/html', arguments[1]);
++            data.setData('text/plain', arguments[2]);
++            arguments[0].dispatchEvent(new ClipboardEvent('paste', {
++                clipboardData: data,
++                bubbles: true,
++                composed: true,
++                cancelable: true
++            }));
++        ''', element, html, text)
++
+ def wait_for_animation_frame(driver):
+     driver.execute_script(
+         '''
+diff --git a/tests/auto/wasm/selenium/tst_qwasmwindow_harness.cpp b/tests/auto/wasm/selenium/tst_qwasmwindow_harness.cpp
+index 20d3fa4..35b4e09 100644
+--- a/tests/auto/wasm/selenium/tst_qwasmwindow_harness.cpp
++++ b/tests/auto/wasm/selenium/tst_qwasmwindow_harness.cpp
+@@ -26,6 +26,7 @@
+ #include <QRadioButton>
+ #include <QPushButton>
+ #include <QTextEdit>
++#include <QTextCursor>
+ #include <QPlainTextEdit>
+ #include <QLabel>
+ #include <QGroupBox>
+@@ -432,6 +433,13 @@ public:
+             return it->second;
+         return nullptr;
+     }
++    QTextEdit *findTextEdit(const std::string &name)
++    {
++        auto it = m_textEdits.find(name);
++        if (it != m_textEdits.end())
++            return it->second;
++        return nullptr;
++    }
+     void setComboBox(const std::string &name)
+     {
+         auto box1 = findComboBox(name + ".1");
+@@ -456,6 +464,22 @@ public:
+         m_widgets[name] = widget;
+         m_spinBoxes[name] = spinBox;
+     }
++    void makeRichTextWidget(const std::string &name)
++    {
++        auto widget = std::make_shared<TestWidget>();
++        widget->setWindowTitle("Dialog");
++        widget->setGeometry(0, m_widgetY, 400, 200);
++        m_widgetY += 200;
++
++        auto *textEdit = new QTextEdit(widget.get());
++        textEdit->setAcceptRichText(true);
++
++        auto *layout = new QVBoxLayout(widget.get());
++        layout->addWidget(textEdit);
++
++        m_widgets[name] = widget;
++        m_textEdits[name] = textEdit;
++    }
+     void showContextMenu(const std::string &name)
+     {
+         TestSpinBox *spinBox = findSpinBox(name);
+@@ -712,6 +736,7 @@ private:
+     std::map<std::string, TestWidgetPtr>  m_widgets;
+     std::map<std::string, TestSpinBox *>  m_spinBoxes;
+     std::map<std::string, QComboBox   *>  m_comboBoxes;
++    std::map<std::string, QTextEdit   *>  m_textEdits;
+     int                                   m_widgetY = 0;
+ };
+ 
+@@ -807,6 +832,40 @@ void createWidget(const std::string &name)
+     WidgetStorage::getInstance()->make(name);
+ }
+ 
++void createRichTextWidget(const std::string &name)
++{
++    WidgetStorage::getInstance()->makeRichTextWidget(name);
++}
++
++void focusRichTextWidget(const std::string &name)
++{
++    if (auto *textEdit = WidgetStorage::getInstance()->findTextEdit(name))
++        textEdit->setFocus();
++}
++
++// Reports the text and whether it is bold, so that a paste can be checked for keeping
++// the rich text formatting.
++void richTextWidgetState(const std::string &name)
++{
++    QString text;
++    bool bold = false;
++    if (auto *textEdit = WidgetStorage::getInstance()->findTextEdit(name)) {
++        text = textEdit->toPlainText();
++        QTextCursor cursor(textEdit->document());
++        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
++        bold = cursor.charFormat().fontWeight() > QFont::Normal;
++    }
++
++    // Parenthesized, since the test evaluates the result and a bare object literal
++    // parses as a block.
++    std::ostringstream out;
++    out << "({"
++        << "  text: " << toJSString(text) << ","
++        << "  bold: " << (bold ? "true" : "false") << "})";
++    emscripten::val::global("window").call<void>("richTextWidgetStateCallback",
++                                                 emscripten::val(out.str()));
++}
++
+ 
+ void createNativeWidget(const std::string &name)
+ {
+@@ -1086,6 +1145,9 @@ EMSCRIPTEN_BINDINGS(qwasmwindow)
+     EMSC_BIND_FUNC("testContextReuse", &testContextReuse);
+ 
+     EMSC_BIND_FUNC("createWidget", &createWidget);
++    EMSC_BIND_FUNC("createRichTextWidget", &createRichTextWidget);
++    EMSC_BIND_FUNC("focusRichTextWidget", &focusRichTextWidget);
++    EMSC_BIND_FUNC("richTextWidgetState", &richTextWidgetState);
+     EMSC_BIND_FUNC("createNativeWidget", &createNativeWidget);
+     EMSC_BIND_FUNC("createNativeA11yButtonWidgets", &createNativeA11yButtonWidgets);
+     EMSC_BIND_FUNC("createNativeA11yTextWidgets", &createNativeA11yTextWidgets);

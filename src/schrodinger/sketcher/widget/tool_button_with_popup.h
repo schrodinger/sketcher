@@ -17,10 +17,6 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     /**
      * Assign the popup widget for this button.
      *
-     * QMenu popups are opened asynchronously on long press without activating
-     * the button. Other popups also open when an already checked button is
-     * clicked and activate the button when opened by long press.
-     *
      * This widget can only be set a single time.
      *
      * @throws std::runtime_error If this method is called when the popup widget
@@ -61,13 +57,6 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
      * @param show Whether to reveal the indicator on hover
      */
     void showPopupIndicatorOnHover(bool show);
-
-    /**
-     * Center the icon and text together when text is beside the icon.
-     * The background and popup indicator still use the full button rectangle.
-     * Off by default.
-     */
-    void setCenterContents(bool center);
 
     /**
      * Apply additional style sheet parameters to the default style used for
@@ -143,7 +132,6 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     float m_popup_delay = 250;
     bool m_show_popup_indicator = true;
     bool m_show_popup_indicator_on_hover = false;
-    bool m_center_contents = false;
 };
 
 } // namespace sketcher

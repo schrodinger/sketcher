@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.json VERSIONS)
 string(JSON SKETCHER_VERSION GET ${VERSIONS} sketcher)
@@ -58,6 +58,13 @@ find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets Test)
+
+if(EMSCRIPTEN AND (NOT QT_FEATURE_wasm_jspi OR NOT QT_FEATURE_wasm_exceptions))
+  message(
+    FATAL_ERROR
+      "WASM builds require Qt built with -feature-wasm-jspi -feature-wasm-exceptions"
+  )
+endif()
 
 # Workaround for Qt 6.5.8 AGL framework issue on modern macOS AGL (Apple
 # Graphics Layer) was deprecated and removed from modern macOS SDKs This
@@ -138,12 +145,12 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    # We optimize for space in wasm builds because otherwise binaryen (run
-    # because of ASYNCIFY) runs out of memory
+    # JSPI requires native WASM exceptions and matching setjmp/longjmp support.
+    # We also optimize for size to limit the browser download.
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
-                        -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
-    target_compile_options(${TARGET} PRIVATE -fexceptions
-                                             -sDISABLE_EXCEPTION_CATCHING=0 -Os)
+                        -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -Os)
+    target_compile_options(${TARGET} PRIVATE -fwasm-exceptions
+                                             -sSUPPORT_LONGJMP=wasm -Os)
   endif()
 endfunction()
 
@@ -316,7 +323,10 @@ elseif(APPLE)
   set_source_files_properties(${SKETCHER_ICNS}
                               PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
-add_executable(${APP_TARGET} ${APP_SOURCES})
+# Using qt_add_executable adds Qt finalization, which ensure that static plugins
+# are built before their module dependencies. This matters with Qt 6.12, where
+# QtSvg uses SVG parsing functions from QtGui.
+qt_add_executable(${APP_TARGET} ${APP_SOURCES})
 if(APPLE)
   set_target_properties(
     ${APP_TARGET}
@@ -337,11 +347,9 @@ if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=schrodinger_sketcher_entry
       -sMODULARIZE=1
-      -sEXPORTED_RUNTIME_METHODS=[callMain,FS,JSEvents,specialHTMLTargets,stringToUTF8,stringToUTF16,UTF16ToString,lengthBytesUTF8,getExceptionMessage]
-      -sASYNCIFY
+      -sEXPORTED_RUNTIME_METHODS=[callMain,FS,JSEvents,specialHTMLTargets,stringToUTF8,stringToUTF16,UTF16ToString,lengthBytesUTF8,getCppExceptionTag,getExceptionMessage,decrementExceptionRefcount,stackSave,stackRestore]
+      -sJSPI
       -lembind
-      -fexceptions
-      -sDISABLE_EXCEPTION_CATCHING=0
       -sEXPORT_EXCEPTION_HANDLING_HELPERS)
   target_link_options(
     ${APP_TARGET} PRIVATE
@@ -377,6 +385,7 @@ target_link_libraries(
   ${APP_TARGET}
   PRIVATE Boost::boost
           Boost::filesystem
+          fmt::fmt
           Qt6::Widgets
           RDKit::Depictor
           ${RDKIT_EXTENSIONS_TARGET}
@@ -384,20 +393,22 @@ target_link_libraries(
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Utility: smiles_to_helm
-set(SMILES_TO_HELM_TARGET smiles_to_helm)
-add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
-setup_target(${SMILES_TO_HELM_TARGET})
-set_target_properties(
-  ${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                      ${CMAKE_BINARY_DIR}/sketcher_app)
-target_link_libraries(
-  ${SMILES_TO_HELM_TARGET}
-  PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse
-          ${RDKIT_EXTENSIONS_TARGET})
+if(NOT EMSCRIPTEN)
+  set(SMILES_TO_HELM_TARGET smiles_to_helm)
+  qt_add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
+  setup_target(${SMILES_TO_HELM_TARGET})
+  set_target_properties(
+    ${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                        ${CMAKE_BINARY_DIR}/sketcher_app)
+  target_link_libraries(
+    ${SMILES_TO_HELM_TARGET}
+    PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse
+            ${RDKIT_EXTENSIONS_TARGET})
+
+endif()
 
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
-  target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
   if(MSVC)
     target_compile_definitions(${APP_TARGET}
                                PRIVATE BOOST_STACKTRACE_USE_WINDBG)
@@ -500,7 +511,7 @@ if(ENABLE_TESTING)
     # Create unique target name by replacing path separators
     string(REPLACE "/" "-" TEST_PREFIX "${PREFIX_PATH}")
     set(TEST_TARGET "${TEST_PREFIX}-${TEST_STEM}")
-    add_executable(${TEST_TARGET} ${TEST_SOURCE})
+    qt_add_executable(${TEST_TARGET} ${TEST_SOURCE})
     setup_target(${TEST_TARGET})
     target_include_directories(${TEST_TARGET}
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
@@ -569,8 +580,11 @@ if(APPLE)
 else()
   # Install the application file preserving the build-time rpath
   install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
-                   $<TARGET_FILE:${SMILES_TO_HELM_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR})
+  if(NOT EMSCRIPTEN)
+    install(PROGRAMS $<TARGET_FILE:${SMILES_TO_HELM_TARGET}>
+            DESTINATION ${CMAKE_INSTALL_BINDIR})
+  endif()
 endif()
 install(
   FILES $<TARGET_FILE:${SKETCHER_TARGET}>
