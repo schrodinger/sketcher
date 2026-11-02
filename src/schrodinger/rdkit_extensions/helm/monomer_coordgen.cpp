@@ -3498,9 +3498,70 @@ void resize_monomers(
             }
         }
     }
+    // Keep the alignment correction from reducing label clearance between
+    // polymers that are outside the vertical-connection graph. For each pair
+    // whose labels overlap vertically, preserve the existing horizontal gap
+    // up to the standard gap used by monomer connections.
+    const double minimum_label_gap =
+        MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
+    double max_alignment_fraction = 1.0;
+    const auto num_atoms = mol.getNumAtoms();
+    std::vector<std::string> atom_polymer_ids(num_atoms);
+    std::vector<RDGeom::Point3D> positions_after_resize(num_atoms);
+    std::vector<RDGeom::Point3D> sizes_after_resize(num_atoms);
+    for (const auto* atom : mol.atoms()) {
+        const auto idx = atom->getIdx();
+        atom_polymer_ids[idx] = get_polymer_id(atom);
+        positions_after_resize[idx] = mol.getConformer().getAtomPos(idx) +
+                                      linear_displacements[idx] +
+                                      ring_displacements[idx];
+        const auto size_it = clamped_monomer_sizes.find(idx);
+        sizes_after_resize[idx] =
+            size_it == clamped_monomer_sizes.end()
+                ? get_monomer_size(mol, idx)
+                : size_it->second;
+    }
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        for (unsigned int j = i + 1; j < num_atoms; ++j) {
+            if (atom_polymer_ids[i] == atom_polymer_ids[j]) {
+                continue;
+            }
+            const double relative_translation =
+                translations[atom_polymer_ids[i]] -
+                translations[atom_polymer_ids[j]];
+            if (relative_translation == 0.0) {
+                continue;
+            }
+            const auto& pos_i = positions_after_resize[i];
+            const auto& pos_j = positions_after_resize[j];
+            const auto& size_i = sizes_after_resize[i];
+            const auto& size_j = sizes_after_resize[j];
+            const double dx = pos_i.x - pos_j.x;
+            const double dy = pos_i.y - pos_j.y;
+            const double half_widths = (size_i.x + size_j.x) * 0.5;
+            const double half_heights = (size_i.y + size_j.y) * 0.5;
+            if (std::abs(dy) >= half_heights + minimum_label_gap) {
+                continue;
+            }
+            const double existing_gap =
+                std::max(0.0, std::abs(dx) - half_widths);
+            const double required_x_separation =
+                half_widths + std::min(existing_gap, minimum_label_gap);
+            if (dx * relative_translation >= 0.0) {
+                continue;
+            }
+            const double allowed_fraction =
+                (std::abs(dx) - required_x_separation) /
+                std::abs(relative_translation);
+            max_alignment_fraction =
+                std::min(max_alignment_fraction, allowed_fraction);
+        }
+    }
+
     for (const auto& [id, translation] : translations) {
         for (const auto idx : polymer_atoms[id]) {
-            linear_displacements[idx].x += translation;
+            linear_displacements[idx].x +=
+                translation * max_alignment_fraction;
         }
     }
 

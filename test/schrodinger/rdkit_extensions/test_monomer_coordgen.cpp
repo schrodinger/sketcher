@@ -1045,4 +1045,43 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
                        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
 }
 
+/**
+ * Aligning a polymer vertically to a ring must not move it into a nearby
+ * unconnected polymer and reduce their existing label clearance.
+ */
+BOOST_AUTO_TEST_CASE(VerticalAlignmentPreservesNearbyPolymerClearance)
+{
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit(
+        "PEPTIDE1{A.C.C.C.C.C}|PEPTIDE2{A}|PEPTIDE3{A}|PEPTIDE4{A}$"
+        "PEPTIDE1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,PEPTIDE2,4:R3-1:R3$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+
+    const double bond_length = MONOMER_BOND_LENGTH;
+    const double minimum_size = MONOMER_MINIMUM_SIZE;
+    const double half_height = bond_length * std::sqrt(3.0) / 2;
+    // A regular hexagonal ring centered at x=0, with atom 3 attached
+    // vertically to polymer 2.
+    conf.setAtomPos(0, {bond_length, 0, 0});
+    conf.setAtomPos(1, {bond_length / 2, half_height, 0});
+    conf.setAtomPos(2, {-bond_length / 2, half_height, 0});
+    conf.setAtomPos(3, {-bond_length, 0, 0});
+    conf.setAtomPos(4, {-bond_length / 2, -half_height, 0});
+    conf.setAtomPos(5, {bond_length / 2, -half_height, 0});
+    conf.setAtomPos(6, {-bond_length, -bond_length, 0});
+    conf.setAtomPos(7, {-minimum_size / 2, -bond_length, 0});
+    conf.setAtomPos(8, {-bond_length + minimum_size / 2,
+                        -3 * bond_length, 0});
+
+    const double initial_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
+    resize_monomers(*mol,
+                    {{8, {minimum_size + 3.0, minimum_size, 0}}});
+
+    const double final_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
+    BOOST_CHECK_SMALL(final_separation - initial_separation, 1e-6);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
