@@ -17,12 +17,14 @@ string_vector_to_js_array(const std::vector<std::string>& values)
     return array;
 }
 
-static emscripten::val prepare_custom_monomers(const std::string& json)
+static emscripten::val prepare_custom_monomers(const std::string& json,
+                                               bool run_smiles_canonicalization)
 {
     auto object = emscripten::val::object();
     try {
         auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-        auto result = db.loadMonomersFromJson(json);
+        auto result =
+            db.loadMonomersFromJson(json, run_smiles_canonicalization);
         auto data = db.serializeCustomMonomers();
         // Copy out of WASM memory before data is destroyed or transferred.
         object.set("database",

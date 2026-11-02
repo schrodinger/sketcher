@@ -3,7 +3,7 @@ let customMonomerQueue = Promise.resolve();
 // Retain executable code only; each worker owns its instance and database.
 let customMonomerCompiledModule;
 
-Module['sketcher_load_custom_monomers'] = function (json) {
+Module['sketcher_load_custom_monomers'] = function (json, runSmilesCanonicalization = true) {
   const request = customMonomerQueue.then(async () => {
     const worker = new Worker(locateFile('custom_monomers.worker.js'));
     try {
@@ -24,7 +24,11 @@ Module['sketcher_load_custom_monomers'] = function (json) {
         worker.onmessageerror = () => {
           reject(new Error('Could not receive the custom monomer database'));
         };
-        worker.postMessage({ json, compiledModule: customMonomerCompiledModule });
+        worker.postMessage({
+          json,
+          runSmilesCanonicalization,
+          compiledModule: customMonomerCompiledModule,
+        });
       });
       const error = Module['sketcher_install_custom_monomers'](data.database);
       if (error) {

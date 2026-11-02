@@ -15,7 +15,7 @@ async function compileMonomerLoader() {
   return WebAssembly.compile(await response.arrayBuffer());
 }
 
-self.onmessage = async ({ data: { json, compiledModule } }) => {
+self.onmessage = async ({ data: { json, runSmilesCanonicalization = true, compiledModule } }) => {
   try {
     compiledModule ??= await compileMonomerLoader();
     const module = await createMonomerLoader({
@@ -25,7 +25,7 @@ self.onmessage = async ({ data: { json, compiledModule } }) => {
         return instance.exports;
       },
     });
-    const result = module.prepare_custom_monomers(json);
+    const result = module.prepare_custom_monomers(json, runSmilesCanonicalization);
     self.postMessage(
       { ...result, compiledModule },
       result.database ? [result.database.buffer] : [],

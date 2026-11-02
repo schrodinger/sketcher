@@ -64,9 +64,13 @@ export type SketcherWASM = {
   sketcher_is_empty: () => boolean;
   /**
    * Loads and canonicalizes monomers in a worker, then refreshes the UI.
+   * runSmilesCanonicalization defaults to true. Only set it to false if all
+   * SMILES have been canonicalized using the Sketcher's canonicalization
+   * scheme, and all monomers have a core SMILES specified.
    */
   sketcher_load_custom_monomers: (
     json: string,
+    runSmilesCanonicalization?: boolean,
   ) => Promise<{ succeeded: string[]; failed: string[] }>;
   sketcher_has_monomers: () => boolean;
   sketcher_allow_monomeric: (allowMonomeric: boolean) => void;
