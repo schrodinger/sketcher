@@ -23,6 +23,9 @@ repos:
         language: system
         files: \.(js|jsx|ts|tsx|yml|yaml|md|html)$
         args: [--check]
+        # Run as a single process: parallel batches race on `npx`'s shared
+        # install directory and can load a partially installed prettier.
+        require_serial: true
 
       - id: yapf
         name: yapf
