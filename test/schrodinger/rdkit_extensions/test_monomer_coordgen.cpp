@@ -1075,7 +1075,10 @@ BOOST_AUTO_TEST_CASE(VerticalAlignmentPreservesNearbyPolymerClearance)
 
     const double initial_separation =
         std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
-    resize_monomers(*mol, {{8, {minimum_size + 3.0, minimum_size, 0}}});
+    std::unordered_map<int, RDGeom::Point3D> resize_sizes;
+    resize_sizes.emplace(8,
+                         RDGeom::Point3D(minimum_size + 3.0, minimum_size, 0));
+    resize_monomers(*mol, resize_sizes);
 
     const double final_separation =
         std::abs(conf.getAtomPos(6).x - conf.getAtomPos(7).x);
