@@ -128,10 +128,11 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
      * preserved if an exception is thrown during the import process.
      * @param json JSON string containing the new monomer definitions.
      * @param run_smiles_canonicalization Run SMILES canonicalization for the
-     * new database contents. Defaults to true. Set this to false to skip
+     * new database contents and ensure that the core SMILES field is populated
+     * for all monomers. Defaults to true. Set this to false to skip
      * canonicalization only when all SMILES in the JSON string have been
-     * canonicalized using the same
-     * canonicalization scheme as the Sketcher.
+     * canonicalized using the same canonicalization scheme as the Sketcher, and
+     * all monomers have a core SMILES specified.
      * @return A pair of vectors of strings containing the logs for successful
      * and failed insertions.
      * @throw std::runtime_error if the JSON fails to parse or due to DB related
