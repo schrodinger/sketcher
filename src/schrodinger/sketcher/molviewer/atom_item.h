@@ -154,11 +154,11 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
     QBrush m_valence_error_brush;
 
     /**
-     * @return A painter path with the specified radius for use with either
-     * selection highlighting or predictive highlighting.
-     *
+     * Update selection and predictive highlighting, enlarging the original
+     * circle as needed to contain plain element labels and using one rounded
+     * rectangle around all components of other labels.
      */
-    QPainterPath calcHighlightingPath(qreal radius);
+    void updateHighlightingPaths();
 
     /**
      * @return a list of the rectangles that make up the atom label. This is

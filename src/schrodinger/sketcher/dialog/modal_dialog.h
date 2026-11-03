@@ -55,6 +55,9 @@ class SKETCHER_API ModalDialog : public QDialog
     };
 
     QVBoxLayout* m_dlg_layout = nullptr;
+    CustomTitleBar* m_title_bar = nullptr;
+
+    void showEvent(QShowEvent* event) override;
 
   private:
     // NOTE: modal dialogs that use `exec()` are problematic in the
@@ -68,7 +71,13 @@ class SKETCHER_API ModalDialog : public QDialog
      */
     void onWindowTitleChanged(const QString& newTitle);
 
-    CustomTitleBar* m_title_bar = nullptr;
+    /**
+     * (WASM) If the dialog is visible but doesn't fit on its screen (i.e. the
+     * WASM canvas), move it the minimum distance needed to fit. If the dialog
+     * is larger than the screen, keep its top-left corner on the screen so
+     * that the title bar can still be grabbed.
+     */
+    void moveOntoScreen();
 };
 
 /**

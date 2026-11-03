@@ -12,21 +12,62 @@ permissions:
 runs:
   using: 'composite'
   steps:
-    - name: Install Fortran
-      id: install-fortran
-      uses: fortran-lang/setup-fortran@v1.9.0
-      with:
-        compiler: 'intel'
-        version: '2025.2'
-        update-environment: false
-
-      # If we'd let the previous step update the environment variables, it
-      # would've also set the C and C++ compilers, and we only want the Fortran
-      # compiler. Instead, we manually set the Fortran compiler environment
-      # variable here.
-    - name: Activate Fortran
+    # We base the installation procedure on the fortran-lang/setup-fortran
+    # action. We don't use that action directly since it intentionally
+    # re-downloads, reinstalls, and re-caches Fortran on a daily basis in order
+    # to work around https://github.com/actions/cache/issues/144, which was
+    # fixed years ago.
+    - name: Set Intel oneAPI variables
+      id: oneapi
       shell: bash
-      run: echo FC=${{ steps.install-fortran.outputs.fc }} >> $GITHUB_ENV
+      run: |
+        url=https://registrationcenter-download.intel.com/akdlm/IRC_NAS/e63ac2b4-8a9a-4768-979a-399a8b6299de/intel-oneapi-hpc-toolkit-2025.2.1.46_offline.exe
+        components=intel.oneapi.win.ifort-compiler:intel.oneapi.win.cpp-dpcpp-common
+        hash=$(echo "$url $components" | sha256sum | cut -c1-16)
+        echo "url=$url" >> $GITHUB_OUTPUT
+        echo "components=$components" >> $GITHUB_OUTPUT
+        echo "cache-key=intel-oneapi-windows-$hash" >> $GITHUB_OUTPUT
+        echo "root=C:\\Program Files (x86)\\Intel\\oneAPI" >> $GITHUB_OUTPUT
+
+    - name: Restore Intel oneAPI from cache
+      id: cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.oneapi.outputs.root }}
+        key: ${{ steps.oneapi.outputs.cache-key }}
+
+    - name: Install Intel oneAPI
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: cmd
+      run: |
+        curl.exe --fail --location --retry 5 --retry-delay 5 --output "%RUNNER_TEMP%\oneapi.exe" --url "${{ steps.oneapi.outputs.url }}" || exit /b 1
+        start /b /wait "" "%RUNNER_TEMP%\oneapi.exe" -s -x -f "%RUNNER_TEMP%\oneapi_extracted" --log "%RUNNER_TEMP%\oneapi_extract.log"
+        "%RUNNER_TEMP%\oneapi_extracted\bootstrapper.exe" -s --action install --components=${{ steps.oneapi.outputs.components }} --eula=accept -p=NEED_VS2017_INTEGRATION=0 -p=NEED_VS2019_INTEGRATION=0 -p=NEED_VS2022_INTEGRATION=0 --log-dir="%RUNNER_TEMP%"
+        del "%RUNNER_TEMP%\oneapi.exe"
+        rmdir /s /q "%RUNNER_TEMP%\oneapi_extracted"
+        :: The installer's exit codes aren't reliable, so instead make sure that
+        :: the compiler exists to avoid caching a broken installation
+        where /r "${{ steps.oneapi.outputs.root }}" ifx.exe || exit /b 1
+
+      # save the installation even if the rest of the build fails
+    - name: Save Intel oneAPI to cache
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ steps.oneapi.outputs.root }}
+        key: ${{ steps.oneapi.outputs.cache-key }}
+
+    - name: Activate Fortran
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}\import-batch-env.ps1" -BatchFile "${{ steps.oneapi.outputs.root }}\setvars.bat"
+        Add-Content -Path $env:GITHUB_ENV -Value "FC=ifx"
+
+      # Git for Windows' /usr/bin/link (the coreutils hard-link tool) would
+      # otherwise shadow MSVC's link.exe in bash steps
+    - name: Hide GNU linker
+      shell: bash
+      run: mv /usr/bin/link "$RUNNER_TEMP/link"
 
       # Find MSVC using vswhere.exe, then use vcvarsall.bat to output the
       # appropriate environment variable updates and put them into $GITHUB_ENV
@@ -40,26 +81,4 @@ runs:
         if (-not $installPath) { throw "vswhere did not find a Visual Studio installation" }
 
         $vcvarsall = Join-Path $installPath 'VC\Auxiliary\Build\vcvarsall.bat'
-        if (-not (Test-Path $vcvarsall)) { throw "vcvarsall.bat not found at $vcvarsall" }
-
-        $envBefore = New-Object 'System.Collections.Generic.Dictionary[String,String]' ([StringComparer]::OrdinalIgnoreCase)
-        Get-ChildItem env: | ForEach-Object { $envBefore[$_.Name] = $_.Value }
-
-        $output = cmd /c "`"$vcvarsall`" x64 > nul && set"
-        if ($LASTEXITCODE -ne 0) { throw "vcvarsall.bat failed with exit code $LASTEXITCODE" }
-
-        foreach ($line in $output) {
-            if ($line -notmatch '^([^=]+)=(.*)$') { continue }
-            $name = $matches[1]
-            $value = $matches[2]
-
-            # Skip variables that contain a multi-line value (e.g. VERSIONS_JSON) 
-            # since vcvarsall.bat shouldn't modify them
-            if ($envBefore.ContainsKey($name) -and $envBefore[$name].Contains("`n")) {
-                continue
-            }
-
-            if (-not $envBefore.ContainsKey($name) -or $envBefore[$name] -ne $value) {
-                Add-Content -Path $env:GITHUB_ENV -Value "$name=$value"
-            }
-        }
+        & "${{ github.action_path }}\import-batch-env.ps1" -BatchFile $vcvarsall -Arguments x64

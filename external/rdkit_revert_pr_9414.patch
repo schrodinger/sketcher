@@ -1,0 +1,105 @@
+diff --git a/Code/GraphMol/Aromaticity.cpp b/Code/GraphMol/Aromaticity.cpp
+index 1cd4a082e..6686c37ef 100644
+--- a/Code/GraphMol/Aromaticity.cpp
++++ b/Code/GraphMol/Aromaticity.cpp
+@@ -283,6 +283,7 @@ bool applyHuckel(ROMol &, const INT_VECT &ring, const VECT_EDON_TYPE &edon,
+     rlw += atlw;
+     rup += atup;
+   }
++
+   if (rup >= 6) {
+     for (rie = rlw; rie <= rup; ++rie) {
+       if ((rie - 2) % 4 == 0) {
+@@ -838,31 +839,14 @@ int aromaticityHelper(RWMol &mol, const VECT_INT_VECT &srings,
+       }
+       aseen[firstIdx] = 1;
+ 
+-      // Check if this atom can donate electrons or has empty orbitals.
+-      ElectronDonorType donorType = getAtomDonorTypeArom(at);
+-
+-      // Fix: Prevent aliphatic ether oxygens and sulfurs in macrocycles
+-      // (>= 9 members, this is what we use as the definition of macrocycle
+-      // elsewhere) from being falsely flagged as aromatic. In these large
+-      // rings, they act as simple bridges, not pi donors like in small rings
+-      // (e.g., furan).
+-      if (donorType == TwoElectronDonorType && ringSz >= 9) {
+-        if ((at->getAtomicNum() == 8 || at->getAtomicNum() == 16) &&
+-            at->getDegree() == 2 && at->getFormalCharge() == 0) {
+-          if (std::ranges::none_of(mol.atomBonds(at), [](const Bond *bond) {
+-                return bond->getBondType() == Bond::DOUBLE ||
+-                       bond->getBondType() == Bond::TRIPLE;
+-              })) {
+-            donorType = NoElectronDonorType;
+-          }
+-        }
+-      }
+-      edon[firstIdx] = donorType;
+-      acands[firstIdx] = isAtomCandForArom(at, donorType);
++      // now that the atom is part of ring check if it can donate
++      // electron or has empty orbitals. Record the donor type
++      // information in 'edon' - we will need it when we get to
++      // the Huckel rule later
++      edon[firstIdx] = getAtomDonorTypeArom(at);
++      acands[firstIdx] = isAtomCandForArom(at, edon[firstIdx]);
+       if (!acands[firstIdx]) {
+         allAromatic = false;
+-        // we can't break out of the loop over the rest of the ring here because
+-        // we still need to set edon and acands for the other atoms in the ring.
+       }
+     }
+     if (allAromatic && !allDummy) {
+diff --git a/Code/GraphMol/molopstest.cpp b/Code/GraphMol/molopstest.cpp
+index b27a59c55..cf4b73469 100644
+--- a/Code/GraphMol/molopstest.cpp
++++ b/Code/GraphMol/molopstest.cpp
+@@ -7999,34 +7999,3 @@ TEST_CASE("Testing isRingFused") {
+     REQUIRE(std::count(fusedBonds.begin(), fusedBonds.end(), 2) == 3);
+   }
+ }
+-
+-TEST_CASE("Github #9398: Macrocycle ether aromaticity") {
+-  SECTION("as reported") {
+-    // The SMILES with uppercase 'O' (aliphatic ethers)
+-    auto m = "O=C(O)c1cccc2Oc3cncc(n3)Oc3c(C(=O)O)cccc3Oc3cncc(n3)Oc12"_smiles;
+-    REQUIRE(m);
+-
+-    // Check that the ether oxygens are NOT aromatic
+-    // (Based on the Python script, atoms 8, 15, 25, 32 are the oxygens)
+-    CHECK(!m->getAtomWithIdx(8)->getIsAromatic());
+-    CHECK(!m->getAtomWithIdx(15)->getIsAromatic());
+-    CHECK(!m->getAtomWithIdx(25)->getIsAromatic());
+-    CHECK(!m->getAtomWithIdx(32)->getIsAromatic());
+-  }
+-  SECTION("test edge cases") {
+-    {
+-      // eight-membered ring is a candidate for aromaticity
+-      auto m = "O=c1ccccc(=O)c(=O)o1"_smiles;
+-      REQUIRE(m);
+-      CHECK(m->getAtomWithIdx(1)->getIsAromatic());
+-    }
+-    {
+-      // nine-membered ring is not a candidate for aromaticity
+-      auto m = "O=c1ccccc(=O)ooo1"_smiles;
+-      REQUIRE(m);
+-      CHECK(!m->getAtomWithIdx(1)->getIsAromatic());
+-    }
+-
+-    // m->debugMol(std::cerr);
+-  }
+-}
+diff --git a/rdkit/Chem/UnitTestInchi.py b/rdkit/Chem/UnitTestInchi.py
+index 4f03eb57b..c040caf4e 100755
+--- a/rdkit/Chem/UnitTestInchi.py
++++ b/rdkit/Chem/UnitTestInchi.py
+@@ -255,9 +255,9 @@ class TestCase(unittest.TestCase):
+           same += 1
+       fmt = "\n{0}InChI read Summary: {1} identical, {2} variance, {3} reasonable variance{4}"
+       print(fmt.format(COLOR_GREEN, same, diff, reasonable, COLOR_RESET))
+-      self.assertEqual(same, 693)
++      self.assertEqual(same, 689)
+       self.assertEqual(diff, 0)
+-      self.assertEqual(reasonable, 488)
++      self.assertEqual(reasonable, 492)
+ 
+   def test2InchiOptions(self):
+     m = MolFromSmiles("CC=C(N)C")

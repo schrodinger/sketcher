@@ -206,17 +206,20 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
     mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
                      /* new_molecule_added = */ true,
-                     /* enforce_size_limit = */ false);
+                     /* enforce_monomer_validity = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 {
-    mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
+    mol_model.addReaction(rxn);
 }
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
 {
-    add_text_to_mol_model(mol_model, text);
+    add_text_to_mol_model(mol_model, text,
+                          rdkit_extensions::Format::AUTO_DETECT, std::nullopt,
+                          /* recenter_view = */ true,
+                          /* enforce_monomer_validity = */ false);
 }
 
 void paint_scene_to_given_paint_device(QPaintDevice* device,
@@ -409,13 +412,15 @@ void post_process_svg(QByteArray& svg_data, const RenderOptions& opts)
     svg_string.remove("<title>Qt SVG Document</title>\n");
     svg_string.remove("<desc>Generated with Qt</desc>\n");
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 11, 1)
     // make sure that the SVG specifies a list of fonts, since most people won't
     // have Arimo installed system-wide. This will no longer be necessary with
     // Qt 6.11.1 or newer, as those contain the fix for QTBUG-145797.
     const QString svg_font_spec = R"(font-family="%1")";
     auto font_spec_before = svg_font_spec.arg(FONT_LIST.first());
-    auto font_spec_after = svg_font_spec.arg(FONT_LIST.join(", "));
+    auto font_spec_after = svg_font_spec.arg(FONT_LIST.join(","));
     svg_string.replace(font_spec_before, font_spec_after, Qt::CaseInsensitive);
+#endif
 
     // put our edited data back into the byte array
     svg_data = svg_string.toUtf8();

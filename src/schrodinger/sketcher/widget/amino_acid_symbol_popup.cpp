@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/widget/monomer_symbol_popup_utils.h"
@@ -18,20 +19,25 @@ AminoAcidSymbolPopup::AminoAcidSymbolPopup(
     QWidget* parent) :
     ModularPopup(parent)
 {
-    auto* group =
-        build_monomer_symbol_buttons(this, "analog", standard_symbol,
-                                     standard_name, analogs, m_id_to_symbol);
+    auto* group = build_monomer_symbol_buttons(
+        this, "analog", standard_symbol, standard_name, analogs,
+        m_id_to_monomer, rdkit_extensions::ChainType::PEPTIDE);
     setStyleSheet(ATOM_ELEMENT_OR_MONOMER_STYLE);
     setButtonGroup(group);
 }
 
 QString AminoAcidSymbolPopup::getSymbolForId(int id) const
 {
-    auto it = m_id_to_symbol.find(id);
-    if (it == m_id_to_symbol.end()) {
+    auto it = m_id_to_monomer.find(id);
+    if (it == m_id_to_monomer.end()) {
         return {};
     }
-    return QString::fromStdString(it->second);
+    return QString::fromStdString(it->second.symbol);
+}
+
+rdkit_extensions::MonomerID AminoAcidSymbolPopup::getMonomerForId(int id) const
+{
+    return m_id_to_monomer.at(id);
 }
 
 void AminoAcidSymbolPopup::generateButtonPackets()
@@ -47,23 +53,8 @@ void AminoAcidSymbolPopup::generateButtonPackets()
 
 int AminoAcidSymbolPopup::getButtonIDToCheck()
 {
-    auto model = getModel();
-    if (model == nullptr) {
-        return -1;
-    }
-
-    if (model->getDrawTool() != DrawTool::MONOMER ||
-        model->getMonomerToolType() != MonomerToolType::AMINO_ACID) {
-        return -1;
-    }
-
-    auto analog = model->getValueString(ModelKey::AMINO_ACID_SYMBOL);
-    for (const auto& [id, symbol] : m_id_to_symbol) {
-        if (QString::fromStdString(symbol) == analog) {
-            return id;
-        }
-    }
-    return -1;
+    return get_monomer_symbol_button_id(getModel(), MonomerToolType::AMINO_ACID,
+                                        m_id_to_monomer);
 }
 
 } // namespace sketcher

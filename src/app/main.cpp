@@ -109,12 +109,6 @@ void sketcher_allow_monomeric(bool /* allow_monomeric */)
 {
 }
 
-void sketcher_load_custom_monomers_from_sql(const std::string& sql)
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.loadMonomersFromSql(sql);
-}
-
 #ifdef __EMSCRIPTEN__
 using MonomerDefsInsertionResult =
     std::pair<std::vector<std::string>, std::vector<std::string>>;
@@ -138,28 +132,27 @@ monomer_defs_insertion_result_to_js(const MonomerDefsInsertionResult& result)
     return object;
 }
 
-emscripten::val sketcher_load_custom_monomers(const std::string& json)
+/**
+ * Replace the custom monomer database contents with definitions from JSON.
+ * @param json JSON string containing the new monomer definitions.
+ * @param run_smiles_canonicalization Run SMILES canonicalization for the new
+ * database contents and ensure that the core SMILES field is populated for all
+ * monomers. Defaults to true. This may only be set to false if all SMILES in
+ * the JSON string have been canonicalized using the same canonicalization
+ * scheme as the Sketcher, and all monomers have a core SMILES specified.
+ * @return An object containing succeeded and failed insertion logs.
+ */
+emscripten::val
+sketcher_load_custom_monomers(const std::string& json,
+                              bool run_smiles_canonicalization = true)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    auto result = db.loadMonomersFromJson(json);
-
-    return monomer_defs_insertion_result_to_js(result);
-}
-
-emscripten::val sketcher_insert_custom_monomers(const std::string& json)
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    auto result = db.insertMonomersFromJson(json);
+    auto result = db.loadMonomersFromJson(json, run_smiles_canonicalization);
+    get_sketcher_instance().setLoadMonomerDatabaseVisible(false);
 
     return monomer_defs_insertion_result_to_js(result);
 }
 #endif
-
-void sketcher_reset_custom_monomers()
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.resetMonomerDefinitions();
-}
 
 void sketcher_changed()
 {
@@ -242,14 +235,13 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function(
+        "sketcher_load_custom_monomers",
+        emscripten::optional_override([](const std::string& json) {
+            return sketcher_load_custom_monomers(json);
+        }));
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
-    emscripten::function("sketcher_load_custom_monomers_from_sql",
-                         &sketcher_load_custom_monomers_from_sql);
-    emscripten::function("sketcher_insert_custom_monomers",
-                         &sketcher_insert_custom_monomers);
-    emscripten::function("sketcher_reset_custom_monomers",
-                         &sketcher_reset_custom_monomers);
     // see sketcher_changed_callback above
     // the e2e test bindings are registered in playwright_test_bridge.cpp
 }

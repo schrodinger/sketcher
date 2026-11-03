@@ -22,6 +22,47 @@
 
 using namespace schrodinger::rdkit_extensions;
 
+BOOST_AUTO_TEST_CASE(database_change_subscriptions)
+{
+    auto& db = MonomerDatabase::instance();
+    db.resetMonomerDefinitions();
+    int notifications = 0;
+    int second_notifications = 0;
+    {
+        auto connection = db.subscribeToChanges([&]() {
+            ++notifications;
+            // Readers can query the completed update from a callback.
+            BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), "[]");
+        });
+        {
+            auto second =
+                db.subscribeToChanges([&]() { ++second_notifications; });
+            // Insertion delegates to load when no custom database exists.
+            db.insertMonomersFromJson("[]");
+            BOOST_CHECK_EQUAL(notifications, 1);
+            BOOST_CHECK_EQUAL(second_notifications, 1);
+        }
+        db.insertMonomersFromJson("[]");
+        BOOST_CHECK_EQUAL(notifications, 2);
+        BOOST_CHECK_EQUAL(second_notifications, 1);
+        db.loadMonomersFromJson("[]");
+        BOOST_CHECK_EQUAL(notifications, 3);
+        db.loadMonomersFromSql("DELETE FROM monomer_definitions;");
+        BOOST_CHECK_EQUAL(notifications, 4);
+        db.canonicalizeSmilesFields();
+        BOOST_CHECK_EQUAL(notifications, 5);
+        BOOST_CHECK_THROW(db.loadMonomersFromJson("invalid JSON"),
+                          std::exception);
+        BOOST_CHECK_THROW(db.loadMonomersFromSql("invalid SQL"),
+                          std::exception);
+        BOOST_CHECK_EQUAL(notifications, 5);
+        db.resetMonomerDefinitions();
+        BOOST_CHECK_EQUAL(notifications, 6);
+    }
+    db.resetMonomerDefinitions();
+    BOOST_CHECK_EQUAL(notifications, 6);
+}
+
 BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
                      boost::unit_test::data::make({0, 1}), ff_state)
 {
@@ -223,6 +264,38 @@ BOOST_AUTO_TEST_CASE(TestGetMonomerDbFromJson)
                       std::runtime_error);
 }
 
+BOOST_DATA_TEST_CASE(TestLoadMonomersWithOptionalSmilesCanonicalization,
+                     boost::unit_test::data::make({false, true}),
+                     run_smiles_canonicalization)
+{
+    // Deliberately use noncanonical SMILES to verify that disabling
+    // canonicalization preserves the supplied SMILES and CORE_SMILES.
+    constexpr std::string_view json = R"JSON([{
+        "symbol": "TestEthanol",
+        "polymer_type": "CHEM",
+        "natural_analog": "X",
+        "smiles": "OCC",
+        "core_smiles": "OCC",
+        "name": "Test Ethanol",
+        "monomer_type": "Undefined",
+        "author": "test"
+    }])JSON";
+
+    auto& db = MonomerDatabase::instance();
+    const auto [succeeded, failed] =
+        db.loadMonomersFromJson(json, run_smiles_canonicalization);
+    BOOST_REQUIRE_EQUAL(succeeded.size(), 1);
+    BOOST_CHECK(failed.empty());
+
+    const auto info = db.getMonomerInfo("TestEthanol", ChainType::CHEM);
+    BOOST_REQUIRE(info.smiles.has_value());
+    BOOST_REQUIRE(info.core_smiles.has_value());
+    const auto expected_smiles = run_smiles_canonicalization ? "CCO" : "OCC";
+    BOOST_CHECK_EQUAL(*info.smiles, expected_smiles);
+    BOOST_CHECK_EQUAL(*info.core_smiles, "OCC");
+    db.resetMonomerDefinitions();
+}
+
 BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
 {
     constexpr std::string_view dummy_json =
@@ -244,8 +317,11 @@ BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
     BOOST_REQUIRE_EQUAL(res.first.size(), 1);
     BOOST_REQUIRE_EQUAL(res.second.size(), 0);
 
+    int notifications = 0;
+    auto connection = monomer_db.subscribeToChanges([&]() { ++notifications; });
     monomer_db.loadMonomersFromSQLiteFile(
         LocalMonomerDbFixture::test_custom_monomer_db);
+    BOOST_CHECK_EQUAL(notifications, 1);
 }
 
 BOOST_AUTO_TEST_CASE(TestNameEscaping)
@@ -450,4 +526,56 @@ BOOST_AUTO_TEST_CASE(TestDNInsertionLogs)
         failed[2].find(
             "Monomer definition 4: Could not canonicalize monomer SMILES."),
         0);
+}
+
+BOOST_AUTO_TEST_CASE(TestMultiAtomLGCanonicalization)
+{
+    struct ResetMonomerDatabase {
+        ~ResetMonomerDatabase()
+        {
+            MonomerDatabase::instance().resetMonomerDefinitions();
+        }
+    } reset_db;
+
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "TriC",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "CC[CH2:4]CC(=O)[OH:1]",
+            "core_smiles": "*CC(*)=O |$_R4;;;_R1;$|",
+            "rgroups": "{\"R1\":\"*O |$_R1;$|\",\"R4\":\"*CCC |$_R4;;;$|\"}",
+            "name": "Propane",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "PRP"
+        },
+        {
+            "symbol": "NoCore",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "X",
+            "smiles": "CC[OH:1]",
+            "name": "Ethanol",
+            "monomer_type": "Backbone",
+            "author": "Example",
+            "pdbcode": "ETH"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    const auto monomer_info =
+        monomer_db.getMonomerInfo("TriC", ChainType::PEPTIDE);
+    BOOST_REQUIRE(monomer_info.smiles.has_value());
+    BOOST_CHECK_EQUAL(*monomer_info.smiles, "CC[CH2:4]CC(=O)[OH:1]");
+    BOOST_REQUIRE(monomer_info.core_smiles.has_value());
+    BOOST_CHECK_EQUAL(*monomer_info.core_smiles, "*CC(*)=O |$_R4;;;_R1;$|");
+
+    const auto no_core_info =
+        monomer_db.getMonomerInfo("NoCore", ChainType::PEPTIDE);
+    BOOST_REQUIRE(no_core_info.smiles.has_value());
+    BOOST_CHECK_EQUAL(*no_core_info.smiles, "CC[OH:1]");
+    BOOST_REQUIRE(no_core_info.core_smiles.has_value());
+    BOOST_CHECK_EQUAL(*no_core_info.core_smiles, "CC");
 }

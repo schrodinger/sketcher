@@ -30,6 +30,15 @@
         height: 100%;
         background-color: white;
       }
+      /* NOTE: (LDID8-1367) Styling bug fix due to downgrading to QT 6.7
+                            Remove when QT upgrades >= 6.8 */
+      body > input[type='text']:last-child {
+        box-sizing: border-box;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        border: 0;
+      }
       #screen {
         width: 100%;
         height: 100%;
@@ -109,6 +118,16 @@
       // Loading errors are also displayed in the page, even when no API caller waits.
       sketcherReady.catch(() => {});
 
+      function isSketcherException(instance, exception) {
+        if (typeof exception === 'number') {
+          return true;
+        }
+        if (typeof exception?.is !== 'function') {
+          return false;
+        }
+        return exception.is(instance.getCppExceptionTag());
+      }
+
       function nativeExceptionMessage(instance, exception) {
         instance.incrementExceptionRefcount(exception);
         try {
@@ -124,7 +143,7 @@
         try {
           return callback(instance);
         } catch (err) {
-          if (typeof err === 'number') {
+          if (isSketcherException(instance, err)) {
             throw new Error(nativeExceptionMessage(instance, err));
           }
           throw err;

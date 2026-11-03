@@ -4,6 +4,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -129,6 +130,24 @@ $$$$
             BOOST_TEST(disabled_count == exp_disabled_count);
         }
     }
+}
+
+/**
+ * Ensure that the R-group context menu is populated Qt sizes its popup.
+ * Otherwise, Qt won't allocate space for the menu item.
+ */
+BOOST_AUTO_TEST_CASE(test_existing_r_groups_before_popup_layout)
+{
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    auto mol = rdkit_extensions::to_rdkit("*");
+    mol->replaceAtom(0, rdkit_extensions::make_new_r_group(1).get());
+    mol_model.addMol(*mol);
+    ExistingRGroupMenu menu(&mol_model);
+    BOOST_TEST(menu.actions().empty());
+    menu.aboutToShow();
+    BOOST_REQUIRE_EQUAL(menu.actions().size(), 1);
+    BOOST_TEST(menu.actions().front()->text() == "R1");
 }
 
 } // namespace sketcher

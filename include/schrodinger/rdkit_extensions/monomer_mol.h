@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -93,7 +94,7 @@ RDKIT_EXTENSIONS_API std::unique_ptr<Monomer>
 makeMonomer(const std::string_view name, const std::string_view chain_id,
             const int residue_number, const bool is_smiles);
 
-/*
+/**
  * Mutate a monomer in the provided monomer mol to a new monomer specified
  * by a HELM symbol. Assumes the monomer is mutated to another monomer of the
  * same chain type (such as PEPTIDE or RNA).
@@ -101,10 +102,14 @@ makeMonomer(const std::string_view name, const std::string_view chain_id,
  * @param monomer_mol The monomeric molecule to mutate
  * @param monomer_idx The index of the monomer to mutate
  * @param helm_symbol The HELM symbol to mutate the monomer to
+ * @param is_smiles Whether HELM symbol should be interpretted as a SMILES
+ * string or a residue name. If not given, will be automatically determined
+ * based on helm_symbol.
  */
-RDKIT_EXTENSIONS_API void mutateMonomer(RDKit::ROMol& monomer_mol,
-                                        unsigned int monomer_idx,
-                                        std::string_view helm_symbol);
+RDKIT_EXTENSIONS_API void
+mutateMonomer(RDKit::ROMol& monomer_mol, const unsigned int monomer_idx,
+              const std::string_view helm_symbol,
+              const std::optional<bool> is_smiles = std::nullopt);
 
 /*
  * Add a connection between two monomers in the molecule. The connection has

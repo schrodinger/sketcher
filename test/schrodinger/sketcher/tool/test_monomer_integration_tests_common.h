@@ -96,6 +96,18 @@ struct MonomerToolTestFixture {
         process_qt_events();
     }
 
+    void setCustomMonomerTool(const QString& smiles,
+                              const rdkit_extensions::ChainType chain_type)
+    {
+        m_sketcher_model->setValues(
+            {{ModelKey::DRAW_TOOL,
+              QVariant::fromValue(DrawTool::CUSTOM_MONOMER)},
+             {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+             {ModelKey::CUSTOM_MONOMER,
+              QVariant::fromValue(std::make_pair(smiles, chain_type))}});
+        process_qt_events();
+    }
+
     void setRNANucleotideTool(StdNucleobase base)
     {
         m_sketcher_model->setValues(
@@ -174,7 +186,8 @@ struct MonomerToolTestFixture {
     }
 
     QPointF getAttachmentPointPos(unsigned int monomer_idx,
-                                  const std::string& ap_display_name)
+                                  const std::string& ap_name,
+                                  bool use_model_name = false)
     {
         auto monomer_pos = getMonomerPos(monomer_idx);
         auto* monomer_item = m_scene->getTopInteractiveItemAt(
@@ -187,14 +200,14 @@ struct MonomerToolTestFixture {
                 qgraphicsitem_cast<UnboundMonomericAttachmentPointItem*>(child);
             if (ap_item) {
                 auto ap = ap_item->getAttachmentPoint();
-                if (ap.display_name == ap_display_name) {
+                if ((use_model_name ? ap.model_name : ap.display_name) ==
+                    ap_name) {
                     return getPosJustOutsideOfMonomer(monomer_pos,
                                                       ap.direction);
                 }
             }
         }
-        throw std::runtime_error("Attachment point " + ap_display_name +
-                                 " not found");
+        throw std::runtime_error("Attachment point " + ap_name + " not found");
     }
 
     void verifyHELM(const std::string& expected)

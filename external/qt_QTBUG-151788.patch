@@ -1,0 +1,16 @@
+QTBUG-151788: Give PNG clipboard blobs their required image/png MIME type.
+
+diff --git a/src/plugins/platforms/wasm/qwasmclipboard.cpp b/src/plugins/platforms/wasm/qwasmclipboard.cpp
+index 4860166..a164328 100644
+--- a/src/plugins/platforms/wasm/qwasmclipboard.cpp
++++ b/src/plugins/platforms/wasm/qwasmclipboard.cpp
+@@ -209,7 +209,8 @@ void QWasmClipboard::writeToClipboardApi()
+             buffer.open(QIODevice::WriteOnly);
+             img.save(&buffer, "PNG");
+ 
+-            qstdweb::Blob blob = qstdweb::Blob::fromArrayBuffer(qstdweb::Uint8Array::copyFrom(ba).buffer());
++            qstdweb::Blob blob = qstdweb::Blob::copyFrom(ba.constData(), ba.size(),
++                                                       "image/png");
+             clipboardData.set(std::string("image/png"), blob.val());
+         }
+     }

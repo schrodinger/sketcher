@@ -8,7 +8,7 @@
 
 #include <rdkit/GraphMol/ROMol.h>
 
-#include "schrodinger/rdkit_extensions/definitions.h"
+#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace RDKit
@@ -27,7 +27,7 @@ class BondDisplaySettings;
 /**
  * A graphics item showing a blue hint structure for monomeric models.
  */
-class MonomerHintFragmentItem : public QGraphicsItemGroup
+class SKETCHER_API MonomerHintFragmentItem : public QGraphicsItemGroup
 {
   public:
     /**

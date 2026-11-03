@@ -44,7 +44,7 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     addSeparator();
     m_flip_action =
         addAction("Flip", this, &SelectionContextMenu::flipRequested);
-    m_flip_molecule_menu = new QMenu("Flip Molecule");
+    m_flip_molecule_menu = new QMenu("Flip Molecule", this);
     m_flip_molecule_menu->addAction(
         "Horizontally", this, &SelectionContextMenu::flipHorizontalRequested);
     m_flip_molecule_menu->addAction(

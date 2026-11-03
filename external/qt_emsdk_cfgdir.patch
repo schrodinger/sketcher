@@ -1,0 +1,12 @@
+diff --git a/cmake/QtPublicWasmToolchainHelpers.cmake b/cmake/QtPublicWasmToolchainHelpers.cmake
+--- a/cmake/QtPublicWasmToolchainHelpers.cmake
++++ b/cmake/QtPublicWasmToolchainHelpers.cmake
+@@ -13,6 +13,8 @@ function(__qt_internal_get_emroot_path_suffix_from_emsdk_env out_var)
+     string(REGEX MATCH "EMSCRIPTEN_ROOT.*$" EMROOT "${ver}")
+     string(REGEX MATCH "'([^' ]*)'" EMROOT2 "${EMROOT}")
+     string(REPLACE "'" "" EMROOT_PATH "${EMROOT2}")
++    # Emscripten 6.0.4+ uses $CFGDIR instead of the Python emsdk_path expression.
++    string(REPLACE "$CFGDIR" "" EMROOT_PATH "${EMROOT_PATH}")
+ 
+     set(${out_var} "${EMROOT_PATH}" PARENT_SCOPE)
+ endfunction()

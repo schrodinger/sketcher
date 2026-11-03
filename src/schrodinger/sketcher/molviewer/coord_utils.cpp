@@ -23,6 +23,12 @@ namespace schrodinger
 namespace sketcher
 {
 
+QPointF direction_to_qt_vector(const rdkit_extensions::Direction direction)
+{
+    const auto mol_vector = rdkit_extensions::direction_to_vector(direction);
+    return {mol_vector.x, -mol_vector.y};
+}
+
 namespace
 {
 /**

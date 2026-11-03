@@ -248,6 +248,12 @@ BOOST_AUTO_TEST_CASE(Test_toMonomeric)
         BOOST_CHECK_THROW(toAtomistic(*monomer_mol), std::out_of_range);
     }
     {
+        // error condition -- invalid inline SMILES monomer
+        auto monomer_mol =
+            to_rdkit("CHEM1{[[R1]OCCCCC=C]}$$$$V2.0", Format::HELM);
+        BOOST_CHECK_THROW(toAtomistic(*monomer_mol), std::runtime_error);
+    }
+    {
         // error condition -- A does not have an R3 attachment point
         auto monomer_mol =
             to_rdkit("PEPTIDE1{A.A.A.A.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0");

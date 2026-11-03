@@ -47,6 +47,11 @@ class SKETCHER_API SketcherTopBar : public SketcherView
      */
     bool handleShortcutAction(const QKeySequence& key_seq);
 
+    /**
+     * Set whether the "Load Monomer Database..." action is visible
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
+
     MoreActionsMenu* m_more_actions_menu = nullptr;
 
   signals:
@@ -115,6 +120,11 @@ class SKETCHER_API SketcherTopBar : public SketcherView
      * `importTextRequested` signal with the specified file path.
      */
     void onImportFromFileClicked();
+
+    /**
+     * Open a JSON file and load its custom monomer definitions.
+     */
+    void onLoadMonomerDatabaseClicked();
 
     /**
      * Respond to a click on the "Paste in Text..." action.

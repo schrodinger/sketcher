@@ -1,0 +1,14 @@
+{
+  "helm": "PEPTIDE1{[dPen].[dDpr]([Me_Lys(Boc)]).[dPen].[dPhe(3-OMe)].[Me_Lys(Boc)].[dPhe(3-NO2)].[dPhe(2-NO2)].[dLys(2-MP)].[dDpr]([Me_Lys(Boc)]).[Me_Lys(Boc)].[dPhe(3-NO2)].[dPhe(2-NO2)].[dLys(2-MP)].[dPhe(3-OMe)].[dDpr]([Me_Lys(Boc)]).[dPhe(3-NO2)].[dPhe(2-NO2)].[dLys(2-MP)].[dPhe(3-OMe)].[Me_Lys(Boc)].[dDpr]([Me_Lys(Boc)]).[dPhe(2-NO2)].[dLys(2-MP)].[dPhe(3-OMe)].[Me_Lys(Boc)].[dPhe(3-NO2)].[dDpr]([Me_Lys(Boc)]).[dLys(2-MP)].[dPhe(3-OMe)].[Me_Lys(Boc)].[dPhe(3-NO2)].[dPhe(2-NO2)].[dLys(2-MP)]}$PEPTIDE1,PEPTIDE1,1:R3-4:R3$$$V2.0",
+  "monomer_count": 38,
+  "bond_count": 38,
+  "monomer_counts": {
+    "dPen": 2,
+    "dDpr": 5,
+    "Me_Lys(Boc)": 10,
+    "dPhe(3-OMe)": 5,
+    "dPhe(3-NO2)": 5,
+    "dPhe(2-NO2)": 5,
+    "dLys(2-MP)": 6
+  }
+}

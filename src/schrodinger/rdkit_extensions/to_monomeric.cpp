@@ -6,6 +6,7 @@
 #include <iterator>
 #include <memory>
 #include <queue>
+#include <set>
 #include <span>
 #include <unordered_set>
 
@@ -1050,6 +1051,32 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
 }
 
 /*
+ * Throw if a backbone attachment point (R1 or R2) of a monomer is used by more
+ * than one linkage. This usually means that a larger monomer was split up by
+ * the generic amino acid queries; for example, an imide nitrogen between two
+ * carbonyls may be identified as an [am] cap with two R1 connections.
+ */
+void checkBackboneAttachmentPointsUsedOnce(const std::vector<Linkage>& linkages)
+{
+    std::set<std::pair<unsigned int, unsigned int>> used; // monomer, attchpt
+    auto check = [&](unsigned int monomer_idx, unsigned int attchpt) {
+        if (attchpt != 1 && attchpt != 2) {
+            return;
+        }
+        if (!used.insert({monomer_idx, attchpt}).second) {
+            throw std::runtime_error(
+                fmt::format("Attachment point R{} of monomer {} is used by "
+                            "more than one linkage",
+                            attchpt, monomer_idx));
+        }
+    };
+    for (const auto& link : linkages) {
+        check(link.monomer_idx1, link.attach_from);
+        check(link.monomer_idx2, link.attach_to);
+    }
+}
+
+/*
  * Break an atomistic molecule into monomers
  *
  * Every atom should belong to either 1 or 2 monomers. If an atom belongs to 2
@@ -1958,7 +1985,7 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
     auto monomer_mol = boost::make_shared<RDKit::RWMol>();
     std::map<std::tuple<std::string, int, std::string>,
              std::tuple<std::string, int>>
-        pdb_chain_to_helm_chain;
+        st_to_mol_monomeric_mapping;
     for (const auto& [chain_id, residues] : chains_and_residues) {
         // Use first residue to determine chain type. We assume that PDB data
         // is correct and there aren't multiple chain types in a single chain.
@@ -2020,8 +2047,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                     mol.getAtomWithIdx(idx)->setProp<unsigned int>(
                         MONOMER_IDX, this_monomer);
                 }
-                pdb_chain_to_helm_chain[{chain_id, key.first, key.second}] = {
-                    helm_chain_id, res_num};
+                st_to_mol_monomeric_mapping[{chain_id, key.first, key.second}] =
+                    {helm_chain_id, res_num};
                 prev_atom_idxs = atom_idxs;
                 ++res_num;
             }
@@ -2076,8 +2103,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                             mol.getAtomWithIdx(idx)->setProp<unsigned int>(
                                 MONOMER_IDX, this_monomer);
                         }
-                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
-                                                 pdb_key.second}] = {
+                        st_to_mol_monomeric_mapping[{chain_id, pdb_key.first,
+                                                     pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
                         break;
@@ -2093,8 +2120,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                         auto* monomer_atom =
                             monomer_mol->getAtomWithIdx(this_monomer);
                         monomer_atom->setProp("INCOMPLETE_IN_STRUCTURE", true);
-                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
-                                                 pdb_key.second}] = {
+                        st_to_mol_monomeric_mapping[{chain_id, pdb_key.first,
+                                                     pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
                         break;
@@ -2118,8 +2145,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                             mol.getAtomWithIdx(idx)->setProp<unsigned int>(
                                 MONOMER_IDX, this_monomer);
                         }
-                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
-                                                 pdb_key.second}] = {
+                        st_to_mol_monomeric_mapping[{chain_id, pdb_key.first,
+                                                     pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
                         break;
@@ -2136,8 +2163,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                             mol.getAtomWithIdx(idx)->setProp<unsigned int>(
                                 MONOMER_IDX, this_monomer);
                         }
-                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
-                                                 pdb_key.second}] = {
+                        st_to_mol_monomeric_mapping[{chain_id, pdb_key.first,
+                                                     pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
                         break;
@@ -2217,9 +2244,10 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
             }
         }
     }
-    boost::json::value jv = boost::json::value_from(pdb_chain_to_helm_chain);
+    boost::json::value jv =
+        boost::json::value_from(st_to_mol_monomeric_mapping);
     std::string stringified_mapping = boost::json::serialize(jv);
-    monomer_mol->setProp(PDB_TO_HELM, stringified_mapping);
+    monomer_mol->setProp(ST_TO_MOL_MONOMERIC_MAPPING, stringified_mapping);
 
     detectLinkages(*monomer_mol, mol);
     return monomer_mol;
@@ -2243,6 +2271,9 @@ smartsBasedToMonomeric(RDKit::RWMol& atomistic_mol, bool complex_mode)
 
     std::vector<Linkage> linkages;
     detectLinkages(atomistic_mol, monomers, linkages);
+    if (!complex_mode) {
+        checkBackboneAttachmentPointsUsedOnce(linkages);
+    }
     orderMonomers(atomistic_mol, monomers, linkages);
 
     auto allow_smiles = complex_mode;

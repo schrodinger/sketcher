@@ -24,10 +24,12 @@ namespace sketcher
 
 /**
  * Context menu for monomer beads. Dispatches by monomer type:
- *   - PEPTIDE: Mutate Residue, Set D/L-Form, Protonate (stub), Delete
- *   - NA_BASE: Mutate Base (A/C/G/U/T + DB analogs), Delete
- *   - NA_SUGAR: Change R↔dR (direction from m_primary_atom), Delete
- *   - NA_PHOSPHATE / CHEM: Delete only
+ *   - PEPTIDE: Mutate Residue, Edit Structure, Set D/L-Form, Protonate (stub),
+ *     Delete
+ *   - NA_BASE: Mutate Base (A/C/G/U/T + DB analogs), Edit Structure, Delete
+ *   - NA_SUGAR: Change R↔dR (direction from m_primary_atom), Edit Structure,
+ *     Delete
+ *   - NA_PHOSPHATE / CHEM: Edit Structure, Delete
  */
 class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
 {
@@ -38,6 +40,8 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
   signals:
     void deleteRequested(const std::unordered_set<const RDKit::Atom*>& atoms);
 
+    void editStructureRequested(const RDKit::Atom* atom);
+
     /**
      * @brief Mutate one or more groups of monomers in a single user action.
      * @param mutations is a list of (atoms, target HELM symbol) pairs
@@ -47,22 +51,36 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     void mutateMonomerRequested(std::vector<MonomerMutation> mutations,
                                 QString description);
 
+    // `bases` holds raw atom pointers into the live molecule, so the receiver
+    // must consume them before it starts mutating the molecule.
+    void addComplementaryStrandRequested(
+        const std::unordered_set<const RDKit::Atom*>& bases);
+
   protected:
     void updateActions() override;
 
   private:
     void createMutateResidueSubMenu();
+    void createEditStructureAction();
     void createSetDFormAction();
     void createProtonateAction();
     void createMutateBaseSubMenu();
     void createSugarToggleAction();
+    void createAddComplementaryStrandAction();
     void createDeleteAction();
 
     QMenu* m_mutate_residue_menu = nullptr;
+    QAction* m_edit_structure_action = nullptr;
     QAction* m_set_d_form_action = nullptr;
     QAction* m_protonate_action = nullptr;
     QMenu* m_mutate_base_menu = nullptr;
     QAction* m_sugar_toggle_action = nullptr;
+    QAction* m_add_complement_action = nullptr;
+
+    // Bases from the current selection that have a Watson-Crick complement.
+    // Computed once per updateActions() and reused both to set the action's
+    // enabled state and as the payload when the action is triggered.
+    std::unordered_set<const RDKit::Atom*> m_complement_bases;
 };
 
 } // namespace sketcher
