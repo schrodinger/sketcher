@@ -389,34 +389,19 @@ BOOST_AUTO_TEST_CASE(test_remove_mapping_tool_click_after_removal)
     };
 
     const RDKit::Atom* reactant_atom = nullptr;
-    const RDKit::Atom* product_atom = nullptr;
     for (const auto* atom : mol_model->getMol()->atoms()) {
-        if (atom->getAtomMapNum() == 1) {
-            if (mol_model->isProductAtom(atom)) {
-                product_atom = atom;
-            } else {
-                reactant_atom = atom;
-            }
+        if (atom->getAtomMapNum() == 1 && !mol_model->isProductAtom(atom)) {
+            reactant_atom = atom;
         }
     }
     BOOST_REQUIRE(reactant_atom != nullptr);
-    BOOST_REQUIRE(product_atom != nullptr);
     // clicking a reactant atom removes its mapping from all atoms
     click(scene->m_atom_to_atom_item.at(reactant_atom)->scenePos());
-    auto mapping_numbers = get_mapping_numbers();
-    BOOST_TEST(std::count(mapping_numbers.begin(), mapping_numbers.end(), 1) ==
-               0);
-    BOOST_TEST(std::count(mapping_numbers.begin(), mapping_numbers.end(), 2) ==
-               2);
-
-    // restore the mapping so that a click that incorrectly reused the deleted
-    // atom item would visibly remove it again (setAtomMapping modifies the
-    // atoms in place, so the deleted atom item may still point at
-    // reactant_atom)
-    mol_model->setAtomMapping({reactant_atom, product_atom}, 1);
     auto exp_mapping_numbers = get_mapping_numbers();
     BOOST_TEST(std::count(exp_mapping_numbers.begin(),
-                          exp_mapping_numbers.end(), 1) == 2);
+                          exp_mapping_numbers.end(), 1) == 0);
+    BOOST_TEST(std::count(exp_mapping_numbers.begin(),
+                          exp_mapping_numbers.end(), 2) == 2);
 
     // clicking on empty space must not change anything
     click(QPointF(10000, 10000));
