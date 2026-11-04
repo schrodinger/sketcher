@@ -3458,8 +3458,9 @@ void resize_monomers(
     mol.getRingInfo()->reset();
 }
 
-unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol,
-                                        const bool render_peptides_linearly)
+static unsigned int
+compute_monomer_mol_coords_impl(RDKit::ROMol& monomer_mol,
+                                const bool render_peptides_linearly)
 {
     // clear layout related props so we can start a fresh layout
     clear_layout_props(monomer_mol);
@@ -3515,6 +3516,16 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol,
     }
 
     return conformer_id;
+}
+
+unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
+{
+    return compute_monomer_mol_coords_impl(monomer_mol, false);
+}
+
+unsigned int compute_linear_peptide_coords(RDKit::ROMol& monomer_mol)
+{
+    return compute_monomer_mol_coords_impl(monomer_mol, true);
 }
 
 } // namespace rdkit_extensions

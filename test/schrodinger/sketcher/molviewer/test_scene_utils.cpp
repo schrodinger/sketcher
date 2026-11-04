@@ -95,8 +95,7 @@ BOOST_DATA_TEST_CASE(test_create_graphics_items_for_mol_monomeric,
 std::vector<int> get_linear_custom_connector_lanes(const std::string& helm)
 {
     auto mol = rdkit_extensions::to_rdkit(helm);
-    rdkit_extensions::compute_monomer_mol_coords(
-        *mol, /* render_peptides_linearly = */ true);
+    rdkit_extensions::compute_linear_peptide_coords(*mol);
     prepare_mol(*mol);
     for (auto* atom : mol->atoms()) {
         set_atom_monomeric(atom);

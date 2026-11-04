@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/tool/atom_mapping_scene_tool.h"
 
+#include <utility>
+
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
@@ -63,23 +65,20 @@ void AtomMappingSceneTool::onLeftButtonPress(
     StandardSceneToolBase::onLeftButtonPress(event);
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
-    if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-        m_pressed_atom_item = atom_item;
-    }
+    m_pressed_atom_item = qgraphicsitem_cast<AtomItem*>(item);
 }
 
 void AtomMappingSceneTool::onLeftButtonClick(
     QGraphicsSceneMouseEvent* const event)
 {
     StandardSceneToolBase::onLeftButtonClick(event);
-    if (m_action != MappingAction::REMOVE) {
+    // Changing the mapping deletes all atom items, so the pressed atom item
+    // must not outlive this click
+    auto* pressed_atom_item = std::exchange(m_pressed_atom_item, nullptr);
+    if (m_action != MappingAction::REMOVE || pressed_atom_item == nullptr) {
         return;
     }
-
-    if (m_pressed_atom_item == nullptr) {
-        return;
-    }
-    auto* clicked_atom = m_pressed_atom_item->getAtom();
+    auto* clicked_atom = pressed_atom_item->getAtom();
     int mapping_n = clicked_atom->getAtomMapNum();
     if (mapping_n < 1) {
         return;

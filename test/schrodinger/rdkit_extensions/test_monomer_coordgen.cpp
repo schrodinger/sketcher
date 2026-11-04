@@ -16,6 +16,7 @@
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 using helm::helm_to_rdkit;
+using schrodinger::rdkit_extensions::compute_linear_peptide_coords;
 using schrodinger::rdkit_extensions::compute_monomer_mol_coords;
 
 namespace bdata = boost::unit_test::data;
@@ -618,7 +619,7 @@ BOOST_AUTO_TEST_CASE(TestRenderPeptideLinearly)
         helm_to_rdkit("PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,"
                       "1:R3-7:R3|PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$V2.0");
 
-    compute_monomer_mol_coords(*mol, /* render_peptides_linearly = */ true);
+    compute_linear_peptide_coords(*mol);
 
     const auto& conformer = mol->getConformer();
     BOOST_TEST(!conformer.is3D());

@@ -63,13 +63,21 @@ struct CustomBondInfo {
 
 /**
  * @param monomer_mol monomeric molecule
- * @param render_peptides_linearly If true, peptide backbones are rendered as
- * horizontal chains even when non-backbone bonds make the peptide cyclic.
  * @return The id of the conformer added to the molecule with the computed
  * coordinates
  */
-unsigned int RDKIT_EXTENSIONS_API compute_monomer_mol_coords(
-    RDKit::ROMol& monomer_mol, bool render_peptides_linearly = false);
+unsigned int RDKIT_EXTENSIONS_API
+compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
+
+/**
+ * Lay peptide backbones out as horizontal chains, even when non-backbone
+ * connections make them cyclic. Other polymers use the normal layout.
+ *
+ * @param monomer_mol monomeric molecule
+ * @return The id of the conformer added to the molecule
+ */
+unsigned int RDKIT_EXTENSIONS_API
+compute_linear_peptide_coords(RDKit::ROMol& monomer_mol);
 
 /**
  * Scores the entire coiling layout based on all custom bonds. The lower the

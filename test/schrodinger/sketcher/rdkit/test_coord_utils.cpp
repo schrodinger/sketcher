@@ -129,21 +129,7 @@ constexpr const char* CYCLIC_PEPTIDE_HELM =
     "PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,"
     "1:R3-7:R3|PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$V2.0";
 
-BOOST_AUTO_TEST_CASE(test_linear_peptide_layout_when_coordinates_are_missing)
-{
-    auto mol = rdkit_extensions::to_rdkit(CYCLIC_PEPTIDE_HELM);
-    BOOST_REQUIRE(mol->getNumConformers() == 0);
-
-    update_2d_coordinates(*mol, /* render_peptides_linearly = */ true);
-
-    const auto& conformer = mol->getConformer();
-    for (const auto* monomer : mol->atoms()) {
-        BOOST_TEST(conformer.getAtomPos(monomer->getIdx()).y == 0.0,
-                   boost::test_tools::tolerance(0.01));
-    }
-}
-
-BOOST_AUTO_TEST_CASE(test_linear_peptide_layout_preserves_existing_coordinates)
+BOOST_AUTO_TEST_CASE(test_peptide_layout_preserves_existing_coordinates)
 {
     auto mol = rdkit_extensions::to_rdkit(CYCLIC_PEPTIDE_HELM);
     rdkit_extensions::compute2DCoords(*mol);
@@ -153,7 +139,7 @@ BOOST_AUTO_TEST_CASE(test_linear_peptide_layout_preserves_existing_coordinates)
         original_positions.begin(), original_positions.end(),
         [](const auto& position) { return std::abs(position.y) > 0.01; }));
 
-    update_2d_coordinates(*mol, /* render_peptides_linearly = */ true);
+    update_2d_coordinates(*mol);
 
     const auto& updated_positions = mol->getConformer().getPositions();
     BOOST_REQUIRE(updated_positions.size() == original_positions.size());

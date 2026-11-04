@@ -1601,10 +1601,11 @@ export class Sketcher {
       }[sourceKey] || shortcut;
     await focusCanvas(this.page);
     await this.page.keyboard.press(key);
-    // The source Space shortcut transitions draw, move, and erase tools back
-    // to the remembered Select mode. Keep wrapper state in sync so a
-    // subsequent lasso/ellipse click opens (rather than closes) its popup.
-    if (sourceKey === ' ') this.current_tool = 'rect_btn';
+    // Shortcuts such as Space and Select All can transition draw, move, and
+    // erase tools back to the remembered Select mode. Sync wrapper state from
+    // the live UI, rather than a list of such keys, so a subsequent
+    // lasso/ellipse click opens (rather than closes) its popup.
+    if ((await widgetState(this.page, 'select_tool_btn')).checked) this.current_tool = 'rect_btn';
   }
 
   /** Equivalent to `mouse_drag` using source coordinates relative to canvas center. */

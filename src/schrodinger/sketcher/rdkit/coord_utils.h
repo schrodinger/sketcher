@@ -32,11 +32,8 @@ namespace sketcher
  * conformers will be discarded.
  *
  * @param mol Molecule whose conformers should be normalized.
- * @param render_peptides_linearly If coordinates need to be generated, lay
- * peptide backbones out as horizontal chains.
  */
-SKETCHER_API void update_2d_coordinates(RDKit::ROMol& mol,
-                                        bool render_peptides_linearly = false);
+SKETCHER_API void update_2d_coordinates(RDKit::ROMol& mol);
 
 /**
  * Determine the length of a typical bond in the given molecule.  If the
