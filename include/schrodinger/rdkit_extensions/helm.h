@@ -16,6 +16,8 @@ const std::string ATOM_LABEL{"atomLabel"};
 const std::string SUPPLEMENTARY_INFORMATION{"SUPPLEMENTARY_INFORMATION"};
 const std::string BRANCH_LINKAGE{"R3-R1"};
 const std::string BACKBONE_LINKAGE{"R2-R1"};
+const std::string PEPTIDE_SIDE_CHAIN_LINKAGE{"R3-R3"};
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
@@ -109,6 +111,25 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
+
+enum class ConnectorType {
+    CHEM,
+    PEPTIDE_LINEAR,
+    PEPTIDE_BRANCHING,
+    PEPTIDE_DISULFIDE,
+    PEPTIDE_SIDE_CHAIN,
+    H_BOND,
+    NA_BACKBONE,
+    NA_BACKBONE_TO_BASE
+};
+
+/**
+ * Classify a monomer connection, using LINKAGE for the primary connection or
+ * CUSTOM_BOND for the secondary connection. CHEM takes precedence over peptide
+ * connections, while peptide takes precedence over nucleic acid connections.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API ConnectorType
+get_connector_type(const ::RDKit::Bond* bond, bool is_secondary_connection);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);

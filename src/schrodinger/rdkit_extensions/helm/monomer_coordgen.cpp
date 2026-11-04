@@ -41,6 +41,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace schrodinger
@@ -50,10 +51,15 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
+// Wider center spacing for displaying arrowheads or separating unconnected
+// polymers: the minimum monomer size plus one bond length.
+constexpr double INTERPOLYMER_RESIDUE_CLEARANCE =
+    MONOMER_MINIMUM_SIZE + MONOMER_BOND_LENGTH;
+
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
-constexpr double NON_BACKBONE_BOND_FLEXIBILITY = 2.0;
+constexpr double NON_BACKBONE_BOND_FLEXIBILITY = 1.5;
 
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MAX_MONOMERS_PER_SNAKE = 10;
@@ -1977,6 +1983,50 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
     }
     return bonds;
 }
+
+/**
+ * Choose the preferred center-to-center spacing for a polymer pair. A bond
+ * without arrowheads can start at one bond length. When arrowheads are present,
+ * allow more space to display them correctly. Use the wider spacing when there
+ * is no bond or the original bond cannot be found. Placement may increase this
+ * gap to avoid clashes with other residues.
+ */
+static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
+                                         const RDKit::ROMol& polymer,
+                                         const RDKit::ROMol& reference,
+                                         const BOND_IDX_VEC& bonds)
+{
+    if (bonds.empty()) {
+        return INTERPOLYMER_RESIDUE_CLEARANCE;
+    }
+    for (const auto& [polymer_idx, reference_idx] : bonds) {
+        // The supplied indices belong to the extracted polymers; the original
+        // bond carries the linkage properties needed to classify its
+        // arrowheads.
+        const auto original_polymer_idx =
+            polymer.getAtomWithIdx(polymer_idx)
+                ->getProp<unsigned int>(ORIGINAL_INDEX);
+        const auto original_reference_idx =
+            reference.getAtomWithIdx(reference_idx)
+                ->getProp<unsigned int>(ORIGINAL_INDEX);
+        const auto* bond = monomer_mol.getBondBetweenAtoms(
+            original_polymer_idx, original_reference_idx);
+        if (bond == nullptr) {
+            return INTERPOLYMER_RESIDUE_CLEARANCE;
+        }
+        // A bond can carry two linkages; either one may need arrowhead
+        // clearance.
+        for (const bool secondary : {false, true}) {
+            const auto type = get_connector_type(bond, secondary);
+            if (type == ConnectorType::PEPTIDE_SIDE_CHAIN ||
+                type == ConnectorType::PEPTIDE_DISULFIDE ||
+                type == ConnectorType::PEPTIDE_BRANCHING) {
+                return INTERPOLYMER_RESIDUE_CLEARANCE;
+            }
+        }
+    }
+    return MONOMER_BOND_LENGTH;
+}
 // Assign unit IDs to ring systems. Rings that share at least one atom get the
 // same unit ID. This ensures that fused ring systems are treated as a single
 // topological unit.
@@ -2174,226 +2224,94 @@ break_into_topological_units(const RDKit::ROMol& monomer_mol)
     return break_into_polymers(monomer_mol);
 }
 
-/**
- * Provides the y-coordinate offset to apply to each monomer in
- * `polymer_to_translate` to place it one `MONOMER_BOND_LENGTH` away below
- * `reference_polymer` with no overlap. If `invert` is true, provides the offset
- * to place it above the reference instead of below.
- */
-static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
-                                       const RDKit::ROMol& reference_polymer,
-                                       bool invert = false)
+enum class PolymerPlacement { BELOW, ABOVE, LEFT, RIGHT };
+
+static std::pair<double, double> get_polymer_bounds(const RDKit::ROMol& polymer,
+                                                    bool x_axis)
 {
-    auto polymer_to_place_above =
-        invert ? polymer_to_translate : reference_polymer;
-    auto polymer_to_place_below =
-        invert ? reference_polymer : polymer_to_translate;
-    auto above_coords = polymer_to_place_above.getConformer().getPositions();
-    auto below_coords = polymer_to_place_below.getConformer().getPositions();
-    auto lowest_point =
-        std::min_element(above_coords.begin(), above_coords.end(),
-                         [](const RDGeom::Point3D& a,
-                            const RDGeom::Point3D& b) { return a.y < b.y; });
-
-    auto highest_point =
-        std::max_element(below_coords.begin(), below_coords.end(),
-                         [](const RDGeom::Point3D& a,
-                            const RDGeom::Point3D& b) { return a.y < b.y; });
-    auto offset = lowest_point->y - highest_point->y - MONOMER_BOND_LENGTH;
-
-    // When inverted, negate the offset so it moves in the opposite direction
-    return invert ? -offset : offset;
+    const auto& positions = polymer.getConformer().getPositions();
+    auto coord = [x_axis](const auto& p) { return x_axis ? p.x : p.y; };
+    auto [min_pos, max_pos] = std::minmax_element(
+        positions.begin(), positions.end(),
+        [&coord](const auto& a, const auto& b) { return coord(a) < coord(b); });
+    return {coord(*min_pos), coord(*max_pos)};
 }
 
-/**
- * Translate `polymer` so that it is positioned below `reference`  without
- * overlap, while preserving its internal geometry.
- *
- * If there are bonds between the two polymers, the first bonded monomer
- * of `polymer` is aligned vertically below the corresponding monomer
- * in `reference`, so that the inter-polymer bond is vertical.
- *
- * If there are no inter-polymer bonds, the polymer is simply shifted
- * downward by a fixed spacing.
- *
- * This function performs translation only (no rotation or reflection).
- * It may be called multiple times after flips to restore correct placement.
- * @param polymer the polymer to be placed
- * @param reference the reference polymer used for placement
- * @param polymer_bonds list of inter-polymer bonds. The start atom of each bond
- * is in `polymer`, the end atom is in `reference`
- * @param invert if true, place the polymer above the reference instead of below
+/** Position a polymer beside its reference without changing its internal shape.
  */
-static void place_polymer_below_reference(RDKit::ROMol& polymer,
-                                          const RDKit::ROMol& reference,
-                                          const BOND_IDX_VEC& polymer_bonds,
-                                          bool invert = false)
+static void place_polymer_beside_reference(RDKit::ROMol& polymer,
+                                           const RDKit::ROMol& reference,
+                                           const BOND_IDX_VEC& bonds,
+                                           PolymerPlacement side,
+                                           double clearance)
 {
-    // Translation offset to be applied to all atom positions
-    auto pos_offset = RDGeom::Point3D(0, 0, 0);
-
-    // Vertical separation needed to avoid overlap with the reference  polymer
-    auto y_offset = get_y_offset_for_polymer(polymer, reference, invert);
-
-    if (polymer_bonds.empty()) {
-        // No explicit connection: stack polymer below/above the reference
-        // using a fixed vertical separation
-        // When inverted, add spacing instead of subtract to maintain same gap
-        if (invert) {
-            pos_offset.y = y_offset + DIST_BETWEEN_MULTIPLE_POLYMERS;
-        } else {
-            pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
+    const auto& child_pos = polymer.getConformer().getPositions();
+    const auto& parent_pos = reference.getConformer().getPositions();
+    RDGeom::Point3D offset(0, 0, 0);
+    if (bonds.empty()) {
+        const auto [child_left, child_right] =
+            get_polymer_bounds(polymer, true);
+        const auto [child_bottom, child_top] =
+            get_polymer_bounds(polymer, false);
+        const auto [parent_left, parent_right] =
+            get_polymer_bounds(reference, true);
+        const auto [parent_bottom, parent_top] =
+            get_polymer_bounds(reference, false);
+        const double gap =
+            INTERPOLYMER_RESIDUE_CLEARANCE + DIST_BETWEEN_MULTIPLE_POLYMERS;
+        switch (side) {
+            case PolymerPlacement::BELOW:
+                offset.y = parent_bottom - child_top - gap;
+                break;
+            case PolymerPlacement::ABOVE:
+                offset.y = parent_top - child_bottom + gap;
+                break;
+            case PolymerPlacement::LEFT:
+                offset.x = parent_left - child_right - gap;
+                break;
+            case PolymerPlacement::RIGHT:
+                offset.x = parent_right - child_left + gap;
+                break;
         }
     } else {
-        // Align the first bonded monomer so that the inter-polymer bond
-        // is vertical and points downward (or upward if inverted)
-        auto& monomer_coords =
-            polymer.getConformer().getAtomPos(polymer_bonds[0].first);
-        auto& placed_monomer_coords =
-            reference.getConformer().getAtomPos(polymer_bonds[0].second);
-
-        // Target position for the bonded monomer after translation
-        // y_offset is already signed correctly by get_y_offset_for_polymer
-        auto translated_monomer_coords = RDGeom::Point3D(
-            placed_monomer_coords.x, monomer_coords.y + y_offset,
-            placed_monomer_coords.z);
-
-        pos_offset = translated_monomer_coords - monomer_coords;
+        const auto child_anchor = child_pos[bonds.front().first];
+        const auto parent_anchor = parent_pos[bonds.front().second];
+        RDGeom::Point3D outward(0, 0, 0);
+        switch (side) {
+            case PolymerPlacement::BELOW:
+                outward.y = -1;
+                break;
+            case PolymerPlacement::ABOVE:
+                outward.y = 1;
+                break;
+            case PolymerPlacement::LEFT:
+                outward.x = -1;
+                break;
+            case PolymerPlacement::RIGHT:
+                outward.x = 1;
+                break;
+        }
+        offset = parent_anchor - child_anchor + outward * clearance;
+        double extra = 0;
+        for (const auto& child : child_pos) {
+            for (const auto& parent : parent_pos) {
+                const auto delta = child + offset - parent;
+                const double along = delta.x * outward.x + delta.y * outward.y;
+                const double across = delta.x * outward.y - delta.y * outward.x;
+                if (std::abs(across) < clearance) {
+                    extra = std::max(extra, std::sqrt(clearance * clearance -
+                                                      across * across) -
+                                                along);
+                }
+            }
+        }
+        offset += outward * extra;
     }
-
-    // Apply the translation uniformly to all atoms
     for (auto& pos : polymer.getConformer().getPositions()) {
-        pos += pos_offset;
+        pos += offset;
     }
 }
 
-/**
- * Determine whether `polymer` needs to be flipped vertically (along the Y-axis)
- * to avoid geometric clashes between inter-polymer bonds (polymer<-> reference)
- * Special handling is applied for adjacent bonds sharing an atom, since they
- * represent a chemically valid continuation and require a more local proximity
- * check.
- *
- * Assumes that the polymer has already been placed relative to the reference.
- *
- * Returns true if a vertical flip is required to resolve overlaps.
- */
-static bool
-needs_vertical_flip_due_to_clashes(const RDKit::ROMol& polymer,
-                                   const RDKit::ROMol& reference,
-                                   const BOND_IDX_VEC& polymer_bonds)
-{
-    for (auto bond_between_polymers : polymer_bonds) {
-        // Geometry of the inter-polymer bond
-        auto interpolymer_bond_start_pos =
-            polymer.getConformer().getAtomPos(bond_between_polymers.first);
-        auto interpolymer_bond_end_pos =
-            reference.getConformer().getAtomPos(bond_between_polymers.second);
-
-        // Check against all bonds of the polymer
-        for (auto bond_in_polymer : polymer.bonds()) {
-            auto intrapolymer_bond_start_pos =
-                polymer.getConformer().getAtomPos(
-                    bond_in_polymer->getBeginAtomIdx());
-            auto intrapolymer_bond_end_pos = polymer.getConformer().getAtomPos(
-                bond_in_polymer->getEndAtomIdx());
-
-            // Case 1: bonds sharing an atom – use adjacent bond check
-            if (bond_between_polymers.first ==
-                    bond_in_polymer->getBeginAtomIdx() ||
-                bond_between_polymers.first ==
-                    bond_in_polymer->getEndAtomIdx()) {
-
-                auto pos1 = intrapolymer_bond_start_pos;
-                auto pos2 = intrapolymer_bond_end_pos;
-                if (bond_between_polymers.first ==
-                    bond_in_polymer->getBeginAtomIdx()) {
-                    pos1 = intrapolymer_bond_end_pos;
-                    pos2 = intrapolymer_bond_start_pos;
-                }
-
-                if (adjacent_bonds_are_too_close(pos1, pos2,
-                                                 interpolymer_bond_end_pos)) {
-                    return true;
-                }
-            }
-            // Case 2: non-adjacent bonds – generic proximity check
-            else if (bonds_are_too_close(interpolymer_bond_start_pos,
-                                         interpolymer_bond_end_pos,
-                                         intrapolymer_bond_start_pos,
-                                         intrapolymer_bond_end_pos)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/**
- * Determine whether `polymer` needs to be flipped horizontally (along the
- * X-axis) to resolve topological crossings between multiple inter-polymer
- * bonds.
- *
- * This uses an index-based inversion test rather than geometry and assumes:
- *
- *   - Atom indices are assumed to follow a left-to-right (LTR) layout
- *   - Atom are assumed to be listed in growing index order
- *   - Each inter-polymer bond maps a polymer atom index to a reference
- *     atom index
- *   - If the sequence of reference indices is not monotonic when sorted
- *     by polymer indices, at least one pair of connections must cross
- *
- *
- * Returns true if a horizontal flip is required to remove crossings. The flip
- * is only performed if it solves the inversion, otherwise keep the original
- * orientation even if there are fewer crossings because we assume that LTR is a
- * more readable layout.
- */
-static bool needs_horizontal_flip_due_to_inversion(BOND_IDX_VEC polymer_bonds)
-{
-    if (polymer_bonds.size() < 2)
-        return false;
-
-    // Sort by polymer atom index (left-to-right backbone order)
-    std::sort(polymer_bonds.begin(), polymer_bonds.end(),
-              [](const auto& a, const auto& b) { return a.first < b.first; });
-
-    // Flip only if the reference indices are strictly decreasing
-    for (size_t i = 1; i < polymer_bonds.size(); ++i) {
-        if (polymer_bonds[i].second > polymer_bonds[i - 1].second) {
-            return false; // not fully reversed
-        }
-    }
-
-    return true;
-}
-
-/**
- * Flip all atoms of `polymer` vertically (Y-axis) around Y = 0.
- */
-static void flip_vertically(RDKit::ROMol& polymer)
-{
-    auto& conf = polymer.getConformer();
-    for (auto& pos : conf.getPositions()) {
-        pos.y = -pos.y;
-    }
-}
-
-/**
- * Flip all atoms of `polymer` horizontally (X-axis) around X = 0.
- */
-static void flip_horizontally(RDKit::ROMol& polymer)
-{
-    auto& conf = polymer.getConformer();
-    for (auto& pos : conf.getPositions()) {
-        pos.x = -pos.x;
-    }
-}
-
-/**
- * Determine whether two monomers at `pos1` and `pos2` are closer than
- * MONOMER_CLASH_DISTANCE, indicating a geometric clash.
- */
 static bool positions_clash(const RDGeom::Point3D& pos1,
                             const RDGeom::Point3D& pos2)
 {
@@ -2403,101 +2321,185 @@ static bool positions_clash(const RDGeom::Point3D& pos1,
               pos1.y - pos2.y < -MONOMER_CLASH_DISTANCE));
 }
 
-static bool clashes_with_placed_polymers(
-    const RDKit::ROMol& polymer,
-    const std::vector<RDKit::ROMOL_SPTR>& placed_polymers)
+struct LayoutBond {
+    RDGeom::Point3D begin;
+    RDGeom::Point3D end;
+    unsigned int begin_id;
+    unsigned int end_id;
+};
+
+static void append_polymer_bonds(std::vector<LayoutBond>& bonds,
+                                 const RDKit::ROMol& polymer)
 {
-    for (auto placed_polymer : placed_polymers) {
-        auto bonds_between =
-            get_bonds_between_polymers(polymer, *placed_polymer);
-        if (needs_vertical_flip_due_to_clashes(polymer, *placed_polymer,
-                                               bonds_between)) {
-            return true;
+    const auto& conf = polymer.getConformer();
+    for (const auto* bond : polymer.bonds()) {
+        const auto* begin = bond->getBeginAtom();
+        const auto* end = bond->getEndAtom();
+        bonds.push_back({conf.getAtomPos(begin->getIdx()),
+                         conf.getAtomPos(end->getIdx()),
+                         begin->getProp<unsigned int>(ORIGINAL_INDEX),
+                         end->getProp<unsigned int>(ORIGINAL_INDEX)});
+    }
+}
+
+static void append_connections(std::vector<LayoutBond>& bonds,
+                               const RDKit::ROMol& from, const RDKit::ROMol& to,
+                               double* total_length = nullptr)
+{
+    const auto& from_conf = from.getConformer();
+    const auto& to_conf = to.getConformer();
+    for (auto [from_idx, to_idx] : get_bonds_between_polymers(from, to)) {
+        const auto begin = from_conf.getAtomPos(from_idx);
+        const auto end = to_conf.getAtomPos(to_idx);
+        bonds.push_back(
+            {begin, end,
+             from.getAtomWithIdx(from_idx)->getProp<unsigned int>(
+                 ORIGINAL_INDEX),
+             to.getAtomWithIdx(to_idx)->getProp<unsigned int>(ORIGINAL_INDEX)});
+        if (total_length != nullptr) {
+            *total_length += (end - begin).length();
         }
-        // do a basic monomer coordinate clash check
-        for (auto monomer : polymer.atoms()) {
-            auto monomer_pos =
-                polymer.getConformer().getAtomPos(monomer->getIdx());
-            for (auto placed_monomer : placed_polymer->atoms()) {
-                auto placed_monomer_pos =
-                    placed_polymer->getConformer().getAtomPos(
-                        placed_monomer->getIdx());
-                if (positions_clash(monomer_pos, placed_monomer_pos)) {
-                    return true;
+    }
+}
+
+static bool layout_bonds_are_too_close(const LayoutBond& a, const LayoutBond& b)
+{
+    if (a.begin_id == b.begin_id) {
+        return adjacent_bonds_are_too_close(a.end, a.begin, b.end);
+    }
+    if (a.begin_id == b.end_id) {
+        return adjacent_bonds_are_too_close(a.end, a.begin, b.begin);
+    }
+    if (a.end_id == b.begin_id) {
+        return adjacent_bonds_are_too_close(a.begin, a.end, b.end);
+    }
+    if (a.end_id == b.end_id) {
+        return adjacent_bonds_are_too_close(a.begin, a.end, b.begin);
+    }
+    return bonds_are_too_close(a.begin, a.end, b.begin, b.end);
+}
+
+/** Keep a left-to-right chain when crossing and clearance scores tie,
+ * then prefer shorter bonds and a vertical side. */
+static std::tuple<unsigned int, unsigned int, int, double, int>
+score_polymer_placement(const RDKit::ROMol& monomer_mol,
+                        const RDKit::ROMol& polymer, PolymerPlacement side,
+                        const std::vector<RDKit::ROMOL_SPTR>& placed_polymers)
+{
+    unsigned int residue_clashes = 0;
+    for (const auto& placed : placed_polymers) {
+        const auto connections = get_bonds_between_polymers(polymer, *placed);
+        const double clearance = get_interpolymer_clearance(
+            monomer_mol, polymer, *placed, connections);
+        for (const auto* atom : polymer.atoms()) {
+            const auto pos = polymer.getConformer().getAtomPos(atom->getIdx());
+            for (const auto* other : placed->atoms()) {
+                const auto other_pos =
+                    placed->getConformer().getAtomPos(other->getIdx());
+                if ((pos - other_pos).length() < clearance &&
+                    std::find(
+                        connections.begin(), connections.end(),
+                        std::make_pair(atom->getIdx(), other->getIdx())) ==
+                        connections.end()) {
+                    ++residue_clashes;
                 }
             }
         }
     }
-    return false;
-}
-/**
- * Resolve geometric clashes and topological crossings between
- * `polymer_to_orient` and `reference_polymer` by flipping `polymer_to_orient`
- * vertically and/or horizontally as needed. Placement is recomputed after each
- * flip to restore correct alignment.
- */
-static void resolve_polymer_clashes_and_crossings(
-    RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& reference_polymer,
-    const BOND_IDX_VEC& polymer_bonds, bool invert_placement = false)
-{
-    // Resolve vertical clashes
-    if (needs_vertical_flip_due_to_clashes(polymer_to_orient, reference_polymer,
-                                           polymer_bonds)) {
-        flip_vertically(polymer_to_orient);
-        place_polymer_below_reference(polymer_to_orient, reference_polymer,
-                                      polymer_bonds, invert_placement);
+
+    std::vector<LayoutBond> new_bonds;
+    std::vector<LayoutBond> placed_bonds;
+    append_polymer_bonds(new_bonds, polymer);
+    double total_length = 0;
+    for (size_t i = 0; i < placed_polymers.size(); ++i) {
+        append_polymer_bonds(placed_bonds, *placed_polymers[i]);
+        append_connections(new_bonds, polymer, *placed_polymers[i],
+                           &total_length);
+        for (size_t j = 0; j < i; ++j) {
+            append_connections(placed_bonds, *placed_polymers[i],
+                               *placed_polymers[j]);
+        }
     }
 
-    // Resolve horizontal crossings (index inversion)
-    if (needs_horizontal_flip_due_to_inversion(polymer_bonds)) {
-        flip_horizontally(polymer_to_orient);
-        place_polymer_below_reference(polymer_to_orient, reference_polymer,
-                                      polymer_bonds, invert_placement);
+    unsigned int crossings = 0;
+    for (size_t i = 0; i < new_bonds.size(); ++i) {
+        for (size_t j = i + 1; j < new_bonds.size(); ++j) {
+            if (layout_bonds_are_too_close(new_bonds[i], new_bonds[j])) {
+                ++crossings;
+            }
+        }
+        for (const auto& placed_bond : placed_bonds) {
+            if (layout_bonds_are_too_close(new_bonds[i], placed_bond)) {
+                ++crossings;
+            }
+        }
     }
+    // Keep the conventional vertical placement when otherwise equivalent.
+    const int horizontal_side =
+        side == PolymerPlacement::LEFT || side == PolymerPlacement::RIGHT;
+    const auto& positions = polymer.getConformer().getPositions();
+    const int right_to_left =
+        positions.size() > 1 &&
+        positions.back().x < positions.front().x - EPSILON;
+    return {crossings, residue_clashes, right_to_left,
+            std::round(total_length / EPSILON), horizontal_side};
 }
 
-/**
- * Move `polymer_to_orient` so that it is positioned below `reference_polymer`
- * with no overlap, resolving vertical clashes and horizontal crossings.
- *
- * - First places the polymer below the reference, or above if there are clashes
- * with already placed polymers
- * - Flips vertically if needed to resolve bond clashes
- * - Flips horizontally if needed to remove topological crossings
- *
- * Placement is recomputed after each flip to restore correct alignment.
- * If the polymer was rotated during layout (for double stranded nucleic
- * acids), flipping steps are skipped
- */
+/** Try each side and reflection, keeping the least crossed, shortest layout. */
 static void
-orient_polymer(RDKit::ROMol& polymer_to_orient,
+orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
                const RDKit::ROMol& reference_polymer, bool polymer_was_rotated,
                const std::vector<RDKit::ROMOL_SPTR>& placed_polymers)
 {
-    auto polymer_bonds =
+    const auto parent_bonds =
         get_bonds_between_polymers(polymer_to_orient, reference_polymer);
-
-    // Initial placement
-    bool invert_placement = false;
-    place_polymer_below_reference(polymer_to_orient, reference_polymer,
-                                  polymer_bonds, invert_placement);
-
-    // if the polymer was rotated during layout, skip flipping steps to avoid
-    // undoing the rotation
-    if (polymer_was_rotated) {
-        return;
+    auto& conf = polymer_to_orient.getConformer();
+    const auto original = conf.getPositions();
+    std::vector<RDGeom::Point3D> best_positions;
+    std::optional<std::tuple<unsigned int, unsigned int, int, double, int>>
+        best_score;
+    const std::array sides{PolymerPlacement::BELOW, PolymerPlacement::ABOVE,
+                           PolymerPlacement::RIGHT, PolymerPlacement::LEFT};
+    const double preferred_clearance = get_interpolymer_clearance(
+        monomer_mol, polymer_to_orient, reference_polymer, parent_bonds);
+    // Keep the wider spacing available if a compact connector causes a clash.
+    const int clearance_count =
+        preferred_clearance < INTERPOLYMER_RESIDUE_CLEARANCE ? 2 : 1;
+    // Preserve the orientation of bases on unpaired DNA/RNA strands. The
+    // 180 degree rotation of a paired nucleic acid is intentional.
+    const int reflection_count =
+        polymer_was_rotated ? 1 : (is_nucleic_acid(polymer_to_orient) ? 2 : 4);
+    for (auto side : sides) {
+        for (int reflection = 0; reflection < reflection_count; ++reflection) {
+            for (int clearance_idx = 0; clearance_idx < clearance_count;
+                 ++clearance_idx) {
+                for (size_t i = 0; i < original.size(); ++i) {
+                    auto pos = original[i];
+                    if (reflection & 1) {
+                        pos.x = -pos.x;
+                    }
+                    if (reflection & 2) {
+                        pos.y = -pos.y;
+                    }
+                    conf.setAtomPos(i, pos);
+                }
+                const double clearance = clearance_idx == 0
+                                             ? preferred_clearance
+                                             : INTERPOLYMER_RESIDUE_CLEARANCE;
+                place_polymer_beside_reference(polymer_to_orient,
+                                               reference_polymer, parent_bonds,
+                                               side, clearance);
+                auto score = score_polymer_placement(
+                    monomer_mol, polymer_to_orient, side, placed_polymers);
+                if (!best_score || score < *best_score) {
+                    best_score = score;
+                    best_positions = conf.getPositions();
+                }
+            }
+        }
     }
-
-    resolve_polymer_clashes_and_crossings(polymer_to_orient, reference_polymer,
-                                          polymer_bonds, invert_placement);
-
-    if (clashes_with_placed_polymers(polymer_to_orient, placed_polymers)) {
-        invert_placement = true;
-        place_polymer_below_reference(polymer_to_orient, reference_polymer,
-                                      polymer_bonds, invert_placement);
-        resolve_polymer_clashes_and_crossings(polymer_to_orient,
-                                              reference_polymer, polymer_bonds,
-                                              invert_placement);
+    for (size_t i = 0; i < best_positions.size(); ++i) {
+        conf.setAtomPos(i, best_positions[i]);
     }
 }
 
@@ -2624,6 +2626,7 @@ static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
 }
 
 void lay_out_polymers(
+    const RDKit::ROMol& monomer_mol,
     const std::vector<RDKit::ROMOL_SPTR>& polymers,
     const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
@@ -2653,7 +2656,8 @@ void lay_out_polymers(
                               are_double_stranded_nucleic_acid(polymer, parent);
         lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer);
         if (parent != nullptr) {
-            orient_polymer(*polymer, *parent, rotate_polymer, placed_polymers);
+            orient_polymer(*polymer, monomer_mol, *parent, rotate_polymer,
+                           placed_polymers);
         }
         placed_polymers.push_back(polymer);
     }
@@ -3424,6 +3428,140 @@ void resize_monomers(
     auto ring_displacements = compute_ring_expansion_displacements(
         mol, ring_resize_data, ring_resize_info);
 
+    // Ring expansion moves attached monomers with the ring, but the separate
+    // linear resize pass can shift connected polymers by different amounts.
+    // Keep bonds placed vertically aligned by translating whole polymers in X.
+    // Calculate all translations before applying them so fixing one bond cannot
+    // tilt another bond attached to the same polymer.
+    std::map<std::pair<std::string, std::string>, unsigned int> bond_counts;
+    std::map<std::string, std::vector<unsigned int>> polymer_atoms;
+    std::vector<std::string> polymer_ids;
+    for (const auto* atom : mol.atoms()) {
+        const auto id = get_polymer_id(atom);
+        if (!polymer_atoms.contains(id)) {
+            polymer_ids.push_back(id);
+        }
+        polymer_atoms[id].push_back(atom->getIdx());
+    }
+    auto final_x = [&](unsigned int idx) {
+        return mol.getConformer().getAtomPos(idx).x +
+               linear_displacements[idx].x + ring_displacements[idx].x;
+    };
+    std::map<std::string, std::vector<std::pair<std::string, double>>>
+        vertical_connections;
+    for (const auto* bond : mol.bonds()) {
+        const auto begin_id = get_polymer_id(bond->getBeginAtom());
+        const auto end_id = get_polymer_id(bond->getEndAtom());
+        auto ids = std::minmax(begin_id, end_id);
+        if (ids.first != ids.second) {
+            ++bond_counts[ids];
+        }
+    }
+    for (const auto* bond : mol.bonds()) {
+        const auto begin_idx = bond->getBeginAtomIdx();
+        const auto end_idx = bond->getEndAtomIdx();
+        const auto begin_id = get_polymer_id(bond->getBeginAtom());
+        const auto end_id = get_polymer_id(bond->getEndAtom());
+        if (begin_id == end_id ||
+            bond_counts[std::minmax(begin_id, end_id)] != 1 ||
+            std::abs(mol.getConformer().getAtomPos(begin_idx).x -
+                     mol.getConformer().getAtomPos(end_idx).x) > EPSILON) {
+            continue;
+        }
+        const double correction = final_x(begin_idx) - final_x(end_idx);
+        vertical_connections[begin_id].emplace_back(end_id, correction);
+        vertical_connections[end_id].emplace_back(begin_id, -correction);
+    }
+    // Anchor the largest polymer in each connected group, then carry its
+    // translation through all vertically connected polymers.
+    std::stable_sort(polymer_ids.begin(), polymer_ids.end(),
+                     [&](const auto& a, const auto& b) {
+                         return polymer_atoms[a].size() >
+                                polymer_atoms[b].size();
+                     });
+    std::map<std::string, double> translations;
+    for (const auto& root : polymer_ids) {
+        if (translations.contains(root)) {
+            continue;
+        }
+        translations[root] = 0;
+        std::queue<std::string> pending;
+        pending.push(root);
+        while (!pending.empty()) {
+            const auto id = pending.front();
+            pending.pop();
+            for (const auto& [neighbor, offset] : vertical_connections[id]) {
+                if (!translations.contains(neighbor)) {
+                    translations[neighbor] = translations[id] + offset;
+                    pending.push(neighbor);
+                }
+            }
+        }
+    }
+    // Keep the alignment correction from reducing label clearance between
+    // polymers that are outside the vertical-connection graph. For each pair
+    // whose labels overlap vertically, preserve the existing horizontal gap
+    // up to the standard gap used by monomer connections.
+    const double minimum_label_gap = MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
+    double max_alignment_fraction = 1.0;
+    const auto num_atoms = mol.getNumAtoms();
+    std::vector<std::string> atom_polymer_ids(num_atoms);
+    std::vector<RDGeom::Point3D> positions_after_resize(num_atoms);
+    std::vector<RDGeom::Point3D> sizes_after_resize(num_atoms);
+    for (const auto* atom : mol.atoms()) {
+        const auto idx = atom->getIdx();
+        atom_polymer_ids[idx] = get_polymer_id(atom);
+        positions_after_resize[idx] = mol.getConformer().getAtomPos(idx) +
+                                      linear_displacements[idx] +
+                                      ring_displacements[idx];
+        const auto size_it = clamped_monomer_sizes.find(idx);
+        sizes_after_resize[idx] = size_it == clamped_monomer_sizes.end()
+                                      ? get_monomer_size(mol, idx)
+                                      : size_it->second;
+    }
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        for (unsigned int j = i + 1; j < num_atoms; ++j) {
+            if (atom_polymer_ids[i] == atom_polymer_ids[j]) {
+                continue;
+            }
+            const double relative_translation =
+                translations[atom_polymer_ids[i]] -
+                translations[atom_polymer_ids[j]];
+            if (relative_translation == 0.0) {
+                continue;
+            }
+            const auto& pos_i = positions_after_resize[i];
+            const auto& pos_j = positions_after_resize[j];
+            const auto& size_i = sizes_after_resize[i];
+            const auto& size_j = sizes_after_resize[j];
+            const double dx = pos_i.x - pos_j.x;
+            const double dy = pos_i.y - pos_j.y;
+            const double half_widths = (size_i.x + size_j.x) * 0.5;
+            const double half_heights = (size_i.y + size_j.y) * 0.5;
+            if (std::abs(dy) >= half_heights + minimum_label_gap) {
+                continue;
+            }
+            const double existing_gap =
+                std::max(0.0, std::abs(dx) - half_widths);
+            const double required_x_separation =
+                half_widths + std::min(existing_gap, minimum_label_gap);
+            if (dx * relative_translation >= 0.0) {
+                continue;
+            }
+            const double allowed_fraction =
+                (std::abs(dx) - required_x_separation) /
+                std::abs(relative_translation);
+            max_alignment_fraction = std::min(
+                max_alignment_fraction, std::clamp(allowed_fraction, 0.0, 1.0));
+        }
+    }
+
+    for (const auto& [id, translation] : translations) {
+        for (const auto idx : polymer_atoms[id]) {
+            linear_displacements[idx].x += translation * max_alignment_fraction;
+        }
+    }
+
     // apply movement
     apply_displacements(mol, linear_displacements);
     apply_displacements(mol, ring_displacements);
@@ -3445,7 +3583,7 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     if (is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
-        lay_out_polymers(polymers, parent_polymer);
+        lay_out_polymers(monomer_mol, polymers, parent_polymer);
     }
 
     auto conformer_id =
@@ -3465,7 +3603,10 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
         monomer_mol_copy.getRingInfo()->reset();
         auto [units, parent_unit] =
             break_into_topological_units(monomer_mol_copy);
-        lay_out_polymers(units, parent_unit);
+        // The topological-unit copy has synthetic chain IDs. Use the original
+        // molecule for connector classification while keeping the extracted
+        // units and their coordinates from the copy.
+        lay_out_polymers(monomer_mol, units, parent_unit);
         monomer_mol_copy.clearConformers();
         copy_polymer_coords_to_monomer_mol(monomer_mol_copy, units);
         if (coordinates_are_valid(monomer_mol_copy)) {

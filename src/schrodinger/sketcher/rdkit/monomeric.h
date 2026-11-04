@@ -13,6 +13,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/definitions.h"
 
@@ -40,20 +41,12 @@ using rdkit_extensions::Direction;
 
 enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
 
-enum class ConnectorType {
-    CHEM,
-    PEPTIDE_LINEAR,
-    PEPTIDE_BRANCHING,
-    PEPTIDE_DISULFIDE,
-    PEPTIDE_SIDE_CHAIN,
-    H_BOND,
-    NA_BACKBONE,
-    NA_BACKBONE_TO_BASE
-};
+using rdkit_extensions::ConnectorType;
+using rdkit_extensions::get_connector_type;
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, X_OR_S = 3 };
+enum { N = 1, C = 2, X_OR_S = rdkit_extensions::PEPTIDE_R3_ATTACHMENT_POINT };
 }
 
 namespace NASugarAP
@@ -313,21 +306,7 @@ SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
 SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
 
 /**
- * Determine what type of monomeric connection the given bond represents.
- * Note that a connector between a CHEM monomer and any other monomer will be
- * categorized as a CHEM connector, and a connector between a PEPTIDE monomer
- * and an RNA monomer will be categorized as a PEPTIDE connector.
- *
- * @param bond the bond representing a monomer connector
- * @param is_secondary_connection whether to categorize the primary or secondary
- * connection of this bond. This is only relevant for bonds that
- * contains_two_monomer_linkages() returns true.
- */
-SKETCHER_API ConnectorType
-get_connector_type(const RDKit::Bond* bond, const bool is_secondary_connection);
-
-/**
- * Determine whether diamond arrowheads should be drawn at the start and end of
+ * Determine whether arrowheads should be drawn at the start and end of
  * the given connector.
  * @param bond the bond representing a monomer connector
  * @param is_secondary_connection whether we are drawing the primary or
@@ -341,17 +320,13 @@ std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const bool is_secondary_connection);
 
-/**
- * @overload
- * @param bond the bond representing a monomer connector
- * @param connector_type the type of monomer connection represented by bond
- */
+/** Determine arrowhead placement from the connector's computed type. */
 std::pair<bool, bool>
 does_connector_have_arrowheads(const RDKit::Bond* bond,
                                const ConnectorType connector_type);
 
 /**
- * For a monomer connector being drawn with a diamond arrowhead, determine the
+ * For a monomer connector being drawn with an arrowhead, determine the
  * offset from the center of the monomer to the center of the arrowhead. The
  * arrowhead is placed outside the nearest cardinal side facing the bound
  * monomer. If that side is occupied, up to three other forward-facing sides

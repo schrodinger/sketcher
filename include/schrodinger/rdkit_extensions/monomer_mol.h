@@ -42,6 +42,7 @@ class MonomerDatabase;
 using Monomer = RDKit::Atom;
 
 enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
+inline constexpr unsigned int PEPTIDE_R3_ATTACHMENT_POINT = 3;
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 enum class ConnectionAdded {
