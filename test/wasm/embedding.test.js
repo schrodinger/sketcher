@@ -167,6 +167,116 @@ test('cross-origin parent gets molecules and images through messages', async ({
   expect(result.methodError).toBe('Unknown sketcher method: unknownMethod');
 });
 
+test('ignores requests from a sibling frame', async ({ page, baseURL }) => {
+  await openEmbedding(page, baseURL);
+  const sketcherFrame = page.frames().find((frame) => frame.url().endsWith('/wasm_shell.html'));
+  await page.evaluate(async () => {
+    await window.sketcherRequest('setMolecule', { text: 'CCO' });
+    const sibling = document.createElement('iframe');
+    const sketcherOrigin = new URL(document.querySelector('iframe').src).origin;
+    sibling.srcdoc = `<!doctype html><script>
+      parent.postMessage({ type: 'sibling-ready' }, '*');
+      setTimeout(() => parent.frames[0].postMessage({
+          type: 'schrodinger.sketcher.request',
+          id: 'sibling-request',
+          method: 'setMolecule',
+          text: 'CCN',
+        }, '${sketcherOrigin}'), 100);
+    <\/script>`;
+    document.body.appendChild(sibling);
+    await new Promise((resolve) => {
+      function onMessage(event) {
+        if (event.data?.type === 'sibling-ready') {
+          removeEventListener('message', onMessage);
+          resolve();
+        }
+      }
+      addEventListener('message', onMessage);
+    });
+  });
+
+  const result = await sketcherFrame.evaluate(async () => {
+    const original = await window.getMolecule();
+    const response = new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 500);
+      window.addEventListener(
+        'message',
+        (event) => {
+          if (
+            event.data?.type === 'schrodinger.sketcher.response' &&
+            event.data.id === 'sibling-request'
+          ) {
+            clearTimeout(timer);
+            resolve(event.data);
+          }
+        },
+        { once: true },
+      );
+    });
+    const reply = await response;
+    return { reply, molecule: await window.getMolecule(), original };
+  });
+
+  expect(result.reply).toBeNull();
+  expect(result.original).toBe('CCO');
+  expect(result.molecule).toBe('CCO');
+});
+
+test('ignores requests from an opaque-origin parent', async ({ page, baseURL }) => {
+  await page.goto(baseURL);
+  await page.evaluate(async (sketcherURL) => {
+    const opaqueParent = document.createElement('iframe');
+    opaqueParent.sandbox = 'allow-scripts';
+    opaqueParent.srcdoc = `<!doctype html><iframe src="${sketcherURL}"></iframe><script>
+      const sketcher = document.querySelector('iframe');
+      sketcher.addEventListener('load', () => {
+        sketcher.contentWindow.postMessage({
+          type: 'schrodinger.sketcher.request',
+          id: 'opaque-request',
+          method: 'setMolecule',
+          text: 'CCN',
+        }, '*');
+        parent.postMessage({ type: 'opaque-request-sent' }, '*');
+      });
+      addEventListener('message', (event) => {
+        if (event.source === sketcher.contentWindow && event.data?.id === 'opaque-request') {
+          parent.postMessage({ type: 'opaque-response', request: event.data }, '*');
+        }
+      });
+    <\/script>`;
+    document.body.appendChild(opaqueParent);
+    await new Promise((resolve) => {
+      function onMessage(event) {
+        if (event.data?.type === 'opaque-request-sent') {
+          removeEventListener('message', onMessage);
+          resolve();
+        }
+      }
+      addEventListener('message', onMessage);
+    });
+  }, `${baseURL}/wasm_shell.html`);
+
+  const result = await page.evaluate(async () => {
+    const response = new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 250);
+      window.addEventListener(
+        'message',
+        (event) => {
+          if (event.data?.type === 'opaque-response') {
+            clearTimeout(timer);
+            resolve(event.data);
+          }
+        },
+        { once: true },
+      );
+    });
+    const reply = await response;
+    return { reply };
+  });
+
+  expect(result.reply).toBeNull();
+});
+
 const malformedSmiles = [
   { name: 'unclosed ring', text: 'C1CC' },
   { name: 'unclosed branch', text: 'CC(O' },

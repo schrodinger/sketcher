@@ -129,7 +129,13 @@
       }
 
       function nativeExceptionMessage(instance, exception) {
-        instance.incrementExceptionRefcount(exception);
+        // Legacy Emscripten exceptions are numeric pointers and need a retain
+        // across stack restoration. Native WebAssembly.Exception objects already
+        // own a reference, so incrementing them would leak that reference.
+        const isLegacyException = typeof exception === 'number';
+        if (isLegacyException) {
+          instance.incrementExceptionRefcount(exception);
+        }
         try {
           return instance.getExceptionMessage(exception)[1];
         } finally {
