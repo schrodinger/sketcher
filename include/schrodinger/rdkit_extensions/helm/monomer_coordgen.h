@@ -70,6 +70,16 @@ unsigned int RDKIT_EXTENSIONS_API
 compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
 
 /**
+ * Lay peptide backbones out as horizontal chains, even when non-backbone
+ * connections make them cyclic. Other polymers use the normal layout.
+ *
+ * @param monomer_mol monomeric molecule
+ * @return The id of the conformer added to the molecule
+ */
+unsigned int RDKIT_EXTENSIONS_API
+compute_linear_peptide_coords(RDKit::ROMol& monomer_mol);
+
+/**
  * Scores the entire coiling layout based on all custom bonds. The lower the
  * score, the better, with 0 being a perfect score where all custom bonds
  * connect residues in corresponding positions at exactly 1 full coil distance.

@@ -73,6 +73,12 @@ struct RenderOptions {
     // bonds.
     qreal bond_width_scale = 1.0;
 
+    // Lay peptide backbones out as horizontal chains, regardless of any
+    // non-backbone connections. The same flag is made available to the
+    // renderer so those connections can be drawn appropriately for a linear
+    // peptide layout.
+    bool render_peptides_linearly = false;
+
     // User annotations and colorings based on atom and bond indices.
     // Bonds between haloed atoms will not be haloed unless separately
     // specified. Bonds lines between atoms will have split color based

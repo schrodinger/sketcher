@@ -30,6 +30,8 @@ namespace sketcher
  * with stored bead sizes. If the input structure contains a 3d conformer, it
  * will be kept in addition to the 2d conformer. Any additional 2d or 3d
  * conformers will be discarded.
+ *
+ * @param mol Molecule whose conformers should be normalized.
  */
 SKETCHER_API void update_2d_coordinates(RDKit::ROMol& mol);
 
