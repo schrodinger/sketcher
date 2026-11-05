@@ -344,15 +344,10 @@ generate_git_patch_command(
   rdkit_static_build.patch
   # Fix expat.h header propagation. This breaks the Windows and wasm builds
   rdkit_expat_public_includes.patch
-  rdkit_pr_9563.patch
-  rdkit_pr_9550.patch
-  rdkit_pr_9536.patch
   rdkit_molecular_templates_pr_29.patch
   rdkit_pr_9639.patch
-  rdkit_pr_9649.patch
-  rdkit_pr_9650.patch
-  rdkit_pr_9630.patch
-  rdkit_revert_pr_9414.patch)
+  rdkit_pr_9659.patch
+  rdkit_pr_9782.patch)
 
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
