@@ -342,8 +342,6 @@ generate_git_patch_command(
   RDKIT_PATCH_COMMAND
   # Prevent RDKit from trying to build shared libs
   rdkit_static_build.patch
-  # Fix expat.h header propagation. This breaks the Windows and wasm builds
-  rdkit_expat_public_includes.patch
   rdkit_molecular_templates_pr_29.patch
   rdkit_pr_9639.patch
   rdkit_pr_9659.patch
