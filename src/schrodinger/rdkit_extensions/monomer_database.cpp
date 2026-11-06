@@ -190,13 +190,22 @@ template <class value_getter_t>
 [[nodiscard]] auto get_info_from_database(sqlite3* custom_monomers_db,
                                           sqlite3* core_monomers_db,
                                           const std::string& sql,
-                                          value_getter_t return_val_converter)
+                                          value_getter_t return_val_converter,
+                                          std::optional<std::string> parameter =
+                                              std::nullopt)
 {
+    // If present, parameter is bound to the statement's first "?" placeholder.
     sqlite3_stmt* stmt = nullptr;
     for (sqlite3* db : {custom_monomers_db, core_monomers_db}) {
         if (db != nullptr &&
             sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL) == SQLITE_OK) {
             managed_stmt_t statement(stmt, &sqlite3_finalize);
+
+            if (parameter && sqlite3_bind_text(stmt, 1, parameter->c_str(), -1,
+                                               SQLITE_TRANSIENT) != SQLITE_OK) {
+                throw std::runtime_error(fmt::format(
+                    "Error binding monomer symbol: {}", sqlite3_errmsg(db)));
+            }
 
             // NOTE: Return the first result you see
             if (auto rc = sqlite3_step(stmt);
@@ -260,18 +269,16 @@ bind_and_execute_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
 }
 
 template <class T> std::string
-get_monomer_query_sql(std::string monomer_id,
-                      schrodinger::rdkit_extensions::ChainType polymer_type,
+get_monomer_query_sql(schrodinger::rdkit_extensions::ChainType polymer_type,
                       const T& selected)
 {
     static constexpr std::string_view template_{
-        "SELECT {0} FROM {5} WHERE {1}='{2}' AND {3}='{4}';"};
+        "SELECT {0} FROM {4} WHERE {1}='{2}' AND {3}=?;"};
 
     auto type_value = schrodinger::rdkit_extensions::toString(polymer_type);
-    boost::algorithm::trim(monomer_id);
 
     return fmt::format(template_, selected, polymer_type_column, type_value,
-                       symbol_column, monomer_id, monomer_defs_table);
+                       symbol_column, monomer_defs_table);
 }
 
 std::pair<std::string, std::string>
@@ -872,27 +879,27 @@ std::vector<std::string> MonomerDatabase::getDbFields() const
 opt_string_t MonomerDatabase::getMonomerSmiles(const std::string& monomer_id,
                                                ChainType polymer_type) const
 {
-    auto sql = get_monomer_query_sql(monomer_id, polymer_type, smiles_column);
+    auto sql = get_monomer_query_sql(polymer_type, smiles_column);
 
     auto smiles_getter = [](sqlite3_stmt* stmt) -> opt_string_t {
         return std::make_optional(_sqlite3_column_cstring(stmt, 0));
     };
 
     return get_info_from_database(m_custom_monomers_db, m_core_monomers_db, sql,
-                                  smiles_getter);
+                                  smiles_getter, boost::trim_copy(monomer_id));
 }
 
 opt_string_t MonomerDatabase::getNaturalAnalog(const std::string& monomer_id,
                                                ChainType polymer_type) const
 {
-    auto sql = get_monomer_query_sql(monomer_id, polymer_type, analog_column);
+    auto sql = get_monomer_query_sql(polymer_type, analog_column);
 
     auto analog_getter = [](sqlite3_stmt* stmt) -> opt_string_t {
         return std::make_optional(_sqlite3_column_cstring(stmt, 0));
     };
 
     return get_info_from_database(m_custom_monomers_db, m_core_monomers_db, sql,
-                                  analog_getter);
+                                  analog_getter, boost::trim_copy(monomer_id));
 }
 
 [[nodiscard]] MonomerDatabase::helm_info_t
@@ -924,7 +931,7 @@ MonomerDatabase::getHelmInfo(const std::string& pdb_code) const
 MonomerDatabase::getPdbCode(const std::string& monomer_id,
                             ChainType polymer_type) const
 {
-    auto sql = get_monomer_query_sql(monomer_id, polymer_type, pdb_code_column);
+    auto sql = get_monomer_query_sql(polymer_type, pdb_code_column);
 
     auto pdb_code_getter = [](sqlite3_stmt* stmt) -> opt_string_t {
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL) {
@@ -934,7 +941,7 @@ MonomerDatabase::getPdbCode(const std::string& monomer_id,
     };
 
     return get_info_from_database(m_custom_monomers_db, m_core_monomers_db, sql,
-                                  pdb_code_getter);
+                                  pdb_code_getter, boost::trim_copy(monomer_id));
 }
 
 [[nodiscard]] std::string
@@ -980,7 +987,7 @@ MonomerInfo MonomerDatabase::getMonomerInfo(const std::string& monomer_id,
     // We don't want "SELECT *", as that would include the "ID" column,
     // which is meaningless and not part of the MonomerInfo schema.
     auto fields = fmt::format("{}", fmt::join(getDbFields(), ", "));
-    auto sql = get_monomer_query_sql(monomer_id, polymer_type, fields);
+    auto sql = get_monomer_query_sql(polymer_type, fields);
 
     auto monomer_info_getter =
         [](sqlite3_stmt* stmt) -> std::optional<MonomerInfo> {
@@ -994,7 +1001,8 @@ MonomerInfo MonomerDatabase::getMonomerInfo(const std::string& monomer_id,
     };
 
     if (auto ret = get_info_from_database(
-            m_custom_monomers_db, m_core_monomers_db, sql, monomer_info_getter);
+            m_custom_monomers_db, m_core_monomers_db, sql, monomer_info_getter,
+            boost::trim_copy(monomer_id));
         ret.has_value()) {
         return *ret;
     }

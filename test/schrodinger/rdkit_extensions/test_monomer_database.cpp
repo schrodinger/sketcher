@@ -343,6 +343,30 @@ BOOST_AUTO_TEST_CASE(TestNameEscaping)
     monomer_db.loadMonomersFromJson(json_for_12ddR);
 }
 
+BOOST_AUTO_TEST_CASE(TestSymbolLookupWithApostrophe)
+{
+    constexpr std::string_view json = R"JSON([{
+        "symbol": "Qa'9",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "W",
+        "smiles": "NC(C(=O)[OH:2])C1CC1",
+        "name": "QAtest9",
+        "monomer_type": "Backbone",
+        "author": "test"
+    }])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    const auto [succeeded, failed] = monomer_db.loadMonomersFromJson(json);
+    BOOST_REQUIRE_EQUAL(succeeded.size(), 1);
+    BOOST_REQUIRE(failed.empty());
+
+    const auto smiles =
+        monomer_db.getMonomerSmiles("Qa'9", ChainType::PEPTIDE);
+    BOOST_REQUIRE(smiles.has_value());
+    BOOST_CHECK_EQUAL(*smiles, "NC(C(=O)[OH:2])C1CC1");
+    monomer_db.resetMonomerDefinitions();
+}
+
 BOOST_AUTO_TEST_CASE(TestSmilesEscaping)
 {
     constexpr std::string_view json_for_boc_ser_bzl = R"JSON(
