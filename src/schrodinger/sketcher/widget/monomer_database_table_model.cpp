@@ -4,8 +4,6 @@
 
 #include <QString>
 
-#include "schrodinger/rdkit_extensions/monomer_mol.h"
-
 using schrodinger::rdkit_extensions::MonomerID;
 using schrodinger::rdkit_extensions::MonomerInfo;
 
@@ -102,9 +100,9 @@ void MonomerDatabaseTableModel::sort(int column, Qt::SortOrder order)
 
 MonomerID MonomerDatabaseTableModel::getMonomerID(int row) const
 {
-    const auto& info = getMonomerInfo(row);
-    return {info.symbol.value_or(""),
-            rdkit_extensions::toChainType(info.polymer_type.value_or(""))};
+    // The table only contains filtered rows, which always have a valid polymer
+    // type, so this never throws
+    return get_monomer_id(getMonomerInfo(row)).value();
 }
 
 std::optional<int>

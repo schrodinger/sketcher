@@ -658,7 +658,8 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::DNA_NUCLEOBASE:
             case ModelKey::CUSTOM_NUCLEOTIDE:
             case ModelKey::CUSTOM_MONOMER:
-            case ModelKey::MONOMER_DB_MONOMER:
+            case ModelKey::AMINO_ACID_DB_MONOMER:
+            case ModelKey::NUCLEIC_ACID_DB_MONOMER:
             case ModelKey::MONOMERIC_CONNECTION_TOOL:
                 updateSceneTool();
                 break;
@@ -767,8 +768,7 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 m_mol_model, is_smiles);
         } else {
             auto tool = m_sketcher_model->getNucleicAcidTool();
-            if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool) ||
-                tool == NucleicAcidTool::UNCLASSIFIED) {
+            if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool)) {
                 auto mutation =
                     m_sketcher_model->getValue(ModelKey::NUCLEIC_ACID_SYMBOL)
                         .value<NucleicAcidMutation>();
@@ -807,8 +807,7 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 m_mol_model);
         }
     } else if (draw_tool == DrawTool::MONOMER_DB_MONOMER) {
-        auto monomer = m_sketcher_model->getValue(ModelKey::MONOMER_DB_MONOMER)
-                           .value<rdkit_extensions::MonomerID>();
+        auto monomer = m_sketcher_model->getMonomerDbMonomer();
         if (!monomer.symbol.empty()) {
             return std::make_shared<DrawMonomerSceneTool>(
                 monomer.symbol, monomer.chain_type, m_fonts,

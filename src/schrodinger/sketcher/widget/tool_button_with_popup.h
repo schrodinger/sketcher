@@ -81,12 +81,8 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     bool m_was_checked_on_press = false;
 
     /**
-     * Show the popup widget.
-     *
-     * By default, place the top left corner of the widget at the bottom left
-     * corner of this button. If the widget would be rendered partially off-
-     * screen, move it up and left as necessary. If it needs to be moved up,
-     * show the popup fully above this button.
+     * Show the popup widget next to this button. See
+     * show_popup_next_to_widget() for the placement rules.
      */
     void showPopup();
     void startPopupTimer();
