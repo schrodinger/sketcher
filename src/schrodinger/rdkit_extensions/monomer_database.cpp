@@ -186,13 +186,11 @@ inline std::vector<MonomerInfo> json_to_monomer_vector(std::string_view json)
     return boost::json::value_to<std::vector<MonomerInfo>>(parsed);
 }
 
-template <class value_getter_t>
-[[nodiscard]] auto get_info_from_database(sqlite3* custom_monomers_db,
-                                          sqlite3* core_monomers_db,
-                                          const std::string& sql,
-                                          value_getter_t return_val_converter,
-                                          std::optional<std::string> parameter =
-                                              std::nullopt)
+template <class value_getter_t> [[nodiscard]] auto
+get_info_from_database(sqlite3* custom_monomers_db, sqlite3* core_monomers_db,
+                       const std::string& sql,
+                       value_getter_t return_val_converter,
+                       std::optional<std::string> parameter = std::nullopt)
 {
     // If present, parameter is bound to the statement's first "?" placeholder.
     sqlite3_stmt* stmt = nullptr;
@@ -941,7 +939,8 @@ MonomerDatabase::getPdbCode(const std::string& monomer_id,
     };
 
     return get_info_from_database(m_custom_monomers_db, m_core_monomers_db, sql,
-                                  pdb_code_getter, boost::trim_copy(monomer_id));
+                                  pdb_code_getter,
+                                  boost::trim_copy(monomer_id));
 }
 
 [[nodiscard]] std::string

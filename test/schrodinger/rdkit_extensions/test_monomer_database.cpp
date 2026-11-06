@@ -360,8 +360,7 @@ BOOST_AUTO_TEST_CASE(TestSymbolLookupWithApostrophe)
     BOOST_REQUIRE_EQUAL(succeeded.size(), 1);
     BOOST_REQUIRE(failed.empty());
 
-    const auto smiles =
-        monomer_db.getMonomerSmiles("Qa'9", ChainType::PEPTIDE);
+    const auto smiles = monomer_db.getMonomerSmiles("Qa'9", ChainType::PEPTIDE);
     BOOST_REQUIRE(smiles.has_value());
     BOOST_CHECK_EQUAL(*smiles, "NC(C(=O)[OH:2])C1CC1");
     monomer_db.resetMonomerDefinitions();
