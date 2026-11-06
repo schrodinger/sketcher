@@ -345,7 +345,8 @@ generate_git_patch_command(
   rdkit_molecular_templates_pr_29.patch
   rdkit_pr_9639.patch
   rdkit_pr_9659.patch
-  rdkit_pr_9782.patch)
+  rdkit_pr_9782.patch
+  rdkit_fix_maeparser_include.patch)
 
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
