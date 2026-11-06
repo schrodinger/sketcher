@@ -1,8 +1,11 @@
 #define BOOST_TEST_MODULE test_monomer_database
 
+#include <algorithm>
 #include <memory>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -578,4 +581,96 @@ BOOST_AUTO_TEST_CASE(TestMultiAtomLGCanonicalization)
     BOOST_CHECK_EQUAL(*no_core_info.smiles, "CC[OH:1]");
     BOOST_REQUIRE(no_core_info.core_smiles.has_value());
     BOOST_CHECK_EQUAL(*no_core_info.core_smiles, "CC");
+}
+
+BOOST_AUTO_TEST_CASE(TestGetCustomAndCoreMonomers)
+{
+    struct ResetMonomerDatabase {
+        ~ResetMonomerDatabase()
+        {
+            MonomerDatabase::instance().resetMonomerDefinitions();
+        }
+    } reset_db;
+
+    // The core DB has 60 PEPTIDE backbone monomers, 2 PEPTIDE terminal
+    // monomers and 8 RNA monomers
+    constexpr std::size_t num_core_monomers = 70;
+    constexpr std::size_t num_core_peptides = 62;
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+    BOOST_TEST(monomer_db.getCustomMonomers().empty());
+    BOOST_TEST(monomer_db.getCoreMonomers().size() == num_core_monomers);
+
+    // one custom monomer of each polymer type, including one that overrides
+    // a core monomer
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "C",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "C",
+            "smiles": "N[C@@H](CS)C(=O)O",
+            "name": "Custom cysteine",
+            "monomer_type": "Backbone",
+            "author": "test"
+        },
+        {
+            "symbol": "TestBase",
+            "polymer_type": "RNA",
+            "natural_analog": "A",
+            "smiles": "Nc1ncnc2[nH]cnc12",
+            "name": "Test base",
+            "monomer_type": "Branch",
+            "author": "test"
+        },
+        {
+            "symbol": "TestEthanol",
+            "polymer_type": "CHEM",
+            "natural_analog": "X",
+            "smiles": "CCO",
+            "name": "Test ethanol",
+            "monomer_type": "Undefined",
+            "author": "test"
+        }
+    ])JSON";
+    const auto [succeeded, failed] =
+        monomer_db.loadMonomersFromJson(custom_json);
+    BOOST_REQUIRE_EQUAL(succeeded.size(), 3);
+    BOOST_REQUIRE(failed.empty());
+
+    auto custom_monomers = monomer_db.getCustomMonomers();
+    BOOST_REQUIRE_EQUAL(custom_monomers.size(), 3);
+    std::vector<std::pair<std::string, std::string>> custom_ids;
+    for (const auto& info : custom_monomers) {
+        custom_ids.emplace_back(info.symbol.value_or(""),
+                                info.polymer_type.value_or(""));
+    }
+    std::ranges::sort(custom_ids);
+    std::vector<std::pair<std::string, std::string>> expected_ids{
+        {"C", "PEPTIDE"}, {"TestBase", "RNA"}, {"TestEthanol", "CHEM"}};
+    BOOST_TEST((custom_ids == expected_ids));
+    auto custom_cys = std::ranges::find(
+        custom_monomers, std::optional<std::string>("C"), &MonomerInfo::symbol);
+    BOOST_REQUIRE(custom_cys != custom_monomers.end());
+    BOOST_TEST(custom_cys->name.value_or("") == "Custom cysteine");
+
+    // the core monomers are unaffected by the custom DB, including the
+    // overridden core cysteine
+    auto core_monomers = monomer_db.getCoreMonomers();
+    BOOST_TEST(core_monomers.size() == num_core_monomers);
+    auto core_cys = std::ranges::find_if(core_monomers, [](const auto& info) {
+        return info.symbol == "C" && info.polymer_type == "PEPTIDE";
+    });
+    BOOST_REQUIRE(core_cys != core_monomers.end());
+    BOOST_TEST(core_cys->name.value_or("") != "Custom cysteine");
+
+    // the refactored per-polymer-type query still reads both DBs
+    BOOST_TEST(monomer_db.getMonomersByPolymerType(ChainType::PEPTIDE).size() ==
+               num_core_peptides + 1);
+    BOOST_TEST(monomer_db.getMonomersByPolymerType(ChainType::CHEM).size() ==
+               1);
+
+    monomer_db.resetMonomerDefinitions();
+    BOOST_TEST(monomer_db.getCustomMonomers().empty());
+    BOOST_TEST(monomer_db.getCoreMonomers().size() == num_core_monomers);
 }

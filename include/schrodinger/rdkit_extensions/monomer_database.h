@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <limits>
 #include <optional>
 #include <string>
@@ -212,6 +213,15 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] std::vector<MonomerInfo>
     getMonomersByPolymerType(ChainType polymer_type) const;
 
+    // Returns every monomer in the custom DB, of all polymer types, or an
+    // empty vector if no custom DB is loaded. Custom monomers that override
+    // core monomers are included.
+    [[nodiscard]] std::vector<MonomerInfo> getCustomMonomers() const;
+
+    // Returns every monomer in the core DB, of all polymer types, including
+    // core monomers that are overridden by a custom monomer.
+    [[nodiscard]] std::vector<MonomerInfo> getCoreMonomers() const;
+
     // Return the cached list of complex monomer queries. (A "complex
     // monomer" is one that can't be matched correctly using a generic SMARTS
     // pattern.) The cache is invalidated whenever the database is modified.
@@ -219,7 +229,14 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     getComplexMonomerQueries() const;
 
   private:
-    std::vector<MonomerInfo> getMonomers(ChainType polymer_type,
+    // Read the monomers from each of the given DBs, in order, skipping any
+    // null DB handles.
+    // @param dbs : the DB handles to read from.
+    // @param polymer_type : if given, only read monomers of this type.
+    // @param non_natural_only : whether to only read monomers where
+    //   SYMBOL != NATURAL_ANALOG.
+    std::vector<MonomerInfo> getMonomers(std::initializer_list<sqlite3*> dbs,
+                                         std::optional<ChainType> polymer_type,
                                          bool non_natural_only) const;
 
     // this is private because we don't want to allow managing
