@@ -159,12 +159,6 @@ void SketcherSideBar::updateCheckState()
         DrawTool::ATOM, DrawTool::BOND,        DrawTool::CHARGE,
         DrawTool::RING, DrawTool::ENUMERATION, DrawTool::EXPLICIT_H,
     };
-    static const std::unordered_set<DrawTool> MONOMERIC_TOOLS = {
-        DrawTool::MONOMER,
-        DrawTool::CUSTOM_MONOMER,
-        DrawTool::MONOMER_DB_MONOMER,
-        DrawTool::MONOMERIC_CONNECTION,
-    };
     QWidget* page;
     std::optional<DrawTool> new_draw_tool = std::nullopt;
     auto model = getModel();
@@ -173,20 +167,16 @@ void SketcherSideBar::updateCheckState()
     if (tool_set == ToolSet::ATOMISTIC) {
         page = ui->atomistic_page;
         // if there's a monomeric tool selected, switch to an atomistic tool
-        if (MONOMERIC_TOOLS.contains(cur_draw_tool)) {
+        if (is_monomeric_draw_tool(cur_draw_tool)) {
             new_draw_tool = m_previous_atomistic_draw_tool;
         }
     } else {
         page = ui->monomeric_page;
-        // if there's an atomistic tool selected, switch to a monomeric tool
+        // if there's an atomistic tool selected, switch back to the monomeric
+        // tool that was last used on the current page
         if (ATOMISTIC_TOOLS.contains(cur_draw_tool)) {
-            const bool database_monomer =
-                model->getMonomerToolType() == MonomerToolType::AMINO_ACID
-                    ? model->getAminoAcidTool() == AminoAcidTool::UNCLASSIFIED
-                    : model->getNucleicAcidTool() ==
-                          NucleicAcidTool::UNCLASSIFIED;
-            new_draw_tool = database_monomer ? DrawTool::MONOMER_DB_MONOMER
-                                             : DrawTool::MONOMER;
+            new_draw_tool =
+                model->getDrawToolToRestore(model->getMonomerToolType());
         }
     }
     ui->atomistic_or_monomeric_stack->setCurrentWidget(page);

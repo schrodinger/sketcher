@@ -1,7 +1,5 @@
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
 
-#include <algorithm>
-
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLineEdit>
@@ -12,6 +10,8 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include "schrodinger/sketcher/widget/widget_utils.h"
 
 namespace schrodinger
 {
@@ -75,19 +75,12 @@ void ModalDialog::moveOntoScreen()
         // next time it's shown
         return;
     }
-    const auto bounds = screen()->availableGeometry();
     const auto frame = frameGeometry();
-    // Apply the bottom/right limit first so that the top/left limit wins when
-    // the dialog is too large to fit
-    const int x =
-        std::max(std::min(frame.left(), bounds.right() - frame.width() + 1),
-                 bounds.left());
-    const int y =
-        std::max(std::min(frame.top(), bounds.bottom() - frame.height() + 1),
-                 bounds.top());
-    if (x != frame.left() || y != frame.top()) {
+    const auto pos =
+        clamp_position_to_bounds(frame, screen()->availableGeometry());
+    if (pos != frame.topLeft()) {
         // For a window, move() positions the frame, not the contents
-        move(x, y);
+        move(pos);
     }
 }
 

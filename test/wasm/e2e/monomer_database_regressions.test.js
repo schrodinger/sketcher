@@ -12,10 +12,12 @@ import {
   expectCursor,
   expectDialog,
   getExportedHelm,
+  getRect,
   pasteText,
   place,
   popupButtons,
   popupInfo,
+  requireRect,
   scene,
   screenshotView,
   selectAll,
@@ -184,4 +186,105 @@ test('SKETCH-2788: malformed JSON explains the failure; picker cancellation leav
   // control to the UI. No fixed delay or assertion of silence alone is used.
   await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am']);
   expect(await getExportedHelm(page)).toBe(before);
+});
+
+test('SKETCH-2827: a mutation from an Unclassified popup is remembered as the DB monomer of its page without changing the page tool', async ({
+  page,
+}) => {
+  await pasteText(page, 'PEPTIDE1{A}$$$$V2.0');
+  await selectAll(page);
+  await choosePopup(page, 'aa_unclassified_btn', 'ac');
+  expect(await getExportedHelm(page)).toBe('PEPTIDE1{[ac]}$$$$V2.0');
+  // Switching pages and back with the selection still active changes nothing
+  await clickWidget(page, 'nucleic_monomer_btn');
+  await clickWidget(page, 'amino_monomer_btn');
+  expect(await getExportedHelm(page)).toBe('PEPTIDE1{[ac]}$$$$V2.0');
+  await clickWidget(page, 'clear_selection_btn');
+
+  // The mutation didn't change the page's last monomeric tool. Clearing the
+  // selection leaves the select tool active, and a page switch keeps a shared
+  // tool like that, so choose a monomer on the NA page before switching back.
+  await clickWidget(page, 'nucleic_monomer_btn');
+  await clickWidget(page, 'na_a_btn');
+  await clickWidget(page, 'amino_monomer_btn');
+  await expect.poll(async () => (await widgetState(page, 'ala_btn')).checked).toBe(true);
+
+  // The Unclassified button reactivates the remembered DB monomer directly
+  await clickWidget(page, 'aa_unclassified_btn');
+  await expect
+    .poll(async () => (await widgetState(page, 'aa_unclassified_btn')).checked)
+    .toBe(true);
+  expect((await scene(page)).popup?.buttons?.length ?? 0).toBe(0);
+  await place(page, 0, 120);
+  expect((await waitAtoms(page, 2)).map((atom) => atom.label)).toEqual(['ac', 'ac']);
+});
+
+test('SKETCH-2827: loading a database without the active DB monomer falls back to the standard tool of the page', async ({
+  page,
+}) => {
+  await loadDatabase(page, 'chem_monomers.json');
+  await choosePopup(page, 'aa_unclassified_btn', 'CHM2');
+  expect((await widgetState(page, 'aa_unclassified_btn')).checked).toBe(true);
+  // na_monomers.json has no CHEM monomers
+  await loadDatabase(page, 'na_monomers.json');
+  await expect.poll(async () => (await widgetState(page, 'ala_btn')).checked).toBe(true);
+  expect((await widgetState(page, 'aa_unclassified_btn')).checked).toBe(false);
+  await place(page);
+  expect((await waitAtoms(page, 1))[0].label).toBe('A');
+  expect(await getExportedHelm(page)).toBe('PEPTIDE1{A}$$$$V2.0');
+  await clear(page);
+
+  await clickWidget(page, 'nucleic_monomer_btn');
+  await choosePopup(page, 'na_unclassified_btn', 'NA1');
+  expect((await widgetState(page, 'na_unclassified_btn')).checked).toBe(true);
+  // chem_monomers.json has no RNA monomers
+  await loadDatabase(page, 'chem_monomers.json');
+  await expect.poll(async () => (await widgetState(page, 'na_rna_btn')).checked).toBe(true);
+  expect((await widgetState(page, 'na_unclassified_btn')).checked).toBe(false);
+  await place(page);
+  await waitAtoms(page, 3);
+  expect(await getExportedHelm(page)).toBe('RNA1{R(A)P}$$$$V2.0');
+});
+
+test('SKETCH-2827: a long-press popup with no room beside its button in a small canvas is clamped inside it', async ({
+  page,
+}) => {
+  // gly_btn is in the side bar's right-hand column, and its ChEMBL palette is
+  // one of the largest, so a small canvas can still hold the palette while
+  // leaving it no room to the right of the button's left edge or on either
+  // side of the button vertically
+  await loadDatabase(page, 'chembl_monomers_no_id.json');
+  const full = await popupInfo(page, 'gly_btn');
+  await dismissPopup(page);
+  const width = full.width + 26;
+  const height = full.height + 76;
+  const viewBefore = await requireRect(page, 'widget:view');
+  await page.setViewportSize({ width, height });
+  // Qt only sees the new canvas size once the browser's ResizeObserver fires
+  await expect
+    .poll(async () => {
+      const view = await getRect(page, 'widget:view');
+      return (
+        view !== null && (view.width !== viewBefore.width || view.height !== viewBefore.height)
+      );
+    })
+    .toBe(true);
+
+  // Check that the shrunken canvas forces both kinds of clamping, using the
+  // button's position after the resize
+  const button = await requireRect(page, 'widget:gly_btn');
+  const roomAbove = button.y;
+  const roomBelow = height - (button.y + button.height);
+  expect(button.x + full.width).toBeGreaterThan(width);
+  expect(roomAbove).toBeLessThan(full.height);
+  expect(roomBelow).toBeLessThan(full.height);
+
+  const popup = await popupInfo(page, 'gly_btn');
+  // A long-press popup keeps its size, opens on the side of the button with
+  // more room, and is then clamped into the canvas
+  expect(popup.width).toBe(full.width);
+  expect(popup.height).toBe(full.height);
+  expect(popup.x).toBe(width - full.width);
+  expect(popup.y).toBe(roomBelow >= roomAbove ? height - full.height : 0);
+  await dismissPopup(page);
 });
