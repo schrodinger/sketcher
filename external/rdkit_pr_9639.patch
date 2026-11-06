@@ -1,5 +1,5 @@
 diff --git a/Code/GraphMol/Depictor/DepictUtils.cpp b/Code/GraphMol/Depictor/DepictUtils.cpp
-index 68415ac7b..d75af2fdc 100644
+index 1be7d7919..709867ff0 100644
 --- a/Code/GraphMol/Depictor/DepictUtils.cpp
 +++ b/Code/GraphMol/Depictor/DepictUtils.cpp
 @@ -14,6 +14,8 @@
@@ -11,7 +11,7 @@ index 68415ac7b..d75af2fdc 100644
  #include <boost/dynamic_bitset.hpp>
  
  namespace {
-@@ -165,28 +167,33 @@ RDKit::INT_VECT setNbrOrder(unsigned int aid, const RDKit::INT_VECT &nbrs,
+@@ -170,28 +172,33 @@ RDKit::INT_VECT setNbrOrder(unsigned int aid, const RDKit::INT_VECT &nbrs,
  
  int pickFirstRingToEmbed(const RDKit::ROMol &mol,
                           const RDKit::VECT_INT_VECT &fusedRings) {
@@ -54,7 +54,7 @@ index 68415ac7b..d75af2fdc 100644
      }
      cnt++;
    }
-@@ -577,7 +584,7 @@ INT_PAIR_VECT findBondsPairsToPermuteDeg4(const RDGeom::Point2D &center,
+@@ -582,7 +589,7 @@ INT_PAIR_VECT findBondsPairsToPermuteDeg4(const RDGeom::Point2D &center,
  template <class T>
  T rankAtomsByRank(const RDKit::ROMol &mol, const T &commAtms, bool ascending) {
    const auto natms = commAtms.size();
@@ -63,7 +63,7 @@ index 68415ac7b..d75af2fdc 100644
    rankAid.reserve(natms);
    for (const auto aid : commAtms) {
      unsigned int rank = aid;
-@@ -594,10 +601,13 @@ T rankAtomsByRank(const RDKit::ROMol &mol, const T &commAtms, bool ascending) {
+@@ -599,10 +606,13 @@ T rankAtomsByRank(const RDKit::ROMol &mol, const T &commAtms, bool ascending) {
          // _CIPRank-driven behavior
          rank = mol.getNumAtoms() - rank;
        }
@@ -81,7 +81,7 @@ index 68415ac7b..d75af2fdc 100644
    if (ascending) {
      std::stable_sort(rankAid.begin(), rankAid.end(),
 diff --git a/Code/GraphMol/Depictor/DepictUtils.h b/Code/GraphMol/Depictor/DepictUtils.h
-index 659ff30d0..15879974e 100644
+index 5e58b7af2..2b16d3ac4 100644
 --- a/Code/GraphMol/Depictor/DepictUtils.h
 +++ b/Code/GraphMol/Depictor/DepictUtils.h
 @@ -13,6 +13,7 @@
@@ -103,7 +103,7 @@ index 659ff30d0..15879974e 100644
  
  namespace RDDepict {
  
-@@ -342,7 +346,7 @@ RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getAllRotatableBonds(
+@@ -347,7 +351,7 @@ RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getAllRotatableBonds(
    \return true if the atom is a spiro center
  */
  RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
@@ -112,7 +112,7 @@ index 659ff30d0..15879974e 100644
  
  //! \brief find spiro centers on the shortest path between two atoms
  /*!
-@@ -352,8 +356,9 @@ RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
+@@ -357,8 +361,9 @@ RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
  
    \return a set of the indices of spiro centers
  */
@@ -124,7 +124,7 @@ index 659ff30d0..15879974e 100644
  
  //! Get the ids of the atoms and bonds that are connected to aid
  RDKIT_DEPICTOR_EXPORT void getNbrAtomAndBondIds(unsigned int aid,
-@@ -389,14 +394,36 @@ RDKIT_DEPICTOR_EXPORT INT_PAIR_VECT findBondsPairsToPermuteDeg4(
+@@ -394,14 +399,36 @@ RDKIT_DEPICTOR_EXPORT INT_PAIR_VECT findBondsPairsToPermuteDeg4(
      const RDGeom::Point2D &center, const RDKit::INT_VECT &nbrBids,
      const VECT_C_POINT &nbrLocs);
  
@@ -165,7 +165,7 @@ index 659ff30d0..15879974e 100644
  
  RDKIT_DEPICTOR_EXPORT bool hasTerminalRGroupOrQueryHydrogen(
 diff --git a/Code/GraphMol/Depictor/RDDepictor.cpp b/Code/GraphMol/Depictor/RDDepictor.cpp
-index 95dee7f9d..b47da6623 100644
+index 31a454745..d4ee6b2f6 100644
 --- a/Code/GraphMol/Depictor/RDDepictor.cpp
 +++ b/Code/GraphMol/Depictor/RDDepictor.cpp
 @@ -33,6 +33,7 @@
@@ -240,7 +240,7 @@ index 95dee7f9d..b47da6623 100644
        for (auto nri = nratms.begin(); nri != nratms.end(); ++nri) {
          auto rank = atomRanks.at(*nri);
 diff --git a/Code/GraphMol/Depictor/catch_tests.cpp b/Code/GraphMol/Depictor/catch_tests.cpp
-index 2f1538a86..d767d65a9 100644
+index 606c59c17..7bc2e45d7 100644
 --- a/Code/GraphMol/Depictor/catch_tests.cpp
 +++ b/Code/GraphMol/Depictor/catch_tests.cpp
 @@ -13,6 +13,7 @@
@@ -250,8 +250,8 @@ index 2f1538a86..d767d65a9 100644
 +#include <GraphMol/MolOps.h>
  #include "RDDepictor.h"
  #include "DepictUtils.h"
- #include <GraphMol/SmilesParse/SmilesParse.h>
-@@ -24,6 +25,48 @@
+ #include "EmbeddedFrag.h"
+@@ -25,6 +26,48 @@
  
  using namespace RDKit;
  
@@ -300,10 +300,100 @@ index 2f1538a86..d767d65a9 100644
  TEST_CASE(
      "github #4504: overlapping coordinates with 1,1-disubstituted "
      "cyclobutanes") {
-@@ -2670,4 +2713,4 @@ TEST_CASE("complex spiro structure from MOL file - reasonable bond lengths") {
-       CHECK(dist > 0.35);
+@@ -2738,16 +2781,16 @@ TEST_CASE("complex spiro structure from MOL file - reasonable bond lengths") {
+ }
+ 
+ TEST_CASE("collision resolution catches crossings far from bond midpoints") {
+-  auto smiles = GENERATE(
+-      "COCC(Cn1ccnc1[N+](=O)[O-])OP(=O)(N1CC1(C)C)N1CC1(C)C",
+-      "CCC(=O)O[C@H]1C[C@H](OC(C)=O)[C@@]2(C)[C@H]([C@H]1C)"
+-      "[C@@H](OC(C)=O)[C@]13O[C@]1(C)C(=O)O[C@H]3/C=C(/C)C[C@H]"
+-      "(OC(C)=O)[C@H]2OC(C)=O",
+-      "Cc1c(C2=NC(=O)C(C)(C)N2Cc2ccccc2)nn(-c2ccc(Cl)cc2Cl)c1-"
+-      "c1ccc(Cl)cc1",
+-      "CCC12C=CC3=C4CCC(=O)C=C4CCC3C1CC[C@]2(C)O",
+-      "CC(C)OC(=O)[C@H](C)N[P@](=O)(OC[C@H]1O[C@@](C#N)(n2ccc(N)nc2=O)"
+-      "[C@](C)(O)[C@@H]1OC(=O)C(C)C)Oc1ccccc1");
++  auto smiles =
++      GENERATE("COCC(Cn1ccnc1[N+](=O)[O-])OP(=O)(N1CC1(C)C)N1CC1(C)C",
++               "CCC(=O)O[C@H]1C[C@H](OC(C)=O)[C@@]2(C)[C@H]([C@H]1C)"
++               "[C@@H](OC(C)=O)[C@]13O[C@]1(C)C(=O)O[C@H]3/C=C(/C)C[C@H]"
++               "(OC(C)=O)[C@H]2OC(C)=O",
++               "Cc1c(C2=NC(=O)C(C)(C)N2Cc2ccccc2)nn(-c2ccc(Cl)cc2Cl)c1-"
++               "c1ccc(Cl)cc1",
++               "CCC12C=CC3=C4CCC(=O)C=C4CCC3C1CC[C@]2(C)O",
++               "CC(C)OC(=O)[C@H](C)N[P@](=O)(OC[C@H]1O[C@@](C#N)(n2ccc(N)nc2=O)"
++               "[C@](C)(O)[C@@H]1OC(=O)C(C)C)Oc1ccccc1");
+   CAPTURE(smiles);
+ 
+   std::unique_ptr<RWMol> mol(SmilesToMol(smiles));
+@@ -2763,8 +2806,7 @@ TEST_CASE("collision resolution catches crossings far from bond midpoints") {
+ 
+   constexpr double epsilon = 1e-9;
+   const auto orientation = [](const auto &a, const auto &b, const auto &c) {
+-    return (b.x - a.x) * (c.y - a.y) -
+-           (b.y - a.y) * (c.x - a.x);
++    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+   };
+   const auto onSegment = [](const auto &a, const auto &b, const auto &point) {
+     return point.x >= std::min(a.x, b.x) - epsilon &&
+@@ -2778,10 +2820,8 @@ TEST_CASE("collision resolution catches crossings far from bond midpoints") {
+     const auto o2 = orientation(a, b, d);
+     const auto o3 = orientation(c, d, a);
+     const auto o4 = orientation(c, d, b);
+-    if (((o1 > epsilon && o2 < -epsilon) ||
+-         (o1 < -epsilon && o2 > epsilon)) &&
+-        ((o3 > epsilon && o4 < -epsilon) ||
+-         (o3 < -epsilon && o4 > epsilon))) {
++    if (((o1 > epsilon && o2 < -epsilon) || (o1 < -epsilon && o2 > epsilon)) &&
++        ((o3 > epsilon && o4 < -epsilon) || (o3 < -epsilon && o4 > epsilon))) {
+       return true;
+     }
+     return (std::abs(o1) <= epsilon && onSegment(a, b, c)) ||
+@@ -2804,10 +2844,9 @@ TEST_CASE("collision resolution catches crossings far from bond midpoints") {
+       if (beg1 == beg2 || beg1 == end2 || end1 == beg2 || end1 == end2) {
+         continue;
+       }
+-      CHECK_FALSE(segmentsIntersect(conf.getAtomPos(beg1),
+-                                    conf.getAtomPos(end1),
+-                                    conf.getAtomPos(beg2),
+-                                    conf.getAtomPos(end2)));
++      CHECK_FALSE(
++          segmentsIntersect(conf.getAtomPos(beg1), conf.getAtomPos(end1),
++                            conf.getAtomPos(beg2), conf.getAtomPos(end2)));
      }
    }
--}
-\ No newline at end of file
-+}
+ }
+@@ -2817,8 +2856,10 @@ TEST_CASE("findCollisions detects crossings far from bond midpoints") {
+   REQUIRE(mol);
+ 
+   RDGeom::INT_POINT2D_MAP coordinates{
+-      {0, {-10.0, 0.0}}, {1, {1.0, 0.0}},
+-      {2, {0.0, -1.0}},  {3, {0.0, 1.0}},
++      {0, {-10.0, 0.0}},
++      {1, {1.0, 0.0}},
++      {2, {0.0, -1.0}},
++      {3, {0.0, 1.0}},
+   };
+   RDDepict::EmbeddedFrag fragment(mol.get(), coordinates);
+   const auto *dmat = MolOps::getDistanceMat(*mol);
+@@ -2870,8 +2911,7 @@ TEST_CASE("path angle expansion ignores bonded atom collision candidates") {
+ }
+ 
+ TEST_CASE("path angle expansion preserves fixed coordinates") {
+-  auto mol =
+-      "COCC(Cn1ccnc1[N+](=O)[O-])OP(=O)(N1CC1(C)C)N1CC1(C)C"_smiles;
++  auto mol = "COCC(Cn1ccnc1[N+](=O)[O-])OP(=O)(N1CC1(C)C)N1CC1(C)C"_smiles;
+   REQUIRE(mol);
+ 
+   RDDepict::Compute2DCoordParameters params;
+@@ -2930,7 +2970,8 @@ TEST_CASE("path angle expansion preserves bonds in bridged ring systems") {
+     const auto controlLength =
+         (controlConf.getAtomPos(begin) - controlConf.getAtomPos(end)).length();
+     const auto expandedLength =
+-        (expandedConf.getAtomPos(begin) - expandedConf.getAtomPos(end)).length();
++        (expandedConf.getAtomPos(begin) - expandedConf.getAtomPos(end))
++            .length();
+     CAPTURE(begin, end);
+     CHECK(expandedLength == Catch::Approx(controlLength).margin(1e-8));
+   }
