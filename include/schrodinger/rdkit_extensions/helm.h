@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -124,12 +125,23 @@ enum class ConnectorType {
 };
 
 /**
- * Classify a monomer connection, using LINKAGE for the primary connection or
- * CUSTOM_BOND for the secondary connection. CHEM takes precedence over peptide
- * connections, while peptide takes precedence over nucleic acid connections.
+ * Classify a monomer connection. A bond can carry two separate monomer
+ * connections: LINKAGE describes the primary one, and CUSTOM_BOND describes
+ * the secondary one. CHEM takes precedence over peptide connections, while
+ * peptide takes precedence over nucleic acid connections.
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API ConnectorType
 get_connector_type(const ::RDKit::Bond* bond, bool is_secondary_connection);
+
+/** Return whether each end of a monomer connection has an arrowhead. */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               bool is_secondary_connection);
+
+/** Return arrowhead placement when the connector type is already known. */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               ConnectorType connector_type);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);

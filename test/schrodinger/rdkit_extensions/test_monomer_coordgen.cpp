@@ -977,9 +977,41 @@ BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
         (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
 }
 
-static std::pair<double, double>
-get_resized_vertical_connection_offsets(bool reverse_bond_order,
-                                        double& minimum_polymer_separation)
+/** Unpaired RNA and DNA strands retain base orientation when linked by CHEM. */
+BOOST_AUTO_TEST_CASE(UnpairedNucleicAcidStrandsAreNotFlippedVertically)
+{
+    for (const bool dna : {false, true}) {
+        const std::string sugar_name = dna ? "[dR]" : "R";
+        const std::array<std::string, 8> bases = {
+            "A", "A", "G", "G", "C", dna ? "T" : "U", "A", "A"};
+        std::string strand;
+        for (const auto& base : bases) {
+            if (!strand.empty()) {
+                strand += '.';
+            }
+            strand += sugar_name + "(" + base + ")P";
+        }
+        const auto helm = "RNA1{" + strand + "}|RNA2{" + strand +
+                          "}|CHEM1{[sDBl]}$RNA2,CHEM1,24:R2-1:R3|"
+                          "RNA1,CHEM1,24:R2-1:R2$$$";
+        auto mol = helm_to_rdkit(helm);
+        compute_monomer_mol_coords(*mol);
+        const auto& conf = mol->getConformer();
+        for (unsigned int sugar = 0; sugar < 48; sugar += 3) {
+            BOOST_CHECK_LT(conf.getAtomPos(sugar + 1).y,
+                           conf.getAtomPos(sugar).y);
+        }
+    }
+}
+
+struct ResizedConnections {
+    double first_offset;
+    double second_offset;
+    double minimum_separation;
+};
+
+static ResizedConnections
+get_resized_connection_offsets(bool reverse_bond_order, bool horizontal = false)
 {
     const std::string polymers =
         "PEPTIDE1{[Phe_34diCl].C.C.C.C.C}|PEPTIDE2{[D-2Nal].C}|"
@@ -1016,12 +1048,23 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
         conf.setAtomPos(i, {-h + bond_length * (static_cast<int>(i) - 11),
                             -4 * bond_length, 0});
     }
+    if (horizontal) {
+        // Rotate the same three-polymer fixture, making both interpolymer
+        // bonds horizontal while retaining the controlled label sizes.
+        for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+            const auto pos = conf.getAtomPos(i);
+            conf.setAtomPos(i, {-pos.y, pos.x, 0});
+        }
+    }
     std::unordered_map<int, RDGeom::Point3D> sizes;
-    sizes.emplace(0, RDGeom::Point3D(4, minimum_size, 0));
-    sizes.emplace(6, RDGeom::Point3D(2.5, minimum_size, 0));
-    sizes.emplace(8, RDGeom::Point3D(3.5, minimum_size, 0));
+    sizes.emplace(0, horizontal ? RDGeom::Point3D(minimum_size, 4, 0)
+                                : RDGeom::Point3D(4, minimum_size, 0));
+    sizes.emplace(6, horizontal ? RDGeom::Point3D(minimum_size, 2.5, 0)
+                                : RDGeom::Point3D(2.5, minimum_size, 0));
+    sizes.emplace(8, horizontal ? RDGeom::Point3D(minimum_size, 3.5, 0)
+                                : RDGeom::Point3D(3.5, minimum_size, 0));
     schrodinger::rdkit_extensions::resize_monomers(*mol, sizes);
-    minimum_polymer_separation = std::numeric_limits<double>::max();
+    double minimum_polymer_separation = std::numeric_limits<double>::max();
     for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
         for (unsigned int j = i + 1; j < mol->getNumAtoms(); ++j) {
             const bool same_polymer = (i < 6 && j < 6) ||
@@ -1035,9 +1078,13 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
             }
         }
     }
-    const double first_offset = conf.getAtomPos(2).x - conf.getAtomPos(6).x;
-    const double second_offset = conf.getAtomPos(7).x - conf.getAtomPos(10).x;
-    return std::make_pair(first_offset, second_offset);
+    const double first_offset =
+        horizontal ? conf.getAtomPos(2).y - conf.getAtomPos(6).y
+                   : conf.getAtomPos(2).x - conf.getAtomPos(6).x;
+    const double second_offset =
+        horizontal ? conf.getAtomPos(7).y - conf.getAtomPos(10).y
+                   : conf.getAtomPos(7).x - conf.getAtomPos(10).x;
+    return {first_offset, second_offset, minimum_polymer_separation};
 }
 
 /**
@@ -1046,12 +1093,10 @@ get_resized_vertical_connection_offsets(bool reverse_bond_order,
  */
 BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
 {
-    double separation = 0;
-    const auto offsets =
-        get_resized_vertical_connection_offsets(false, separation);
-    BOOST_CHECK_SMALL(offsets.first, 1e-6);
-    BOOST_CHECK_SMALL(offsets.second, 1e-6);
-    BOOST_CHECK_GE(separation,
+    const auto result = get_resized_connection_offsets(false);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
                    schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
                        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
 }
@@ -1062,12 +1107,21 @@ BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
  */
 BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
 {
-    double separation = 0;
-    const auto offsets =
-        get_resized_vertical_connection_offsets(true, separation);
-    BOOST_CHECK_SMALL(offsets.first, 1e-6);
-    BOOST_CHECK_SMALL(offsets.second, 1e-6);
-    BOOST_CHECK_GE(separation,
+    const auto result = get_resized_connection_offsets(true);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
+                   schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
+                       schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
+}
+
+/** Resizing labels must also keep horizontal interpolymer bonds level. */
+BOOST_AUTO_TEST_CASE(HorizontalConnectionsStayAlignedAcrossThreePolymers)
+{
+    const auto result = get_resized_connection_offsets(false, true);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
                    schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
                        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
 }

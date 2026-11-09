@@ -97,6 +97,13 @@ BOOST_AUTO_TEST_CASE(TestDisulfideConnectorType)
         const auto* bond = mol->getBondBetweenAtoms(0, 1);
         BOOST_REQUIRE(bond != nullptr);
         BOOST_CHECK(get_connector_type(bond, true) == expected_type);
+
+        const auto primary_helm = "PEPTIDE1{C}|PEPTIDE2{" + second_residue +
+                                  "}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0";
+        const auto primary_mol = helm_to_rdkit(primary_helm);
+        const auto* primary_bond = primary_mol->getBondBetweenAtoms(0, 1);
+        BOOST_REQUIRE(primary_bond != nullptr);
+        BOOST_CHECK(get_connector_type(primary_bond, false) == expected_type);
     }
 }
 

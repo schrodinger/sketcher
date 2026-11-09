@@ -259,7 +259,6 @@ BOOST_AUTO_TEST_CASE(test_wide_labels_keep_vertical_interpolymer_bonds)
     scene->m_mol_model->addMol(*mol, "Wide label layout",
                                /* reposition_mol = */ false,
                                /* new_molecule_added = */ true,
-                               /* enforce_size_limit = */ true,
                                /* enforce_monomer_validity = */ false);
     const auto& rendered_conf = scene->m_mol_model->getMol()->getConformer();
     BOOST_CHECK_SMALL(

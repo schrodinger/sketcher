@@ -8,6 +8,7 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
@@ -48,8 +49,9 @@ MutationConnectionChanges get_monomer_mutation_connection_changes(
             if (required_points.empty()) {
                 continue;
             }
-            const auto available_points = get_attachment_points_for_res(
-                symbol, rdkit_extensions::getChainType(*atom));
+            const auto available_points =
+                rdkit_extensions::get_attachment_points_for_res(
+                    symbol, rdkit_extensions::getChainType(*atom));
             std::unordered_set<int> available_numbers;
             for (const auto& [number, element] : available_points) {
                 available_numbers.insert(number);

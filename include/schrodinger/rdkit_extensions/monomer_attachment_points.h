@@ -1,5 +1,11 @@
 #pragma once
 
+/**
+ * Numbered attachment points on HELM monomers. These helpers inspect the
+ * atomistic SMILES definition of a monomer to identify its available sites;
+ * the RDKit atoms passed to the monomer helpers still represent whole monomers.
+ */
+
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 #include <optional>
