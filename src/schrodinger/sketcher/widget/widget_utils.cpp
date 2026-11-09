@@ -4,7 +4,6 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QEvent>
-#include <QMouseEvent>
 #include <QPointer>
 
 namespace schrodinger
@@ -16,10 +15,10 @@ namespace
 {
 
 /**
- * Manage dismissal of a button's asynchronous popup: suppress replay of presses
- * over the button and clear hover and pressed state when the popup hides. The
- * popup owns this filter; the button is tracked without taking ownership and
- * may be destroyed first.
+ * Manage dismissal of a button's asynchronous popup: suppress replay of
+ * dismissing presses and clear hover and pressed state when the popup hides.
+ * The popup owns this filter; the button is tracked without taking ownership
+ * and may be destroyed first.
  */
 class PopupButtonStateFilter : public QObject
 {
@@ -34,18 +33,18 @@ class PopupButtonStateFilter : public QObject
   protected:
     bool eventFilter(QObject* watched, QEvent* event) override
     {
-        if (event->type() == QEvent::MouseButtonPress && m_button) {
-            auto* mouse_event = static_cast<QMouseEvent*>(event);
-            if (QRect(m_button->mapToGlobal(QPoint()), m_button->size())
-                    .contains(mouse_event->globalPosition().toPoint())) {
-                // Match Qt's built-in button menus: do not replay a dismissing
-                // press onto the button, since that will reopen the popup as
-                // soon as the button is released. Note that Qt will clear the
-                // WA_NoMouseReplay attribute when the popup closes, so we don't
-                // have to worry about clearing it ourselves.
-                static_cast<QWidget*>(watched)->setAttribute(
-                    Qt::WA_NoMouseReplay);
-            }
+        if (event->type() == QEvent::MouseButtonPress) {
+            // A press that dismisses the popup should only dismiss it. By
+            // default, Qt replays the press onto the widget underneath on
+            // Windows and Linux, but not on macOS (where the platform
+            // disables replay) or WASM (where popups can't grab the
+            // keyboard, which also disables replay). Without this, a click on
+            // the button would reopen the popup on release, and a click on the
+            // canvas would also, e.g., add a monomer. Qt clears this attribute
+            // before delivering each mouse event, so it only affects this
+            // press, and Qt only replays presses outside the popup, so this
+            // has no effect on presses inside of it.
+            static_cast<QWidget*>(watched)->setAttribute(Qt::WA_NoMouseReplay);
         } else if (event->type() == QEvent::Hide && m_button) {
             // A popup grabs the mouse, so the originating button can miss its
             // leave event when the user dismisses it outside the client area.
