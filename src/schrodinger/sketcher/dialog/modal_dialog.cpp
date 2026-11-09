@@ -1,9 +1,13 @@
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
 
+#include <algorithm>
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QRadioButton>
+#include <QScreen>
+#include <QShowEvent>
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -49,6 +53,43 @@ ModalDialog::ModalDialog(QWidget* parent, Qt::WindowFlags f) :
 }
 
 ModalDialog::~ModalDialog() = default;
+
+void ModalDialog::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
+#ifdef __EMSCRIPTEN__
+    // Each WASM canvas is a QScreen, so resizing the canvas changes the screen
+    // geometry without moving the dialog. Without this, shrinking the canvas
+    // can leave the dialog out of sight while it still blocks the sketcher.
+    connect(screen(), &QScreen::availableGeometryChanged, this,
+            &ModalDialog::moveOntoScreen, Qt::UniqueConnection);
+    // The canvas may also have shrunk while a reused dialog was hidden
+    moveOntoScreen();
+#endif
+}
+
+void ModalDialog::moveOntoScreen()
+{
+    if (!isVisible()) {
+        // Moving a hidden dialog would stop QDialog from re-centering it the
+        // next time it's shown
+        return;
+    }
+    const auto bounds = screen()->availableGeometry();
+    const auto frame = frameGeometry();
+    // Apply the bottom/right limit first so that the top/left limit wins when
+    // the dialog is too large to fit
+    const int x =
+        std::max(std::min(frame.left(), bounds.right() - frame.width() + 1),
+                 bounds.left());
+    const int y =
+        std::max(std::min(frame.top(), bounds.bottom() - frame.height() + 1),
+                 bounds.top());
+    if (x != frame.left() || y != frame.top()) {
+        // For a window, move() positions the frame, not the contents
+        move(x, y);
+    }
+}
 
 void ModalDialog::onWindowTitleChanged(const QString& newTitle)
 {

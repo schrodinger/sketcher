@@ -166,6 +166,7 @@ test.describe('WASM Sketcher API', () => {
         trim_image: false,
         font_size: 24,
         bond_width_scale: 1.5,
+        render_peptides_linearly: false,
         rdatom_index_to_label: { 0: 'AtomZero' },
         rdatom_index_to_halo_color: { 0: '#ff0000' },
         rdbond_index_to_halo_color: { 0: '#00ff00' },
@@ -251,6 +252,35 @@ test.describe('WASM Sketcher API', () => {
 });
 
 test.describe('Custom Monomer DB', () => {
+  for (const runSmilesCanonicalization of [undefined, false, true]) {
+    test(`SMILES canonicalization flag: ${runSmilesCanonicalization}`, async ({ page }) => {
+      const result = await page.evaluate((flag) => {
+        // Noncanonical input makes it observable whether the flag skips rewriting.
+        const json = JSON.stringify([
+          {
+            SYMBOL: 'TestEthanol',
+            POLYMER_TYPE: 'CHEM',
+            NATURAL_ANALOG: 'X',
+            SMILES: 'OCC',
+            CORE_SMILES: 'OCC',
+            NAME: 'Test Ethanol',
+            MONOMER_TYPE: 'Undefined',
+            AUTHOR: 'test',
+          },
+        ]);
+        return flag === undefined
+          ? Module.sketcher_load_custom_monomers(json)
+          : Module.sketcher_load_custom_monomers(json, flag);
+      }, runSmilesCanonicalization);
+
+      expect(result.succeeded).toHaveLength(1);
+      expect(result.failed).toHaveLength(0);
+      const expectedSmiles = runSmilesCanonicalization === false ? 'OCC' : 'CCO';
+      expect(result.succeeded[0]).toContain(`SMILES='${expectedSmiles}'`);
+      expect(result.succeeded[0]).toContain("CORE_SMILES='OCC'");
+    });
+  }
+
   test('load custom monomers from JSON', async ({ page }) => {
     const customMonomers = JSON.stringify([
       {

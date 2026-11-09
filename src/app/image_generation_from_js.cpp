@@ -159,6 +159,10 @@ RenderOptions render_options_from_js(const emscripten::val& options)
     if (has_option(options, "bond_width_scale")) {
         opts.bond_width_scale = options["bond_width_scale"].as<qreal>();
     }
+    if (has_option(options, "render_peptides_linearly")) {
+        opts.render_peptides_linearly =
+            options["render_peptides_linearly"].as<bool>();
+    }
     read_string_hash_option(options, "rdatom_index_to_label",
                             opts.rdatom_index_to_label);
     read_color_hash_option(options, "rdatom_index_to_halo_color",

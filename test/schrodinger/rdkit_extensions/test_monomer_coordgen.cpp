@@ -18,6 +18,7 @@
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 using helm::helm_to_rdkit;
+using schrodinger::rdkit_extensions::compute_linear_peptide_coords;
 using schrodinger::rdkit_extensions::compute_monomer_mol_coords;
 
 namespace bdata = boost::unit_test::data;
@@ -477,16 +478,16 @@ BOOST_DATA_TEST_CASE(
           {3, 0},
           {4.5, 0},
           {6, 0},
-          {0, -7.3},
-          {1.5, -7.3},
-          {3, -7.3},
-          {4.5, -7.3},
-          {6, -7.3},
-          {7.5, -7.3},
-          {9, -7.3},
-          {10.5, -7.3},
-          {12, -7.3},
-          {13.5, -7.3}}}}),
+          {0, -3.5},
+          {1.5, -3.5},
+          {3, -3.5},
+          {4.5, -3.5},
+          {6, -3.5},
+          {7.5, -3.5},
+          {9, -3.5},
+          {10.5, -3.5},
+          {12, -3.5},
+          {13.5, -3.5}}}}),
 
     test_data)
 {
@@ -604,6 +605,32 @@ BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)
         "RNA1{R(A)P.R(C)P.R(G)P.R(A)P}$RNA1,RNA1,2:pair-8:pair$$$V2.0");
 
     BOOST_CHECK_NO_THROW(compute_monomer_mol_coords(*mol));
+}
+
+BOOST_AUTO_TEST_CASE(TestRenderPeptideLinearly)
+{
+    const auto default_mol =
+        helm_to_rdkit("PEPTIDE1{A.A.A.A.A.A.A.A.A.A.A.A}$$$$V2.0");
+    compute_monomer_mol_coords(*default_mol);
+    const auto& default_positions = default_mol->getConformer().getPositions();
+    BOOST_CHECK(std::any_of(
+        default_positions.begin(), default_positions.end(),
+        [](const auto& position) { return std::abs(position.y) > 0.01; }));
+
+    const auto mol =
+        helm_to_rdkit("PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,"
+                      "1:R3-7:R3|PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$V2.0");
+
+    compute_linear_peptide_coords(*mol);
+
+    const auto& conformer = mol->getConformer();
+    BOOST_TEST(!conformer.is3D());
+    for (const auto* monomer : mol->atoms()) {
+        const auto& position = conformer.getAtomPos(monomer->getIdx());
+        BOOST_TEST(position.x == monomer->getIdx() * 1.5,
+                   boost::test_tools::tolerance(0.01));
+        BOOST_TEST(position.y == 0.0, boost::test_tools::tolerance(0.01));
+    }
 }
 
 BOOST_AUTO_TEST_CASE(TestChainsLeavingCycleStartInCardinalDirections)
