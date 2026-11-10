@@ -41,7 +41,16 @@ class MonomerDatabase;
 
 using Monomer = RDKit::Atom;
 
+// The side-chain attachment point on peptide monomers.
+inline constexpr unsigned int PEPTIDE_R3_ATTACHMENT_POINT = 3;
+
 enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
+enum class NucleicAcidMonomerType { BASE, SUGAR, PHOSPHATE };
+
+/** Classify a named nucleic acid monomer using its natural analog when known.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API NucleicAcidMonomerType
+get_na_monomer_type(std::string_view residue_name, ChainType chain_type);
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 enum class ConnectionAdded {

@@ -27,6 +27,7 @@
 #include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
@@ -43,9 +44,6 @@ namespace
 const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
-
-const std::string H_BOND_LINKAGE =
-    H_BOND_AP_MODEL_NAME + "-" + H_BOND_AP_MODEL_NAME;
 
 const std::unordered_map<std::string_view, std::string_view>
     DNA_BASE_COMPLEMENTS = {
@@ -148,25 +146,6 @@ void validate_monomers(const RDKit::ROMol& mol)
 }
 
 /**
- * @return a list of <attachment point number, heavy element at the attachment
- * point> for the given monomer
- */
-static std::vector<std::pair<int, std::string>>
-get_attachment_point_nums_and_elems_for_monomer(const RDKit::Atom* monomer)
-{
-    std::vector<std::pair<int, std::string>> numbered_aps;
-    bool is_smiles = false;
-    if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
-        return get_attachment_points_for_smiles(
-            monomer->getProp<std::string>(ATOM_LABEL));
-    } else {
-        return get_attachment_points_for_res(
-            get_monomer_res_name(monomer),
-            rdkit_extensions::getChainType(*monomer));
-    }
-}
-
-/**
  * @return the attachment point name to use for a peptide side-chain attachment
  * point with the given heavy element
  */
@@ -183,15 +162,10 @@ static std::string peptide_ap3_name_for_element(const std::string_view elem)
  */
 static std::string peptide_ap3_name_for_monomer(const RDKit::Atom* monomer)
 {
-    auto aps_from_smiles =
-        get_attachment_point_nums_and_elems_for_monomer(monomer);
-    std::string elem;
-    for (auto [cur_num, cur_elem] : aps_from_smiles) {
-        if (cur_num == 3) {
-            elem = cur_elem;
-        }
-    }
-    return peptide_ap3_name_for_element(elem);
+    const auto element =
+        rdkit_extensions::get_attachment_point_element_for_monomer(
+            monomer, PeptideAP::X_OR_S);
+    return peptide_ap3_name_for_element(element.value_or(""));
 }
 
 bool peptide_has_ap3(const std::string& res_name_or_smiles,
@@ -199,9 +173,10 @@ bool peptide_has_ap3(const std::string& res_name_or_smiles,
 {
     std::vector<std::pair<int, std::string>> aps_from_smiles;
     if (is_smiles) {
-        aps_from_smiles = get_attachment_points_for_smiles(res_name_or_smiles);
+        aps_from_smiles = rdkit_extensions::get_attachment_points_for_smiles(
+            res_name_or_smiles);
     } else {
-        aps_from_smiles = get_attachment_points_for_res(
+        aps_from_smiles = rdkit_extensions::get_attachment_points_for_res(
             res_name_or_smiles, rdkit_extensions::ChainType::PEPTIDE);
     }
     for (auto [cur_num, cur_elem] : aps_from_smiles) {
@@ -218,50 +193,6 @@ std::string ap_model_name_for(int ap_num)
 }
 
 /**
- * Get the attachment point number, if any, from the atom label of the given
- * atom.
- */
-static std::optional<unsigned int>
-get_attachment_point_num_from_atom_label(const RDKit::Atom& atom)
-{
-    std::string atom_label;
-    atom.getPropIfPresent(RDKit::common_properties::atomLabel, atom_label);
-    if (atom_label.starts_with("_R")) {
-        const auto parsed_num = ap_name_to_num(atom_label.substr(1));
-        if (parsed_num > 0) {
-            return static_cast<unsigned int>(parsed_num);
-        }
-    }
-    return std::nullopt;
-}
-
-/**
- * Get the attachment point number, if any, from the given atom. This function
- * recognized attachment point numbers that are specified using atom-map
- * numbers, isotope-numbers, or CXSMILES atom labels in the format of "_R<#>".
- */
-static std::optional<unsigned int>
-get_attachment_point_num(const RDKit::Atom& atom)
-{
-    unsigned int attachment_point_num = 0;
-    if (atom.getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
-                              attachment_point_num) &&
-        attachment_point_num > 0) {
-        return attachment_point_num;
-    }
-
-    if (const auto atom_label_num =
-            get_attachment_point_num_from_atom_label(atom)) {
-        return atom_label_num;
-    }
-
-    if (atom.getAtomicNum() == 0 && atom.getIsotope() > 0) {
-        return atom.getIsotope();
-    }
-    return std::nullopt;
-}
-
-/**
  * Clear any properties on the specified atom that are used to mark it as an
  * attachment point
  */
@@ -269,7 +200,7 @@ static void clear_attachment_point_properties(RDKit::Atom& atom)
 {
     atom.clearProp(RDKit::common_properties::molAtomMapNumber);
 
-    if (get_attachment_point_num_from_atom_label(atom)) {
+    if (rdkit_extensions::get_attachment_point_num_from_atom_label(atom)) {
         atom.clearProp(RDKit::common_properties::atomLabel);
     }
 }
@@ -280,7 +211,8 @@ std::vector<int> get_missing_required_attachment_points(
 {
     std::unordered_set<int> present_attachment_points;
     for (const auto& attachment_point :
-         get_attachment_points_for_atomistic_mol(atomistic_mol)) {
+         rdkit_extensions::get_attachment_points_for_atomistic_mol(
+             atomistic_mol)) {
         present_attachment_points.insert(attachment_point.first);
     }
 
@@ -294,44 +226,6 @@ std::vector<int> get_missing_required_attachment_points(
     return missing_attachment_points;
 }
 
-std::vector<std::pair<int, std::string>>
-get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol)
-{
-    std::vector<std::pair<int, std::string>> attachment_points;
-    for (const auto* atom : mol.atoms()) {
-        const auto attachment_point_num = get_attachment_point_num(*atom);
-        if (!attachment_point_num) {
-            continue;
-        }
-
-        const RDKit::Atom* heavy_atom = atom;
-        if (heavy_atom->getAtomicNum() <= 1) {
-            heavy_atom = nullptr;
-            for (const auto* neighbor : mol.atomNeighbors(atom)) {
-                if (neighbor->getAtomicNum() > 1) {
-                    heavy_atom = neighbor;
-                    break;
-                }
-            }
-        }
-        if (heavy_atom != nullptr) {
-            attachment_points.emplace_back(*attachment_point_num,
-                                           heavy_atom->getSymbol());
-        }
-    }
-
-    std::ranges::sort(attachment_points);
-    return attachment_points;
-}
-
-std::vector<std::pair<int, std::string>>
-get_attachment_points_for_smiles(const std::string& smiles)
-{
-    auto mol = rdkit_extensions::to_rdkit(
-        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
-    return get_attachment_points_for_atomistic_mol(*mol);
-}
-
 std::string normalize_smiles_attachment_points(const std::string& smiles)
 {
     auto mol = rdkit_extensions::to_rdkit(
@@ -342,7 +236,8 @@ std::string normalize_smiles_attachment_points(const std::string& smiles)
     const auto input_atom_count = mol->getNumAtoms();
     for (auto atom_idx = 0u; atom_idx < input_atom_count; ++atom_idx) {
         auto* atom = mol->getAtomWithIdx(atom_idx);
-        const auto attachment_point_num = get_attachment_point_num(*atom);
+        const auto attachment_point_num =
+            rdkit_extensions::get_attachment_point_num(*atom);
         if (!attachment_point_num) {
             continue;
         }
@@ -369,25 +264,6 @@ std::string normalize_smiles_attachment_points(const std::string& smiles)
         *mol, rdkit_extensions::Format::EXTENDED_SMILES);
 }
 
-std::vector<std::pair<int, std::string>>
-get_attachment_points_for_res(const std::string& resname,
-                              const rdkit_extensions::ChainType chain_type)
-{
-    const auto smiles =
-        rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
-            resname, chain_type);
-    if (!smiles.has_value()) {
-        if (chain_type == rdkit_extensions::ChainType::RNA && resname == "N") {
-            // unknown bases have one attachment point with an unknown element
-            return {{1, ""}};
-        }
-        // Unknown peptides (X) and other unrecognized monomers default to two
-        // attachment points. Their elements are unknown.
-        return {{1, ""}, {2, ""}};
-    }
-    return get_attachment_points_for_smiles(*smiles);
-}
-
 MonomerType get_monomer_type(const RDKit::Atom* atom)
 {
     const auto* monomer_info = atom->getMonomerInfo();
@@ -404,7 +280,8 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
         return MonomerType::PEPTIDE;
     } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
         const auto& res_name = res_info->getResidueName();
-        return get_na_monomer_type_from_res_name(res_name);
+        return get_monomer_type(res_name,
+                                rdkit_extensions::getChainType(*atom));
     }
     return MonomerType::CHEM;
 }
@@ -417,21 +294,20 @@ MonomerType get_monomer_type(std::string_view res_name,
     } else if (chain_type == rdkit_extensions::ChainType::CHEM) {
         return MonomerType::CHEM;
     }
-    return get_na_monomer_type_from_res_name(res_name);
+    switch (rdkit_extensions::get_na_monomer_type(res_name, chain_type)) {
+        case rdkit_extensions::NucleicAcidMonomerType::PHOSPHATE:
+            return MonomerType::NA_PHOSPHATE;
+        case rdkit_extensions::NucleicAcidMonomerType::SUGAR:
+            return MonomerType::NA_SUGAR;
+        case rdkit_extensions::NucleicAcidMonomerType::BASE:
+            return MonomerType::NA_BASE;
+    }
+    return MonomerType::NA_BASE;
 }
 
 MonomerType get_na_monomer_type_from_res_name(const std::string_view res_name)
 {
-    if (res_name.empty()) {
-        return MonomerType::NA_BASE;
-    }
-    auto last_char = std::tolower(res_name.back());
-    if (last_char == 'p') {
-        return MonomerType::NA_PHOSPHATE;
-    } else if (last_char == 'r') {
-        return MonomerType::NA_SUGAR;
-    }
-    return MonomerType::NA_BASE;
+    return get_monomer_type(res_name, rdkit_extensions::ChainType::RNA);
 }
 
 std::string get_monomer_res_name(const RDKit::Atom* const monomer)
@@ -616,89 +492,6 @@ bool contains_two_monomer_linkages(const RDKit::Bond* bond)
     bool custom_linkage_exists =
         bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
     return custom_linkage_exists && custom_linkage != linkage;
-}
-
-ConnectorType get_connector_type(const RDKit::Bond* bond,
-                                 const bool is_secondary_connection)
-{
-    const auto* start_atom = bond->getBeginAtom();
-    auto start_res_name = get_monomer_res_name(start_atom);
-    auto start_monomer_type = get_monomer_type(start_atom);
-
-    const auto* end_atom = bond->getEndAtom();
-    auto end_res_name = get_monomer_res_name(end_atom);
-    auto end_monomer_type = get_monomer_type(end_atom);
-
-    if (is_hydrogen_bond(bond)) {
-        return ConnectorType::H_BOND;
-    } else if (start_monomer_type == MonomerType::CHEM ||
-               end_monomer_type == MonomerType::CHEM) {
-        return ConnectorType::CHEM;
-    } else if (start_monomer_type == MonomerType::PEPTIDE ||
-               end_monomer_type == MonomerType::PEPTIDE) {
-        std::string attachment_points;
-        std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
-        bond->getPropIfPresent(prop, attachment_points);
-        if (attachment_points == "R3-R3") {
-            if (peptide_ap3_name_for_monomer(start_atom) == PEPTIDE_R3_NAME_S &&
-                peptide_ap3_name_for_monomer(end_atom) == PEPTIDE_R3_NAME_S) {
-                return ConnectorType::PEPTIDE_DISULFIDE;
-            } else {
-                return ConnectorType::PEPTIDE_SIDE_CHAIN;
-            }
-        }
-        bool start_is_branch = false;
-        bool end_is_branch = false;
-        start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
-        end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-        if (start_is_branch || end_is_branch) {
-            return ConnectorType::PEPTIDE_BRANCHING;
-        }
-        return ConnectorType::PEPTIDE_LINEAR;
-    } else if (start_monomer_type != MonomerType::NA_BASE &&
-               end_monomer_type != MonomerType::NA_BASE) {
-        return ConnectorType::NA_BACKBONE;
-    } else {
-        return ConnectorType::NA_BACKBONE_TO_BASE;
-    }
-}
-
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const bool is_secondary_connection)
-{
-    auto connector_type = get_connector_type(bond, is_secondary_connection);
-    return does_connector_have_arrowheads(bond, connector_type);
-}
-
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const ConnectorType connector_type)
-{
-    switch (connector_type) {
-        case ConnectorType::CHEM:
-        case ConnectorType::PEPTIDE_LINEAR:
-        case ConnectorType::H_BOND:
-        case ConnectorType::NA_BACKBONE:
-        case ConnectorType::NA_BACKBONE_TO_BASE:
-            return {false, false};
-
-        case ConnectorType::PEPTIDE_DISULFIDE:
-        case ConnectorType::PEPTIDE_SIDE_CHAIN:
-            return {true, true};
-
-        case ConnectorType::PEPTIDE_BRANCHING: {
-            const auto* start_atom = bond->getBeginAtom();
-            const auto* end_atom = bond->getEndAtom();
-            bool start_is_branch = false;
-            bool end_is_branch = false;
-            start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
-            end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
-            return {start_is_branch, end_is_branch};
-        }
-        default:
-            return {false, false};
-    }
 }
 
 static Direction get_nearest_cardinal_direction(const QPointF& relative_pos)
@@ -1421,7 +1214,7 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
     }
 
     auto numbered_aps =
-        get_attachment_point_nums_and_elems_for_monomer(monomer);
+        rdkit_extensions::get_numbered_attachment_points_for_monomer(monomer);
     std::unordered_set<Direction> occupied_directions;
     for (auto ap : bound_aps) {
         occupied_directions.insert(ap.direction);
@@ -1718,7 +1511,7 @@ build_linkage_string(const std::string_view ap_name_one,
 {
     if (ap_name_one == H_BOND_AP_MODEL_NAME ||
         ap_name_two == H_BOND_AP_MODEL_NAME) {
-        return {H_BOND_LINKAGE, false};
+        return {HYDROGEN_BOND_LINKAGE, false};
     }
     auto ap_num_one = ap_name_to_num(ap_name_one);
     auto ap_num_two = ap_name_to_num(ap_name_two);
@@ -1861,7 +1654,7 @@ bool is_hydrogen_bond(const RDKit::Bond* const bond)
 {
     std::string custom_linkage;
     bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
-    return custom_linkage == H_BOND_LINKAGE;
+    return custom_linkage == HYDROGEN_BOND_LINKAGE;
 }
 
 } // namespace sketcher

@@ -13,6 +13,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/definitions.h"
 
@@ -40,20 +41,12 @@ using rdkit_extensions::Direction;
 
 enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
 
-enum class ConnectorType {
-    CHEM,
-    PEPTIDE_LINEAR,
-    PEPTIDE_BRANCHING,
-    PEPTIDE_DISULFIDE,
-    PEPTIDE_SIDE_CHAIN,
-    H_BOND,
-    NA_BACKBONE,
-    NA_BACKBONE_TO_BASE
-};
+using rdkit_extensions::ConnectorType;
+using rdkit_extensions::get_connector_type;
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, X_OR_S = 3 };
+enum { N = 1, C = 2, X_OR_S = rdkit_extensions::PEPTIDE_R3_ATTACHMENT_POINT };
 }
 
 namespace NASugarAP
@@ -97,39 +90,6 @@ SKETCHER_API std::vector<int> get_missing_required_attachment_points(
     std::vector<int> required_attachment_points);
 
 /**
- * Return the numbered attachment points in the given atomistic molecule (which
- * contains the contents of a monomer). Each attachment point is described using
- * a pair of the attachment point number and the symbol of the heavy atom at
- * that site. Note that this function assumes that the attachment points in the
- * molecule are sane; it does not protect against, e.g., duplicated attachment
- * points or attachment points on unbound dummy atoms.
- *
- * @throws std::invalid_argument if smiles is not valid extended SMILES
- */
-SKETCHER_API std::vector<std::pair<int, std::string>>
-get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol);
-
-/**
- * Return the numbered attachment points in a monomer SMILES string. Each
- * attachment point is described using a pair of the attachment point number and
- * the symbol of the heavy atom at that site. Note that this function assumes
- * that the SMILES string is valid and sane; it does not protect against, e.g.,
- * duplicated attachment points or attachment points on unbound dummy atoms.
- *
- * @param smiles the SMILES string, with attachment points indicated using
- * atom-map numbers, isotope-numbered dummy atoms, or CXSMILES atom labels such
- * as "_R1". For example, any of the following are acceptable descriptions of
- * alanine:
- *   - C[C@H](N[H:1])C(=O)[OH:2]
- *   - [1*]N[C@@H](C)C(=O)O[2*]
- *   - *N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|.
- *
- * @throws std::invalid_argument if smiles is not valid extended SMILES
- */
-SKETCHER_API std::vector<std::pair<int, std::string>>
-get_attachment_points_for_smiles(const std::string& smiles);
-
-/**
  * Normalize numbered attachment points in a monomer SMILES string so each is
  * represented by a dummy atom with a CXSMILES atom label such as "_R1".
  * Attachment points may initially be represented by atom-map numbers,
@@ -141,19 +101,6 @@ get_attachment_points_for_smiles(const std::string& smiles);
  */
 SKETCHER_API std::string
 normalize_smiles_attachment_points(const std::string& smiles);
-
-/**
- * Return the numbered attachment points for the given monomer. Each attachment
- * point is described using a pair of the attachment point number and the symbol
- * of the heavy atom at that site.
- *
- * If the monomer is missing from the database, unknown nucleic acid bases (N)
- * have R1, while unknown peptides (X) and all other missing monomers have R1
- * and R2. These fallback attachment points have empty element symbols.
- */
-SKETCHER_API std::vector<std::pair<int, std::string>>
-get_attachment_points_for_res(const std::string& resname,
-                              const rdkit_extensions::ChainType chain_type);
 
 /**
  * Information about an attachment point on a monomer that's bound to another
@@ -313,45 +260,7 @@ SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
 SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
 
 /**
- * Determine what type of monomeric connection the given bond represents.
- * Note that a connector between a CHEM monomer and any other monomer will be
- * categorized as a CHEM connector, and a connector between a PEPTIDE monomer
- * and an RNA monomer will be categorized as a PEPTIDE connector.
- *
- * @param bond the bond representing a monomer connector
- * @param is_secondary_connection whether to categorize the primary or secondary
- * connection of this bond. This is only relevant for bonds that
- * contains_two_monomer_linkages() returns true.
- */
-SKETCHER_API ConnectorType
-get_connector_type(const RDKit::Bond* bond, const bool is_secondary_connection);
-
-/**
- * Determine whether diamond arrowheads should be drawn at the start and end of
- * the given connector.
- * @param bond the bond representing a monomer connector
- * @param is_secondary_connection whether we are drawing the primary or
- * secondary connection of this bond. This is only relevant for bonds where
- * contains_two_monomer_linkages() returns true.
- * @return A pair of
- *   - should an arrowhead be drawn at the start of the bond
- *   - should an arrowhead be drawn at the end of the bond
- */
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const bool is_secondary_connection);
-
-/**
- * @overload
- * @param bond the bond representing a monomer connector
- * @param connector_type the type of monomer connection represented by bond
- */
-std::pair<bool, bool>
-does_connector_have_arrowheads(const RDKit::Bond* bond,
-                               const ConnectorType connector_type);
-
-/**
- * For a monomer connector being drawn with a diamond arrowhead, determine the
+ * For a monomer connector being drawn with an arrowhead, determine the
  * offset from the center of the monomer to the center of the arrowhead. The
  * arrowhead is placed outside the nearest cardinal side facing the bound
  * monomer. If that side is occupied, up to three other forward-facing sides

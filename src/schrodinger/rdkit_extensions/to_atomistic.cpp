@@ -39,7 +39,6 @@ namespace
 namespace fs = boost::filesystem;
 
 const std::string ATOM_PROP_GRAPH_H("_GRAPH_H_TO_REMOVE");
-const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 
 struct AttachmentInfo {
     unsigned int core_atom;

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <boost/dynamic_bitset.hpp>
+#include <cctype>
 #include <optional>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/MolOps.h>
@@ -19,7 +20,11 @@
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/helm/dynamic_bitset_on_bits_wrapper.h"
+#include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 using ::RDKit::RWMol;
 
@@ -135,6 +140,111 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id)
 
     return static_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info)
         ->getChainId();
+}
+
+/** SMILES monomers have no named nucleic acid component to classify. */
+static bool is_na_base(const RDKit::Atom* atom)
+{
+    bool is_smiles = false;
+    atom->getPropIfPresent(SMILES_MONOMER, is_smiles);
+    if (is_smiles) {
+        return false;
+    }
+    const auto* residue =
+        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
+    return residue != nullptr && get_na_monomer_type(residue->getResidueName(),
+                                                     getChainType(*atom)) ==
+                                     NucleicAcidMonomerType::BASE;
+}
+
+ConnectorType get_connector_type(const RDKit::Bond* bond,
+                                 bool is_secondary_connection)
+{
+    std::string custom_linkage;
+    bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
+    if (custom_linkage == HYDROGEN_BOND_LINKAGE) {
+        return ConnectorType::H_BOND;
+    }
+
+    if (bond->getBeginAtom()->getMonomerInfo() == nullptr ||
+        bond->getEndAtom()->getMonomerInfo() == nullptr) {
+        throw std::runtime_error("Atom has no monomer info");
+    }
+    const auto* begin_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getBeginAtom()->getMonomerInfo());
+    const auto* end_residue = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+        bond->getEndAtom()->getMonomerInfo());
+    if (begin_residue == nullptr || end_residue == nullptr) {
+        return ConnectorType::CHEM;
+    }
+
+    const auto& begin_id = begin_residue->getChainId();
+    const auto& end_id = end_residue->getChainId();
+    const bool begin_is_peptide = begin_id.starts_with("PEPTIDE");
+    const bool end_is_peptide = end_id.starts_with("PEPTIDE");
+    const bool begin_is_rna = begin_id.starts_with("RNA");
+    const bool end_is_rna = end_id.starts_with("RNA");
+    const bool both_are_peptide_or_rna =
+        (begin_is_peptide || begin_is_rna) && (end_is_peptide || end_is_rna);
+    if (!both_are_peptide_or_rna) {
+        return ConnectorType::CHEM;
+    }
+    if (!begin_is_peptide && !end_is_peptide) {
+        return is_na_base(bond->getBeginAtom()) ||
+                       is_na_base(bond->getEndAtom())
+                   ? ConnectorType::NA_BACKBONE_TO_BASE
+                   : ConnectorType::NA_BACKBONE;
+    }
+
+    std::string linkage;
+    bond->getPropIfPresent(is_secondary_connection ? CUSTOM_BOND : LINKAGE,
+                           linkage);
+    if (linkage == PEPTIDE_SIDE_CHAIN_LINKAGE) {
+        const auto begin_element = get_attachment_point_element_for_monomer(
+            bond->getBeginAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+        const auto end_element = get_attachment_point_element_for_monomer(
+            bond->getEndAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+        return begin_element.value_or("") == "S" &&
+                       end_element.value_or("") == "S"
+                   ? ConnectorType::PEPTIDE_DISULFIDE
+                   : ConnectorType::PEPTIDE_SIDE_CHAIN;
+    }
+
+    bool begin_is_branch = false;
+    bool end_is_branch = false;
+    bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER, begin_is_branch);
+    bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
+    return begin_is_branch || end_is_branch ? ConnectorType::PEPTIDE_BRANCHING
+                                            : ConnectorType::PEPTIDE_LINEAR;
+}
+
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               bool is_secondary_connection)
+{
+    return does_connector_have_arrowheads(
+        bond, get_connector_type(bond, is_secondary_connection));
+}
+
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               ConnectorType connector_type)
+{
+    switch (connector_type) {
+        case ConnectorType::PEPTIDE_DISULFIDE:
+        case ConnectorType::PEPTIDE_SIDE_CHAIN:
+            return {true, true};
+        case ConnectorType::PEPTIDE_BRANCHING: {
+            bool begin_is_branch = false;
+            bool end_is_branch = false;
+            bond->getBeginAtom()->getPropIfPresent(BRANCH_MONOMER,
+                                                   begin_is_branch);
+            bond->getEndAtom()->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
+            return {begin_is_branch, end_is_branch};
+        }
+        default:
+            return {false, false};
+    }
 }
 
 [[nodiscard]] unsigned int get_residue_number(const ::RDKit::Atom* atom)

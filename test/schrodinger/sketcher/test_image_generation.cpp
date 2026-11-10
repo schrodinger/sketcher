@@ -14,6 +14,7 @@
 #include <QList>
 #include <QLineF>
 #include <QPainter>
+#include <QRectF>
 #include <QSvgRenderer>
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
@@ -221,6 +222,62 @@ BOOST_AUTO_TEST_CASE(test_initial_large_monomer_labels_expand_layout)
             }
         }
     }
+}
+
+/**
+ * Exercise Sketcher's measured label widths: resizing three connected
+ * polymers must preserve both vertical bonds and a bond-length label gap.
+ */
+BOOST_AUTO_TEST_CASE(test_wide_labels_keep_vertical_interpolymer_bonds)
+{
+    const std::string helm =
+        "PEPTIDE1{[Phe_34diCl].C.C.C.C.C}|PEPTIDE2{[D-2Nal].C}|"
+        "PEPTIDE3{[Phe_4F].C.C.C}$"
+        "PEPTIDE1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,PEPTIDE2,3:R3-1:R3|"
+        "PEPTIDE2,PEPTIDE3,2:R3-3:R3$$$V2.0";
+    auto mol = rdkit_extensions::to_rdkit(helm, rdkit_extensions::Format::HELM);
+    rdkit_extensions::compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    // Start with two vertical connections. Importing the molecule into the
+    // scene measures the real labels and resizes their polymers.
+    const double bond_length = rdkit_extensions::MONOMER_BOND_LENGTH;
+    const double h = bond_length * std::sqrt(3.0) / 2;
+    conf.setAtomPos(0, {0, 1.5 * bond_length, 0});
+    conf.setAtomPos(1, {-h, bond_length, 0});
+    conf.setAtomPos(2, {-h, 0, 0});
+    conf.setAtomPos(3, {0, -0.5 * bond_length, 0});
+    conf.setAtomPos(4, {h, 0, 0});
+    conf.setAtomPos(5, {h, bond_length, 0});
+    conf.setAtomPos(6, {-h, -2 * bond_length, 0});
+    conf.setAtomPos(7, {-h - bond_length, -2 * bond_length, 0});
+    for (unsigned int i = 8; i < 12; ++i) {
+        conf.setAtomPos(i, {-h + bond_length * (static_cast<int>(i) - 11),
+                            -4 * bond_length, 0});
+    }
+
+    auto scene = TestScene::getScene();
+    scene->m_mol_model->addMol(*mol, "Wide label layout",
+                               /* reposition_mol = */ false,
+                               /* new_molecule_added = */ true,
+                               /* enforce_monomer_validity = */ false);
+    const auto& rendered_conf = scene->m_mol_model->getMol()->getConformer();
+    BOOST_CHECK_SMALL(
+        rendered_conf.getAtomPos(2).x - rendered_conf.getAtomPos(6).x, 1e-6);
+    BOOST_CHECK_SMALL(
+        rendered_conf.getAtomPos(7).x - rendered_conf.getAtomPos(10).x, 1e-6);
+
+    // Check the sizes and gaps of the labels Sketcher actually drew.
+    std::vector<QRectF> bounds;
+    for (auto* atom : scene->m_mol_model->getMol()->atoms()) {
+        bounds.push_back(
+            scene->m_atom_to_atom_item.at(atom)->sceneBoundingRect());
+    }
+    BOOST_CHECK_GT(bounds[0].width(), bounds[2].width());
+    BOOST_CHECK_GT(bounds[6].width(), bounds[7].width());
+    BOOST_CHECK_GT(bounds[8].width(), bounds[9].width());
+    const double minimum_gap = bond_length * VIEW_SCALE;
+    BOOST_CHECK_GE(bounds[6].top() - bounds[2].bottom(), minimum_gap);
+    BOOST_CHECK_GE(bounds[10].top() - bounds[7].bottom(), minimum_gap);
 }
 
 BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)

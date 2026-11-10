@@ -6,7 +6,9 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
+#include <algorithm>
 #include <array>
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -78,14 +80,14 @@ BOOST_DATA_TEST_CASE(
           {7.5, 0},
           {9, 0},
           {10.5, 0},
-          {9, -1.5},
-          {7.5, -1.5},
-          {6, -1.5},
-          {4.5, -1.5},
-          {3, -1.5},
-          {1.5, -1.5},
-          {0, -1.5},
-          {-1.5, -1.5}}},
+          {9, -2.3},
+          {7.5, -2.3},
+          {6, -2.3},
+          {4.5, -2.3},
+          {3, -2.3},
+          {1.5, -2.3},
+          {0, -2.3},
+          {-1.5, -2.3}}},
 
         {"PEPTIDE1{[Me-].[Oic_3aR-7aS].[pnG].[dD]}|PEPTIDE2{[Me-].T.[dS].[Gly_"
          "cPr].C.[D-Nva].[D-2Nal].[meR].[D-Dip].[-OMe]}|PEPTIDE3{[D-2Thi].[Cys_"
@@ -192,15 +194,15 @@ BOOST_DATA_TEST_CASE(
           {6, 0},
           {6, -1.5},
           {7.5, 0},
-          {3, -4.5},
-          {4.5, -4.5},
-          {1.5, -4.5},
-          {0, -4.5},
+          {3, -3},
+          {4.5, -3},
+          {1.5, -3},
           {0, -3},
-          {-1.5, -4.5},
-          {-3, -4.5},
+          {0, -1.5},
+          {-1.5, -3},
           {-3, -3},
-          {-4.5, -4.5}}},
+          {-3, -1.5},
+          {-4.5, -3}}},
 
         {"PEPTIDE1{R.A.Y}|RNA1{r(G).p.r(A).p.r(U).p.r(C).p.[mR](U).p.[mR](U).p."
          "r(A).p}|RNA2{p.r(U).p.r(A).p.r(A).p.r(G).p.r(A).p.r(U).p.r(C).p.r(A)."
@@ -335,31 +337,31 @@ BOOST_DATA_TEST_CASE(
          "PEPTIDE2,3:R1-8:R2|PEPTIDE2,PEPTIDE2,1:R3-15:R3|PEPTIDE2,PEPTIDE2,1:"
          "R1-16:R2|PEPTIDE2,PEPTIDE3,11:R3-14:R3|PEPTIDE3,PEPTIDE3,1:R3-15:R3|"
          "PEPTIDE3,PEPTIDE3,1:R1-17:R2$$$",
-         {{3.295433, 1.467221},    {3.607301, 0},
-          {3.295433, -1.467221},   {2.413755, -2.680747},
-          {1.114717, -3.430747},   {-0.377066, -3.58754},
-          {-1.80365, -3.124014},   {-2.918368, -2.120318},
-          {-3.528473, -0.75},      {-3.528473, 0.75},
-          {-2.918368, 2.120318},   {-1.80365, 3.124014},
-          {-0.377066, 3.58754},    {1.114717, 3.430747},
-          {2.413755, 2.680747},    {3.905538, 2.83754},
-          {9.509234, -10.142301},  {9.821102, -8.675079},
-          {9.509234, -7.207858},   {8.627556, -5.994332},
-          {7.328518, -5.244332},   {5.836735, -5.08754},
-          {4.41015, -5.551065},    {3.295433, -6.554761},
-          {2.685328, -7.925079},   {2.685328, -9.425079},
-          {3.295433, -10.795397},  {4.41015, -11.799093},
-          {5.836735, -12.262619},  {7.328518, -12.105826},
-          {8.627556, -11.355826},  {10.119339, -11.512619},
-          {5.476149, -15.882937},  {5.788017, -17.350158},
-          {5.476149, -18.81738},   {4.594471, -20.030905},
-          {3.295433, -20.780905},  {1.80365, -20.937698},
-          {0.377066, -20.474172},  {-0.737652, -19.470477},
-          {-1.347757, -18.100158}, {-1.347757, -16.600158},
-          {-0.737652, -15.22984},  {0.377066, -14.226144},
-          {1.80365, -13.762619},   {3.295433, -13.919411},
-          {4.594471, -14.669411},  {5.807997, -13.787734},
-          {6.689675, -15.001259}}},
+         {{3.295433, 1.467221},   {3.607301, 0},
+          {3.295433, -1.467221},  {2.413755, -2.680747},
+          {1.114717, -3.430747},  {-0.377066, -3.58754},
+          {-1.80365, -3.124014},  {-2.918368, -2.120318},
+          {-3.528473, -0.75},     {-3.528473, 0.75},
+          {-2.918368, 2.120318},  {-1.80365, 3.124014},
+          {-0.377066, 3.58754},   {1.114717, 3.430747},
+          {2.413755, 2.680747},   {3.905538, 2.83754},
+          {11.009234, -5.054761}, {11.321102, -3.58754},
+          {11.009234, -2.120318}, {10.127556, -0.906793},
+          {8.828518, -0.156793},  {7.336735, -0},
+          {5.91015, -0.463525},   {4.795433, -1.467221},
+          {4.185328, -2.83754},   {4.185328, -4.33754},
+          {4.795433, -5.707858},  {5.91015, -6.711554},
+          {7.336735, -7.175079},  {8.828518, -7.018286},
+          {10.127556, -6.268286}, {11.619339, -6.425079},
+          {6.976149, -11.570103}, {7.288017, -13.037324},
+          {6.976149, -14.504546}, {6.094471, -15.718071},
+          {4.795433, -16.468071}, {3.30365, -16.624864},
+          {1.877066, -16.161338}, {0.762348, -15.157643},
+          {0.152243, -13.787324}, {0.152243, -12.287324},
+          {0.762348, -10.917006}, {1.877066, -9.91331},
+          {3.30365, -9.449785},   {4.795433, -9.606578},
+          {6.094471, -10.356578}, {7.307997, -9.4749},
+          {8.189675, -10.688425}}},
 
         // CHEM polymers
         {"CHEM1{[SMCC]}|PEPTIDE1{L.M}|RNA1{R(C)P.R(A)P}$RNA1,PEPTIDE1,6:R2-1:"
@@ -381,12 +383,12 @@ BOOST_DATA_TEST_CASE(
           {4.5, 0},     {6, 0},       {6, -1.5},    {7.5, 0},     {9, 0},
           {9, -1.5},    {10.5, 0},    {12, 0},      {12, -1.5},   {13.5, 0},
           {15, 0},      {15, -1.5},   {16.5, 0},    {18, 0},      {18, -1.5},
-          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -4.5},
-          {0, -6},      {1.5, -4.5},  {3, -4.5},    {3, -6},      {4.5, -4.5},
-          {6, -4.5},    {6, -6},      {7.5, -4.5},  {9, -4.5},    {9, -6},
-          {10.5, -4.5}, {12, -4.5},   {12, -6},     {13.5, -4.5}, {15, -4.5},
-          {15, -6},     {16.5, -4.5}, {18, -4.5},   {18, -6},     {19.5, -4.5},
-          {21, -4.5},   {21, -6},     {22.5, -4.5}, {24, -2.25}}},
+          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -3.8},
+          {0, -5.3},    {1.5, -3.8},  {3, -3.8},    {3, -5.3},    {4.5, -3.8},
+          {6, -3.8},    {6, -5.3},    {7.5, -3.8},  {9, -3.8},    {9, -5.3},
+          {10.5, -3.8}, {12, -3.8},   {12, -5.3},   {13.5, -3.8}, {15, -3.8},
+          {15, -5.3},   {16.5, -3.8}, {18, -3.8},   {18, -5.3},   {19.5, -3.8},
+          {21, -3.8},   {21, -5.3},   {22.5, -3.8}, {24, -1.9}}},
 
         {"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)"
          "P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{[sDBl]}$RNA2,CHEM1,1:R2-"
@@ -395,12 +397,12 @@ BOOST_DATA_TEST_CASE(
           {4.5, 0},     {6, 0},       {6, -1.5},    {7.5, 0},     {9, 0},
           {9, -1.5},    {10.5, 0},    {12, 0},      {12, -1.5},   {13.5, 0},
           {15, 0},      {15, -1.5},   {16.5, 0},    {18, 0},      {18, -1.5},
-          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -4.5},
-          {0, -6},      {1.5, -4.5},  {3, -4.5},    {3, -6},      {4.5, -4.5},
-          {6, -4.5},    {6, -6},      {7.5, -4.5},  {9, -4.5},    {9, -6},
-          {10.5, -4.5}, {12, -4.5},   {12, -6},     {13.5, -4.5}, {15, -4.5},
-          {15, -6},     {16.5, -4.5}, {18, -4.5},   {18, -6},     {19.5, -4.5},
-          {21, -4.5},   {21, -6},     {22.5, -4.5}, {-1.5, -2.25}}},
+          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -3.8},
+          {0, -5.3},    {1.5, -3.8},  {3, -3.8},    {3, -5.3},    {4.5, -3.8},
+          {6, -3.8},    {6, -5.3},    {7.5, -3.8},  {9, -3.8},    {9, -5.3},
+          {10.5, -3.8}, {12, -3.8},   {12, -5.3},   {13.5, -3.8}, {15, -3.8},
+          {15, -5.3},   {16.5, -3.8}, {18, -3.8},   {18, -5.3},   {19.5, -3.8},
+          {21, -3.8},   {21, -5.3},   {22.5, -3.8}, {-1.5, -1.9}}},
 
         {"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)"
          "P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{[sDBl]}$RNA2,CHEM1,12:"
@@ -409,12 +411,12 @@ BOOST_DATA_TEST_CASE(
           {4.5, 0},     {6, 0},       {6, -1.5},    {7.5, 0},     {9, 0},
           {9, -1.5},    {10.5, 0},    {12, 0},      {12, -1.5},   {13.5, 0},
           {15, 0},      {15, -1.5},   {16.5, 0},    {18, 0},      {18, -1.5},
-          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -4.5},
-          {0, -6},      {1.5, -4.5},  {3, -4.5},    {3, -6},      {4.5, -4.5},
-          {6, -4.5},    {6, -6},      {7.5, -4.5},  {9, -4.5},    {9, -6},
-          {10.5, -4.5}, {12, -4.5},   {12, -6},     {13.5, -4.5}, {15, -4.5},
-          {15, -6},     {16.5, -4.5}, {18, -4.5},   {18, -6},     {19.5, -4.5},
-          {21, -4.5},   {21, -6},     {22.5, -4.5}, {10.5, -2.25}}},
+          {19.5, 0},    {21, 0},      {21, -1.5},   {22.5, 0},    {0, -3.8},
+          {0, -5.3},    {1.5, -3.8},  {3, -3.8},    {3, -5.3},    {4.5, -3.8},
+          {6, -3.8},    {6, -5.3},    {7.5, -3.8},  {9, -3.8},    {9, -5.3},
+          {10.5, -3.8}, {12, -3.8},   {12, -5.3},   {13.5, -3.8}, {15, -3.8},
+          {15, -5.3},   {16.5, -3.8}, {18, -3.8},   {18, -5.3},   {19.5, -3.8},
+          {21, -3.8},   {21, -5.3},   {22.5, -3.8}, {10.5, -1.9}}},
 
         // Hairpin polymers
         {"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(U)P.R(C)P.R(G)P.R(G)P.R(U)"
@@ -468,7 +470,7 @@ BOOST_DATA_TEST_CASE(
           {3.927051, 0},
           {5.427051, 0},
           {6.927051, 0},
-          {3.927051, -3.808263}}},
+          {3.927051, -1.5}}},
         // unconnected chains
         {R"(PEPTIDE1{A.C.D.D.E}"HC"|PEPTIDE2{G.C.S.S.S.P.K.K.V.K}"LC"$$$$V2.0)",
          {{0, 0},
@@ -973,6 +975,205 @@ BOOST_DATA_TEST_CASE(ConnectionSpacingMatchesResize,
     resize_monomers(*mol, {{0, start_size}, {1, end_size}});
     BOOST_CHECK_SMALL(
         (conf.getAtomPos(1) - conf.getAtomPos(0) - actual).length(), 1e-6);
+}
+
+/** Unpaired RNA and DNA strands retain base orientation when linked by CHEM. */
+BOOST_AUTO_TEST_CASE(UnpairedNucleicAcidStrandsAreNotFlippedVertically)
+{
+    for (const bool dna : {false, true}) {
+        const std::string sugar_name = dna ? "[dR]" : "R";
+        const std::array<std::string, 8> bases = {
+            "A", "A", "G", "G", "C", dna ? "T" : "U", "A", "A"};
+        std::string strand;
+        for (const auto& base : bases) {
+            if (!strand.empty()) {
+                strand += '.';
+            }
+            strand += sugar_name + "(" + base + ")P";
+        }
+        const auto helm = "RNA1{" + strand + "}|RNA2{" + strand +
+                          "}|CHEM1{[sDBl]}$RNA2,CHEM1,24:R2-1:R3|"
+                          "RNA1,CHEM1,24:R2-1:R2$$$";
+        auto mol = helm_to_rdkit(helm);
+        compute_monomer_mol_coords(*mol);
+        const auto& conf = mol->getConformer();
+        for (unsigned int sugar = 0; sugar < 48; sugar += 3) {
+            BOOST_CHECK_LT(conf.getAtomPos(sugar + 1).y,
+                           conf.getAtomPos(sugar).y);
+        }
+    }
+}
+
+struct ResizedConnections {
+    double first_offset;
+    double second_offset;
+    double minimum_separation;
+};
+
+static ResizedConnections
+get_resized_connection_offsets(bool reverse_bond_order, bool horizontal = false)
+{
+    const std::string polymers =
+        "PEPTIDE1{[Phe_34diCl].C.C.C.C.C}|PEPTIDE2{[D-2Nal].C}|"
+        "PEPTIDE3{[Phe_4F].C.C.C}$";
+    const std::string ring_bond = "PEPTIDE1,PEPTIDE1,6:R2-1:R1";
+    const std::string first_bond = "PEPTIDE1,PEPTIDE2,3:R3-1:R3";
+    const std::string second_bond = "PEPTIDE2,PEPTIDE3,2:R3-3:R3";
+    std::string helm = polymers;
+    if (reverse_bond_order) {
+        helm += second_bond + "|" + first_bond + "|" + ring_bond;
+    } else {
+        helm += ring_bond + "|" + first_bond + "|" + second_bond;
+    }
+    auto mol = helm_to_rdkit(helm + "$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    // Put the two chains below the cyclic polymer with both interpolymer
+    // bonds vertical. The sizes below are controlled resize inputs for the
+    // three wide labels; the Sketcher image test uses their measured sizes.
+    const double bond_length =
+        schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH;
+    const double minimum_size =
+        schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE;
+    const double h = bond_length * std::sqrt(3.0) / 2;
+    conf.setAtomPos(0, {0, 1.5 * bond_length, 0});
+    conf.setAtomPos(1, {-h, bond_length, 0});
+    conf.setAtomPos(2, {-h, 0, 0});
+    conf.setAtomPos(3, {0, -0.5 * bond_length, 0});
+    conf.setAtomPos(4, {h, 0, 0});
+    conf.setAtomPos(5, {h, bond_length, 0});
+    conf.setAtomPos(6, {-h, -2 * bond_length, 0});
+    conf.setAtomPos(7, {-h - bond_length, -2 * bond_length, 0});
+    for (unsigned int i = 8; i < 12; ++i) {
+        conf.setAtomPos(i, {-h + bond_length * (static_cast<int>(i) - 11),
+                            -4 * bond_length, 0});
+    }
+    if (horizontal) {
+        // Rotate the same three-polymer fixture, making both interpolymer
+        // bonds horizontal while retaining the controlled label sizes.
+        for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+            const auto pos = conf.getAtomPos(i);
+            conf.setAtomPos(i, {-pos.y, pos.x, 0});
+        }
+    }
+    std::unordered_map<int, RDGeom::Point3D> sizes;
+    sizes.emplace(0, horizontal ? RDGeom::Point3D(minimum_size, 4, 0)
+                                : RDGeom::Point3D(4, minimum_size, 0));
+    sizes.emplace(6, horizontal ? RDGeom::Point3D(minimum_size, 2.5, 0)
+                                : RDGeom::Point3D(2.5, minimum_size, 0));
+    sizes.emplace(8, horizontal ? RDGeom::Point3D(minimum_size, 3.5, 0)
+                                : RDGeom::Point3D(3.5, minimum_size, 0));
+    schrodinger::rdkit_extensions::resize_monomers(*mol, sizes);
+    double minimum_polymer_separation = std::numeric_limits<double>::max();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        for (unsigned int j = i + 1; j < mol->getNumAtoms(); ++j) {
+            const bool same_polymer = (i < 6 && j < 6) ||
+                                      (i >= 6 && i < 8 && j < 8) ||
+                                      (i >= 8 && j >= 8);
+            if (!same_polymer) {
+                const double distance =
+                    (conf.getAtomPos(i) - conf.getAtomPos(j)).length();
+                minimum_polymer_separation =
+                    std::min(minimum_polymer_separation, distance);
+            }
+        }
+    }
+    const double first_offset =
+        horizontal ? conf.getAtomPos(2).y - conf.getAtomPos(6).y
+                   : conf.getAtomPos(2).x - conf.getAtomPos(6).x;
+    const double second_offset =
+        horizontal ? conf.getAtomPos(7).y - conf.getAtomPos(10).y
+                   : conf.getAtomPos(7).x - conf.getAtomPos(10).x;
+    return {first_offset, second_offset, minimum_polymer_separation};
+}
+
+/**
+ * Resizing wide labels on a ring and two attached chains must leave both
+ * interpolymer bonds vertical and keep the polymers separated.
+ */
+BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedAcrossThreePolymers)
+{
+    const auto result = get_resized_connection_offsets(false);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
+                   schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
+                       schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
+}
+
+/**
+ * Reversing the HELM bond order must give the same alignment and clearance;
+ * neither connection may be tilted by correcting the other one.
+ */
+BOOST_AUTO_TEST_CASE(VerticalConnectionsStayAlignedWithReversedBondOrder)
+{
+    const auto result = get_resized_connection_offsets(true);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
+                   schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
+                       schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
+}
+
+/** Resizing labels must also keep horizontal interpolymer bonds level. */
+BOOST_AUTO_TEST_CASE(HorizontalConnectionsStayAlignedAcrossThreePolymers)
+{
+    const auto result = get_resized_connection_offsets(false, true);
+    BOOST_CHECK_SMALL(result.first_offset, 1e-6);
+    BOOST_CHECK_SMALL(result.second_offset, 1e-6);
+    BOOST_CHECK_GE(result.minimum_separation,
+                   schrodinger::rdkit_extensions::MONOMER_MINIMUM_SIZE +
+                       schrodinger::rdkit_extensions::MONOMER_BOND_LENGTH);
+}
+
+/**
+ * A diagonally overlapping label pair must not reverse vertical alignment
+ * and move nearby polymers on either side closer together.
+ */
+BOOST_AUTO_TEST_CASE(VerticalAlignmentDoesNotReverseForDiagonalLabels)
+{
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit(
+        "PEPTIDE1{A.C.C.C.C.C}|PEPTIDE2{A}|PEPTIDE3{A}|PEPTIDE4{A}|"
+        "PEPTIDE5{A}|PEPTIDE6{A}$"
+        "PEPTIDE1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,PEPTIDE2,4:R3-1:R3$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+
+    const double bond_length = MONOMER_BOND_LENGTH;
+    const double minimum_size = MONOMER_MINIMUM_SIZE;
+    const double half_height = bond_length * std::sqrt(3.0) / 2;
+    // A regular hexagonal ring centered at x=0, with atom 3 attached
+    // vertically to polymer 2.
+    conf.setAtomPos(0, {bond_length, 0, 0});
+    conf.setAtomPos(1, {bond_length / 2, half_height, 0});
+    conf.setAtomPos(2, {-bond_length / 2, half_height, 0});
+    conf.setAtomPos(3, {-bond_length, 0, 0});
+    conf.setAtomPos(4, {-bond_length / 2, -half_height, 0});
+    conf.setAtomPos(5, {bond_length / 2, -half_height, 0});
+    conf.setAtomPos(6, {-bond_length, -bond_length, 0});
+    // Two diagonal label overlaps on opposite sides force the computed
+    // alignment fraction below zero unless it is clamped.
+    conf.setAtomPos(7, {-bond_length + 0.8, -bond_length + 0.8, 0});
+    conf.setAtomPos(8, {-bond_length - 0.8, -bond_length + 0.8, 0});
+    conf.setAtomPos(9, {-bond_length - 2.0, -bond_length, 0});
+    conf.setAtomPos(10, {-bond_length + 2.0, -bond_length, 0});
+
+    const double initial_left_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(9).x);
+    const double initial_right_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(10).x);
+    std::unordered_map<int, RDGeom::Point3D> resize_sizes;
+    resize_sizes.emplace(8,
+                         RDGeom::Point3D(minimum_size + 3.0, minimum_size, 0));
+    resize_monomers(*mol, resize_sizes);
+
+    const double final_left_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(9).x);
+    const double final_right_separation =
+        std::abs(conf.getAtomPos(6).x - conf.getAtomPos(10).x);
+    BOOST_CHECK_GE(final_left_separation, initial_left_separation - 1e-6);
+    BOOST_CHECK_GE(final_right_separation, initial_right_separation - 1e-6);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

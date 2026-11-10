@@ -819,6 +819,33 @@ BOOST_AUTO_TEST_CASE(test_mutate_base_to_current_symbol_is_noop)
 }
 
 /**
+ * A custom sugar without a sugar suffix must be classified using its natural
+ * analog. This covers the database fallback shared by RDKit and Sketcher.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_sugar_without_suffix_uses_natural_analog)
+{
+    constexpr std::string_view json = R"([{
+        "symbol": "SUGX",
+        "polymer_type": "RNA",
+        "natural_analog": "R",
+        "smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "core_smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "name": "Custom sugar without suffix",
+        "monomer_type": "Backbone",
+        "author": "test",
+        "pdbcode": "SGX"
+    }])";
+    CustomDbScope scope(json);
+
+    BOOST_CHECK(rdkit_extensions::get_na_monomer_type(
+                    "SUGX", rdkit_extensions::ChainType::RNA) ==
+                rdkit_extensions::NucleicAcidMonomerType::SUGAR);
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[SUGX]}$$$$V2.0");
+    BOOST_CHECK(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                MonomerType::NA_SUGAR);
+}
+
+/**
  * Custom sugar with mismatched NATURAL_ANALOG must not be classified as
  * the deoxy form — toggle stays disabled. Parallel of the AA case.
  */

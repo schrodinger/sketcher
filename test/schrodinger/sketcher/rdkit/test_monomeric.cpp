@@ -15,6 +15,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -116,7 +117,8 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_smiles)
                                                                {2, "O"}};
 
     for (const auto& smiles : alanine_smiles) {
-        BOOST_TEST(get_attachment_points_for_smiles(smiles) == expected);
+        BOOST_TEST(rdkit_extensions::get_attachment_points_for_smiles(smiles) ==
+                   expected);
     }
 }
 
@@ -143,8 +145,8 @@ BOOST_AUTO_TEST_CASE(test_normalize_smiles_attachment_points)
             normalize_smiles_attachment_points(input_smiles);
         BOOST_TEST(normalized.find("_R1") != std::string::npos);
         BOOST_TEST(normalized.find("_R2") != std::string::npos);
-        BOOST_TEST(get_attachment_points_for_smiles(normalized) ==
-                   expected_aps);
+        BOOST_TEST(rdkit_extensions::get_attachment_points_for_smiles(
+                       normalized) == expected_aps);
         const auto mol = rdkit_extensions::to_rdkit(
             normalized, rdkit_extensions::Format::EXTENDED_SMILES);
         const auto expected = rdkit_extensions::to_rdkit(
@@ -175,7 +177,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_res)
 {
     const std::vector<std::pair<int, std::string>> expected = {{1, "N"},
                                                                {2, "O"}};
-    BOOST_TEST(get_attachment_points_for_res(
+    BOOST_TEST(rdkit_extensions::get_attachment_points_for_res(
                    "A", rdkit_extensions::ChainType::PEPTIDE) == expected);
 }
 
@@ -183,7 +185,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_peptide)
 {
     const std::vector<std::pair<int, std::string>> expected = {{1, ""},
                                                                {2, ""}};
-    BOOST_TEST(get_attachment_points_for_res(
+    BOOST_TEST(rdkit_extensions::get_attachment_points_for_res(
                    "X", rdkit_extensions::ChainType::PEPTIDE) == expected);
 }
 
@@ -191,7 +193,8 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_nucleic_acid)
 {
     using rdkit_extensions::ChainType;
     const std::vector<std::pair<int, std::string>> expected = {{1, ""}};
-    BOOST_TEST(get_attachment_points_for_res("N", ChainType::RNA) == expected);
+    BOOST_TEST(rdkit_extensions::get_attachment_points_for_res(
+                   "N", ChainType::RNA) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_missing_monomer)
@@ -201,11 +204,12 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_missing_monomer)
                                                                {2, ""}};
     for (const auto chain_type :
          {ChainType::PEPTIDE, ChainType::RNA, ChainType::CHEM}) {
-        BOOST_TEST(get_attachment_points_for_res("missingMonomer",
-                                                 chain_type) == expected);
+        BOOST_TEST(rdkit_extensions::get_attachment_points_for_res(
+                       "missingMonomer", chain_type) == expected);
     }
     // The unknown-base special case must not apply to other polymer types.
-    BOOST_TEST(get_attachment_points_for_res("N", ChainType::CHEM) == expected);
+    BOOST_TEST(rdkit_extensions::get_attachment_points_for_res(
+                   "N", ChainType::CHEM) == expected);
 }
 
 /**

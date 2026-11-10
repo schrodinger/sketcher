@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -16,6 +17,8 @@ const std::string ATOM_LABEL{"atomLabel"};
 const std::string SUPPLEMENTARY_INFORMATION{"SUPPLEMENTARY_INFORMATION"};
 const std::string BRANCH_LINKAGE{"R3-R1"};
 const std::string BACKBONE_LINKAGE{"R2-R1"};
+const std::string PEPTIDE_SIDE_CHAIN_LINKAGE{"R3-R3"};
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
@@ -109,6 +112,36 @@ extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
+
+enum class ConnectorType {
+    CHEM,
+    PEPTIDE_LINEAR,
+    PEPTIDE_BRANCHING,
+    PEPTIDE_DISULFIDE,
+    PEPTIDE_SIDE_CHAIN,
+    H_BOND,
+    NA_BACKBONE,
+    NA_BACKBONE_TO_BASE
+};
+
+/**
+ * Classify a monomer connection. A bond can carry two separate monomer
+ * connections: LINKAGE describes the primary one, and CUSTOM_BOND describes
+ * the secondary one. CHEM takes precedence over peptide connections, while
+ * peptide takes precedence over nucleic acid connections.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API ConnectorType
+get_connector_type(const ::RDKit::Bond* bond, bool is_secondary_connection);
+
+/** Return whether each end of a monomer connection has an arrowhead. */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               bool is_secondary_connection);
+
+/** Return arrowhead placement when the connector type is already known. */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               ConnectorType connector_type);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);
