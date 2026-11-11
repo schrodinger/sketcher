@@ -7,6 +7,7 @@ import {
   getExportedSmiles,
   getExportedText,
   loadStructure,
+  scene,
   setClipboardText,
   waitAtoms,
 } from './e2e_helpers.js';
@@ -153,6 +154,24 @@ async function moveAlanineWedge(page) {
 }
 
 /**
+ * Turn off stereo labels.  An atom's hit area covers its chirality label, which
+ * is placed in the empty space next to the atom.  That hit area can cover the
+ * midpoint of a neighboring bond, so clicking on the bond would click on the
+ * atom instead.
+ *
+ * @param {Sketcher} sk
+ * @param {import('@playwright/test').Page} page
+ */
+async function hideStereoLabels(sk, page) {
+  await sk.configure_view_menu('stereo_labels');
+  await expect
+    .poll(async () => (await scene(page)).atoms.filter((atom) => atom.chiralityText).length, {
+      message: 'atoms with chirality labels',
+    })
+    .toBe(0);
+}
+
+/**
  * More Actions -> Copy All, Clear Sketcher, then More Actions -> Paste
  *
  * @param {Sketcher} sk
@@ -228,6 +247,9 @@ test.describe('SKETCH-2872: preserving wedges from input molecules', () => {
     await expectBondCfg(page, FIRST_STEREOCENTER_TO_F_BOND, WEDGE_CFG);
     await expectBondCfg(page, SECOND_STEREOCENTER_TO_CL_BOND, WEDGE_CFG);
 
+    // While the chirality labels are shown, the midpoint of the bond between
+    // the two stereocenters is inside the second stereocenter's hit area
+    await hideStereoLabels(sk, page);
     await moveStereocenterWedge(
       page,
       FIRST_STEREOCENTER_TO_F_BOND,
