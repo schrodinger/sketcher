@@ -1,0 +1,17 @@
+diff --git a/Code/GraphMol/FileParsers/MolWriters.h b/Code/GraphMol/FileParsers/MolWriters.h
+index 81f419c1..8f42260c 100644
+--- a/Code/GraphMol/FileParsers/MolWriters.h
++++ b/Code/GraphMol/FileParsers/MolWriters.h
+@@ -19,7 +19,11 @@
+ 
+ 
+ #ifdef RDK_BUILD_MAEPARSER_SUPPORT
+-#include <maeparser/Writer.hpp>
++namespace schrodinger {
++namespace mae {
++class Writer;
++}  // namespace mae
++}  // namespace schrodinger
+ #endif  // RDK_BUILD_MAEPARSER_SUPPORT
+ 
+ #include <GraphMol/ROMol.h>
