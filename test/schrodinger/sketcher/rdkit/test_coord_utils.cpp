@@ -8,7 +8,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 
+#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/Depictor/DepictUtils.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
@@ -149,6 +151,42 @@ BOOST_AUTO_TEST_CASE(test_peptide_layout_preserves_existing_coordinates)
         BOOST_TEST(updated_positions[idx].y == original_positions[idx].y,
                    boost::test_tools::tolerance(0.01));
     }
+}
+
+/**
+ * Make sure that update_2d_coordinates reports whether it had to generate new
+ * 2D coordinates
+ */
+BOOST_AUTO_TEST_CASE(test_update_2d_coordinates_return_value)
+{
+    // a molecule without any conformers needs new coordinates
+    auto mol = rdkit_extensions::to_rdkit("CCO");
+    BOOST_REQUIRE(mol->getNumConformers() == 0);
+    BOOST_TEST(update_2d_coordinates(*mol));
+    BOOST_TEST(mol->getNumConformers() == 1);
+
+    // the molecule now has a 2D conformer, which should be kept
+    BOOST_TEST(!update_2d_coordinates(*mol));
+    BOOST_TEST(mol->getNumConformers() == 1);
+
+    // an existing 2D conformer is kept even if it has to be rescaled
+    mol = rdkit_extensions::to_rdkit(GIANT_BENZENE);
+    BOOST_TEST(!update_2d_coordinates(*mol));
+    BOOST_TEST(get_most_common_bond_length(*mol) == RDDepict::BOND_LEN,
+               boost::test_tools::tolerance(0.001));
+
+    // a 2D conformer where all of the coordinates are zero is replaced
+    mol = rdkit_extensions::to_rdkit("CCO");
+    mol->addConformer(new RDKit::Conformer(mol->getNumAtoms()));
+    BOOST_TEST(update_2d_coordinates(*mol));
+    BOOST_TEST(mol->getNumConformers() == 1);
+
+    // a 3D conformer is kept, but a 2D conformer is generated to go with it
+    mol = rdkit_extensions::to_rdkit("CCO");
+    rdkit_extensions::compute2DCoords(*mol);
+    mol->getConformer().set3D(true);
+    BOOST_TEST(update_2d_coordinates(*mol));
+    BOOST_TEST(mol->getNumConformers() == 2);
 }
 
 /**
