@@ -1,5 +1,8 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <rdkit/GraphMol/Atropisomers.h>
 #include <rdkit/GraphMol/CIPLabeler/CIPLabeler.h>
 #include <rdkit/GraphMol/CIPLabeler/TooManyNodesException.h>
@@ -57,6 +60,42 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
                (bond->hasProp(RDKit::common_properties::_MolFileBondCfg) ||
                 bond->hasProp(RDKit::common_properties::_MolFileBondStereo));
     });
+}
+
+/**
+ * Convert the wedging info that was read from an MDL molblock into bond
+ * directions. If the molecule already has wedged or dashed bonds (e.g. set via
+ * RDKit's WedgeBond or SetBondDir after the molblock was read, or from an RDKit
+ * pickle of a structure that was edited in the Sketcher), then those take
+ * precedence over the molblock's wedging info for the atoms that they start
+ * from (SKETCH-2872).
+ *
+ * Note that this leaves the wedging info on the molecule. It's expected that
+ * rdkit_extensions::wedgeMolBonds will be called afterwards, which removes the
+ * info that would otherwise go stale.
+ */
+static void apply_molblock_wedging(RDKit::ROMol& mol)
+{
+    // record the input bond directions, since reapplyMolBlockWedging will
+    // clear them
+    std::vector<RDKit::Bond::BondDir> input_bond_dirs;
+    input_bond_dirs.reserve(mol.getNumBonds());
+    std::vector<bool> atom_has_input_wedge(mol.getNumAtoms(), false);
+    for (auto bond : mol.bonds()) {
+        input_bond_dirs.push_back(bond->getBondDir());
+        if (rdkit_extensions::is_wedge_or_dash(*bond)) {
+            atom_has_input_wedge[bond->getBeginAtomIdx()] = true;
+        }
+    }
+
+    RDKit::Chirality::reapplyMolBlockWedging(mol);
+
+    for (auto bond : mol.bonds()) {
+        if (bond->getBondType() == RDKit::Bond::SINGLE &&
+            atom_has_input_wedge[bond->getBeginAtomIdx()]) {
+            bond->setBondDir(input_bond_dirs[bond->getIdx()]);
+        }
+    }
 }
 
 /**
@@ -233,17 +272,28 @@ void prepare_mol(RDKit::ROMol& mol)
     // this call will intentionally keep a 3d conformer if one is found, since
     // Maestro may use that later to align the Sketcher structure with the
     // Maestro workspace structure
-    update_2d_coordinates(mol);
+    bool coords_generated = update_2d_coordinates(mol);
 
     // Update all input chiral centers to have enhanced stereo; honors MDL input
     add_enhanced_stereo_to_chiral_atoms(mol);
 
-    // Convert parities back to wedges/dashes
+    // Convert the wedges/dashes from MDL molblock input into bond directions
     if (has_molblock_cfgs(mol)) {
-        RDKit::Chirality::reapplyMolBlockWedging(mol);
-    } else { // Otherwise recalculate chiral bond directions
-        rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer());
+        apply_molblock_wedging(mol);
     }
+
+    // Convert parities back to wedges/dashes. If the input came with
+    // coordinates, then honor any wedges that are already present (e.g. from
+    // the molblock, set via RDKit's WedgeBond or SetBondDir, or from an RDKit
+    // pickle when copying and pasting within the Sketcher) and only add wedges
+    // to chiral centers that are missing them (SKETCH-2872). Note that the
+    // chiral tags take precedence over any existing wedges that disagree with
+    // them; see rdkit_extensions::wedgeMolBonds for details. If we just
+    // generated coordinates, then any existing wedges are meaningless, so we
+    // recalculate all of them.
+    bool keep_existing_wedges = !coords_generated;
+    rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer(),
+                                    keep_existing_wedges);
 }
 
 /**
