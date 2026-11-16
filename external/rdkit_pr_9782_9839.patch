@@ -1,0 +1,747 @@
+diff --git a/Code/GraphMol/FindRings.cpp b/Code/GraphMol/FindRings.cpp
+index 7bd2f8e01..1e1406cfd 100644
+--- a/Code/GraphMol/FindRings.cpp
++++ b/Code/GraphMol/FindRings.cpp
+@@ -9,6 +9,7 @@
+ //
+ #include <GraphMol/RDKitBase.h>
+ #include <GraphMol/Rings.h>
++#include <GraphMol/MolOps.h>
+ #include <RDGeneral/RDLog.h>
+ #include <RDGeneral/Exceptions.h>
+ 
+@@ -27,13 +28,6 @@ using RINGINVAR_INT_VECT_MAP = std::map<RINGINVAR, std::vector<int>>;
+ namespace {
+ using namespace RDKit;
+ 
+-bool ringComparer(const std::vector<int> &v1, const std::vector<int> &v2) {
+-  if (v1.size() == v2.size()) {
+-    return v1 < v2;
+-  }
+-  return v1.size() < v2.size();
+-}
+-
+ void _DFS(const ROMol &mol, const Atom *atom, INT_VECT &atomColors,
+           std::vector<const Atom *> &traversalOrder, VECT_INT_VECT &res,
+           const Atom *fromAtom = nullptr) {
+@@ -926,13 +920,22 @@ void findRingsFigueras(const ROMol &mol, VECT_INT_VECT &res,
+   }  // done with all fragments
+ 
+   std::ranges::for_each(res, RingUtils::normalizeRing);
+-  std::ranges::sort(res, ringComparer);
++  std::ranges::sort(res, MolOps::details::ringComparer);
+ }
+ }  // namespace FindRings
+ 
+ namespace RDKit {
+ namespace MolOps {
+ 
++namespace details {
++  bool ringComparer(const std::vector<int> &v1, const std::vector<int> &v2) {
++    if (v1.size() == v2.size()) {
++      return v1 < v2;
++    }
++    return v1.size() < v2.size();
++  }
++}
++
+ void setUseLegacyRingFinding(bool val) {
+   if (val) {
+     setenv(MolOps::useLegacyRingFindingEnvVar, "1", 1);
+@@ -981,7 +984,7 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res, bool includeDativeBonds,
+   }
+   RDL_deleteCycles(sssr, sssrSize);
+ 
+-  std::ranges::sort(res, ringComparer);
++  std::ranges::sort(res, details::ringComparer);
+ 
+   FindRings::storeRingsInfo(mol, res);
+ 
+@@ -1012,7 +1015,7 @@ void legacySymmetrizeSSSR(ROMol &mol, VECT_INT_VECT &res,
+   std::set_difference(std::make_move_iterator(figuerasRings.begin()),
+                       std::make_move_iterator(figuerasRings.end()),
+                       res.cbegin(), res.cend(), std::back_inserter(extras),
+-                      ringComparer);
++                      details::ringComparer);
+ 
+   if (extras.empty()) {
+     // no extra rings, nothing to be done
+diff --git a/Code/GraphMol/MarvinParse/test_data/NewChiralTest.expected.sdf b/Code/GraphMol/MarvinParse/test_data/NewChiralTest.expected.sdf
+index 6f8d34192..33af29c2b 100644
+--- a/Code/GraphMol/MarvinParse/test_data/NewChiralTest.expected.sdf
++++ b/Code/GraphMol/MarvinParse/test_data/NewChiralTest.expected.sdf
+@@ -5,19 +5,19 @@
+ M  V30 BEGIN CTAB
+ M  V30 COUNTS 13 14 0 0 0
+ M  V30 BEGIN ATOM
+-M  V30 1 C 6.000000 0.000000 0.000000 0
+-M  V30 2 C 4.500000 -0.000000 0.000000 0
+-M  V30 3 C 3.750000 1.299038 0.000000 0
+-M  V30 4 C 2.250000 1.299038 0.000000 0
+-M  V30 5 C 1.500000 0.000000 0.000000 0
+-M  V30 6 C 0.750000 1.299038 0.000000 0
+-M  V30 7 C -0.750000 1.299038 0.000000 0
+-M  V30 8 C -1.500000 0.000000 0.000000 0
+-M  V30 9 Cl -3.000000 0.000000 0.000000 0
+-M  V30 10 C -0.750000 -1.299038 0.000000 0
+-M  V30 11 C 0.750000 -1.299038 0.000000 0
+-M  V30 12 C 2.250000 -1.299038 0.000000 0
+-M  V30 13 C 3.750000 -1.299038 0.000000 0
++M  V30 1 C 3.000000 0.000000 0.000000 0
++M  V30 2 C 1.500000 0.000000 0.000000 0
++M  V30 3 C 0.750000 1.299038 0.000000 0
++M  V30 4 C -0.750000 1.299038 0.000000 0
++M  V30 5 C -1.500000 0.000000 0.000000 0
++M  V30 6 C -2.250000 1.299038 0.000000 0
++M  V30 7 C -3.750000 1.299038 0.000000 0
++M  V30 8 C -4.500000 0.000000 0.000000 0
++M  V30 9 Cl -6.000000 0.000000 0.000000 0
++M  V30 10 C -3.750000 -1.299038 0.000000 0
++M  V30 11 C -2.250000 -1.299038 0.000000 0
++M  V30 12 C -0.750000 -1.299038 0.000000 0
++M  V30 13 C 0.750000 -1.299038 0.000000 0
+ M  V30 END ATOM
+ M  V30 BEGIN BOND
+ M  V30 1 1 2 1 CFG=3
+diff --git a/Code/GraphMol/MarvinParse/test_data/NewChiralTest.nosan.expected.sdf b/Code/GraphMol/MarvinParse/test_data/NewChiralTest.nosan.expected.sdf
+index 6f8d34192..33af29c2b 100644
+--- a/Code/GraphMol/MarvinParse/test_data/NewChiralTest.nosan.expected.sdf
++++ b/Code/GraphMol/MarvinParse/test_data/NewChiralTest.nosan.expected.sdf
+@@ -5,19 +5,19 @@
+ M  V30 BEGIN CTAB
+ M  V30 COUNTS 13 14 0 0 0
+ M  V30 BEGIN ATOM
+-M  V30 1 C 6.000000 0.000000 0.000000 0
+-M  V30 2 C 4.500000 -0.000000 0.000000 0
+-M  V30 3 C 3.750000 1.299038 0.000000 0
+-M  V30 4 C 2.250000 1.299038 0.000000 0
+-M  V30 5 C 1.500000 0.000000 0.000000 0
+-M  V30 6 C 0.750000 1.299038 0.000000 0
+-M  V30 7 C -0.750000 1.299038 0.000000 0
+-M  V30 8 C -1.500000 0.000000 0.000000 0
+-M  V30 9 Cl -3.000000 0.000000 0.000000 0
+-M  V30 10 C -0.750000 -1.299038 0.000000 0
+-M  V30 11 C 0.750000 -1.299038 0.000000 0
+-M  V30 12 C 2.250000 -1.299038 0.000000 0
+-M  V30 13 C 3.750000 -1.299038 0.000000 0
++M  V30 1 C 3.000000 0.000000 0.000000 0
++M  V30 2 C 1.500000 0.000000 0.000000 0
++M  V30 3 C 0.750000 1.299038 0.000000 0
++M  V30 4 C -0.750000 1.299038 0.000000 0
++M  V30 5 C -1.500000 0.000000 0.000000 0
++M  V30 6 C -2.250000 1.299038 0.000000 0
++M  V30 7 C -3.750000 1.299038 0.000000 0
++M  V30 8 C -4.500000 0.000000 0.000000 0
++M  V30 9 Cl -6.000000 0.000000 0.000000 0
++M  V30 10 C -3.750000 -1.299038 0.000000 0
++M  V30 11 C -2.250000 -1.299038 0.000000 0
++M  V30 12 C -0.750000 -1.299038 0.000000 0
++M  V30 13 C 0.750000 -1.299038 0.000000 0
+ M  V30 END ATOM
+ M  V30 BEGIN BOND
+ M  V30 1 1 2 1 CFG=3
+diff --git a/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.expected.sdf b/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.expected.sdf
+index dbf81b7c8..85148d36f 100644
+--- a/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.expected.sdf
++++ b/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.expected.sdf
+@@ -5,19 +5,19 @@
+ M  V30 BEGIN CTAB
+ M  V30 COUNTS 13 14 0 0 0
+ M  V30 BEGIN ATOM
+-M  V30 1 C 6.000000 0.000000 0.000000 0
+-M  V30 2 C 4.500000 -0.000000 0.000000 0
+-M  V30 3 C 3.750000 1.299038 0.000000 0
+-M  V30 4 C 2.250000 1.299038 0.000000 0
+-M  V30 5 C 1.500000 0.000000 0.000000 0
+-M  V30 6 C 0.750000 1.299038 0.000000 0
+-M  V30 7 C -0.750000 1.299038 0.000000 0
+-M  V30 8 C -1.500000 0.000000 0.000000 0
+-M  V30 9 Cl -3.000000 0.000000 0.000000 0
+-M  V30 10 C -0.750000 -1.299038 0.000000 0
+-M  V30 11 C 0.750000 -1.299038 0.000000 0
+-M  V30 12 C 2.250000 -1.299038 0.000000 0
+-M  V30 13 C 3.750000 -1.299038 0.000000 0
++M  V30 1 C 3.000000 0.000000 0.000000 0
++M  V30 2 C 1.500000 0.000000 0.000000 0
++M  V30 3 C 0.750000 1.299038 0.000000 0
++M  V30 4 C -0.750000 1.299038 0.000000 0
++M  V30 5 C -1.500000 0.000000 0.000000 0
++M  V30 6 C -2.250000 1.299038 0.000000 0
++M  V30 7 C -3.750000 1.299038 0.000000 0
++M  V30 8 C -4.500000 0.000000 0.000000 0
++M  V30 9 Cl -6.000000 0.000000 0.000000 0
++M  V30 10 C -3.750000 -1.299038 0.000000 0
++M  V30 11 C -2.250000 -1.299038 0.000000 0
++M  V30 12 C -0.750000 -1.299038 0.000000 0
++M  V30 13 C 0.750000 -1.299038 0.000000 0
+ M  V30 END ATOM
+ M  V30 BEGIN BOND
+ M  V30 1 1 1 2
+diff --git a/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.nosan.expected.sdf b/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.nosan.expected.sdf
+index 5a4d3fe6d..f3f92b6fd 100644
+--- a/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.nosan.expected.sdf
++++ b/Code/GraphMol/MarvinParse/test_data/NewChiralTestNoChiral.nosan.expected.sdf
+@@ -5,19 +5,19 @@
+ M  V30 BEGIN CTAB
+ M  V30 COUNTS 13 14 0 0 0
+ M  V30 BEGIN ATOM
+-M  V30 1 C 6.000000 0.000000 0.000000 0
+-M  V30 2 C 4.500000 -0.000000 0.000000 0
+-M  V30 3 C 3.750000 1.299038 0.000000 0
+-M  V30 4 C 2.250000 1.299038 0.000000 0
+-M  V30 5 C 1.500000 0.000000 0.000000 0
+-M  V30 6 C 0.750000 1.299038 0.000000 0
+-M  V30 7 C -0.750000 1.299038 0.000000 0
+-M  V30 8 C -1.500000 0.000000 0.000000 0
+-M  V30 9 Cl -3.000000 0.000000 0.000000 0
+-M  V30 10 C -0.750000 -1.299038 0.000000 0
+-M  V30 11 C 0.750000 -1.299038 0.000000 0
+-M  V30 12 C 2.250000 -1.299038 0.000000 0
+-M  V30 13 C 3.750000 -1.299038 0.000000 0
++M  V30 1 C 3.000000 0.000000 0.000000 0
++M  V30 2 C 1.500000 0.000000 0.000000 0
++M  V30 3 C 0.750000 1.299038 0.000000 0
++M  V30 4 C -0.750000 1.299038 0.000000 0
++M  V30 5 C -1.500000 0.000000 0.000000 0
++M  V30 6 C -2.250000 1.299038 0.000000 0
++M  V30 7 C -3.750000 1.299038 0.000000 0
++M  V30 8 C -4.500000 0.000000 0.000000 0
++M  V30 9 Cl -6.000000 0.000000 0.000000 0
++M  V30 10 C -3.750000 -1.299038 0.000000 0
++M  V30 11 C -2.250000 -1.299038 0.000000 0
++M  V30 12 C -0.750000 -1.299038 0.000000 0
++M  V30 13 C 0.750000 -1.299038 0.000000 0
+ M  V30 END ATOM
+ M  V30 BEGIN BOND
+ M  V30 1 1 2 1 CFG=3
+diff --git a/Code/GraphMol/MolDraw2D/catch_tests.cpp b/Code/GraphMol/MolDraw2D/catch_tests.cpp
+index 7dae30722..2a042ce6b 100644
+--- a/Code/GraphMol/MolDraw2D/catch_tests.cpp
++++ b/Code/GraphMol/MolDraw2D/catch_tests.cpp
+@@ -8784,16 +8784,16 @@ TEST_CASE("Lasso highlights") {
+     CHECK(match_count == 4);
+     auto a0reg = std::sregex_iterator(text.begin(), text.end(), a0);
+     auto dat1 = *a0reg;
+-    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(381.7, 0.1));
+-    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(284.9, 0.1));
+-    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(381.0, 0.1));
+-    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(285.5, 0.1));
++    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(228.9, 0.1));
++    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(94.6, 0.1));
++    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(228.8, 0.1));
++    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(93.6, 0.1));
+     a0reg++;
+     dat1 = *a0reg;
+-    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(377.9, 0.1));
+-    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(265.7, 0.1));
+-    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(378.7, 0.1));
+-    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(266.0, 0.1));
++    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(244.1, 0.1));
++    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(81.1, 0.1));
++    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(245.1, 0.1));
++    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(81.5, 0.1));
+     check_file_hash(baseName + "3.svg");
+ #endif
+   }
+@@ -8833,22 +8833,22 @@ TEST_CASE("Lasso highlights") {
+       CHECK(match_count == 3);
+       auto a5reg = std::sregex_iterator(text.begin(), text.end(), a5);
+       auto dat1 = *a5reg;
+-      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(286.2, 0.1));
+-      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(243.1, 0.1));
+-      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(285.0, 0.1));
+-      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(242.7, 0.1));
++      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(221.0, 0.1));
++      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(206.7, 0.1));
++      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(219.7, 0.1));
++      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(206.2, 0.1));
+       a5reg++;
+       dat1 = *a5reg;
+-      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(280.5, 0.1));
+-      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(215.0, 0.1));
+-      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(281.6, 0.1));
+-      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(214.2, 0.1));
++      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(215.1, 0.1));
++      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(177.9, 0.1));
++      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(216.2, 0.1));
++      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(177.0, 0.1));
+       a5reg++;
+       dat1 = *a5reg;
+-      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(307.7, 0.1));
+-      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(224.2, 0.1));
+-      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(307.9, 0.1));
+-      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(225.5, 0.1));
++      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(243.0, 0.1));
++      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(187.2, 0.1));
++      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(243.3, 0.1));
++      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(188.6, 0.1));
+       // There should be 2 lines in red, the lasso along the bi-phenyl
+       // bond.
+       std::regex bond5("<path class='bond-5 atom-5 atom-6.*stroke:#FF0000;");
+@@ -8892,16 +8892,16 @@ TEST_CASE("Lasso highlights") {
+       CHECK(match_count == 2);
+       auto a11reg = std::sregex_iterator(text.begin(), text.end(), a11);
+       auto dat1 = *a11reg;
+-      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(156.2, 0.1));
+-      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(286.8, 0.1));
+-      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(157.2, 0.1));
+-      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(285.9, 0.1));
++      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(346.2, 0.1));
++      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(279.1, 0.1));
++      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(345.0, 0.1));
++      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(278.7, 0.1));
+       a11reg++;
+       dat1 = *a11reg;
+-      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(183.4, 0.1));
+-      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(295.9, 0.1));
+-      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(183.7, 0.1));
+-      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(297.3, 0.1));
++      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(340.5, 0.1));
++      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(250.9, 0.1));
++      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(341.6, 0.1));
++      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(250.0, 0.1));
+ 
+       // There should not be any red lines for bond 5.
+       std::regex bond5("<path class='bond-5 atom-5 atom-6.*stroke:#FF0000;");
+diff --git a/Code/GraphMol/MolDraw2D/test1.cpp b/Code/GraphMol/MolDraw2D/test1.cpp
+index 22eb0c700..e3c8f92d0 100644
+--- a/Code/GraphMol/MolDraw2D/test1.cpp
++++ b/Code/GraphMol/MolDraw2D/test1.cpp
+@@ -3330,11 +3330,11 @@ void test18FixedScales() {
+ #ifdef RDK_BUILD_FREETYPE_SUPPORT
+ #if DO_TEST_ASSERT
+ 
+-      TEST_ASSERT(text.find("<path class='atom-2' d='M 38.9 163.0") !=
++      TEST_ASSERT(text.find("<path class='atom-2' d='M 74.1 170.0") !=
+                   std::string::npos);
+ #endif
+ #else
+-      TEST_ASSERT(text.find("font-size:10px") != std::string::npos);
++      TEST_ASSERT(text.find("font-size:9px") != std::string::npos);
+ #endif
+       check_file_hash(nameBase + "3.svg");
+     }
+@@ -3351,7 +3351,7 @@ void test18FixedScales() {
+       outs.close();
+ #ifdef RDK_BUILD_FREETYPE_SUPPORT
+ #if DO_TEST_ASSERT
+-      TEST_ASSERT(text.find("<path class='atom-2' d='M 87.4 151.4") !=
++      TEST_ASSERT(text.find("<path class='atom-2' d='M 104.0 156.8") !=
+                   std::string::npos);
+ #endif
+ #else
+@@ -3371,11 +3371,11 @@ void test18FixedScales() {
+       outs.close();
+ #ifdef RDK_BUILD_FREETYPE_SUPPORT
+ #if DO_TEST_ASSERT
+-      TEST_ASSERT(text.find("<path class='atom-2' d='M 38.9 163.0") !=
++      TEST_ASSERT(text.find("<path class='atom-2' d='M 74.1 170.0") !=
+                   std::string::npos);
+ #endif
+ #else
+-      TEST_ASSERT(text.find("font-size:10px") != std::string::npos);
++      TEST_ASSERT(text.find("font-size:9px") != std::string::npos);
+ #endif
+       check_file_hash(nameBase + "5.svg");
+     }
+@@ -3395,7 +3395,7 @@ void test18FixedScales() {
+       outs.close();
+ #ifdef RDK_BUILD_FREETYPE_SUPPORT
+ #if DO_TEST_ASSERT
+-      TEST_ASSERT(text.find("<path class='atom-2' d='M 26.0 155.8") !=
++      TEST_ASSERT(text.find("<path class='atom-2' d='M 71.9 167.7") !=
+                   std::string::npos);
+ #endif
+ #else
+@@ -3417,7 +3417,7 @@ void test18FixedScales() {
+       outs.close();
+ #ifdef RDK_BUILD_FREETYPE_SUPPORT
+ #if DO_TEST_ASSERT
+-      TEST_ASSERT(text.find("<path class='atom-2' d='M 45.3 166.6") !=
++      TEST_ASSERT(text.find("<path class='atom-2' d='M 75.0 171.0") !=
+                   std::string::npos);
+ #endif
+ #else
+@@ -4346,9 +4346,8 @@ void testGithub3305() {
+       // This seems to work for Freetype and non-Freetype builds.
+       std::regex regex(
+           R"(class='bond-6 atom-6 atom-7' d='M ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) Z' style='fill:#FF7F7F;)");
+-      std::vector<Point2D> expected{
+-          Point2D(149.8, 121.1), Point2D(153.1, 122.1), Point2D(141.5, 132.6),
+-          Point2D(140.8, 129.2)};
++      std::vector<Point2D> expected{Point2D(127.2, 82.6), Point2D(135.2, 96.3),
++                                    Point2D(131.7, 96.3), Point2D(125.5, 85.6)};
+       check_corners(text, regex, expected);
+       check_file_hash(nameBase + "4.svg");
+ #endif
+@@ -4382,8 +4381,8 @@ void testGithub3305() {
+ #if DO_TEST_ASSERT
+       std::regex regex(
+           R"(class='bond-6 atom-6 atom-7' d='M ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*) Z' style='fill:#FF7F7F;)");
+-      std::vector<Point2D> expected{Point2D(139.6, 122), Point2D(157.2, 127.7),
+-                                    Point2D(140, 143.1), Point2D(136.2, 125.1)};
++      std::vector<Point2D> expected{Point2D(133.8, 79.5), Point2D(145.5, 99.8),
++                                    Point2D(127.0, 99.8), Point2D(124.6, 95.5)};
+       check_corners(text, regex, expected);
+ #endif
+       check_file_hash(nameBase + "5.svg");
+@@ -4412,7 +4411,7 @@ void testGithub3305() {
+       outs.flush();
+       outs.close();
+ #if DO_TEST_ASSERT
+-      TEST_ASSERT(text.find("stroke:#FF7F7F;stroke-width:0.7") !=
++      TEST_ASSERT(text.find("stroke:#FF7F7F;stroke-width:0.8") !=
+                   std::string::npos);
+       TEST_ASSERT(text.find("stroke:#FF7F7F;stroke-width:4.0px") ==
+                   std::string::npos);
+diff --git a/Code/GraphMol/MolOps.h b/Code/GraphMol/MolOps.h
+index 37b6e66d2..0ce6c4c83 100644
+--- a/Code/GraphMol/MolOps.h
++++ b/Code/GraphMol/MolOps.h
+@@ -1481,6 +1481,17 @@ RDKIT_GRAPHMOL_EXPORT unsigned int addExplicitAttachmentPoint(
+ RDKIT_GRAPHMOL_EXPORT bool isAttachmentPoint(const Atom *atom,
+                                              bool markedOnly = true);
+ 
++//! comparator for rings based on size and lexicographical order
++/*!
++ * Rings are compared first by size, then lexicographically by their atom
++ * indices.
++ *
++ * @param v1 the first ring
++ * @param v2 the second ring
++ */
++RDKIT_GRAPHMOL_EXPORT bool ringComparer(const std::vector<int> &v1,
++                                        const std::vector<int> &v2);
++
+ }  // namespace details
+ 
+ }  // namespace MolOps
+diff --git a/Code/GraphMol/RingInfo.cpp b/Code/GraphMol/RingInfo.cpp
+index 6f0d2bd7f..8951dc598 100644
+--- a/Code/GraphMol/RingInfo.cpp
++++ b/Code/GraphMol/RingInfo.cpp
+@@ -9,8 +9,12 @@
+ //
+ #include "Rings.h"
+ #include "RingInfo.h"
++#include "MolOps.h"
+ #include <RDGeneral/Invariant.h>
++#include <RDGeneral/Exceptions.h>
+ #include <algorithm>
++#include <unordered_set>
++#include <RDGeneral/hash/hash.hpp>
+ 
+ namespace RDKit {
+ RingInfo::INT_VECT RingInfo::atomRingSizes(unsigned int idx) const {
+@@ -276,7 +280,13 @@ unsigned int RingInfo::numRingFamilies() const {
+ unsigned int RingInfo::numRelevantCycles() const {
+   PRECONDITION(df_init, "RingInfo not initialized");
+   PRECONDITION(dp_urfData, "Ring families not initialized");
+-  return rdcast<unsigned int>(RDL_getNofRC(dp_urfData.get()));
++  auto nURF = RDL_getNofURF(dp_urfData.get());
++  auto nRC = rdcast<unsigned int>(RDL_getNofRC(dp_urfData.get()));
++  if (nRC < nURF || nRC == std::numeric_limits<unsigned int>::max()) {
++    throw ValueErrorException(
++        "Problems in RDL: Number of relevant cycles is invalid");
++  }
++  return nRC;
+ };
+ 
+ unsigned int RingInfo::addRingFamily(const INT_VECT &atomIndices,
+@@ -319,22 +329,86 @@ void RingInfo::preallocate(unsigned int numAtoms, unsigned int numBonds) {
+   d_bondMembers.resize(numBonds);
+ }
+ 
++namespace {
++// first keep the SSSR rings, then add additional relevant cycles up to the
++// maximum allowed
++std::vector<std::vector<int>> truncatedRelevantCycles(
++    const RDL_data *urfData, const unsigned int maxAllowed) {
++  std::vector<std::vector<int>> res;
++
++  RDL_cycle **sssr = nullptr;
++  auto sssrSize = RDL_getSSSR(urfData, &sssr);
++  if (sssrSize == RDL_INVALID_RESULT) {
++    throw ValueErrorException("Failed finding a SSSR for the mol.");
++  }
++
++  auto vectHash = [](const std::vector<int> &v) {
++    std::hash_result_t seed = 1;
++    gboost::hash_range(seed, v.begin(), v.end());
++    return seed;
++  };
++  std::unordered_set<std::vector<int>, decltype(vectHash)> sssrRings(0,
++                                                                     vectHash);
++  // keep the SSSR rings first
++  res.reserve(maxAllowed);
++  for (unsigned int i = 0; i < sssrSize; ++i) {
++    auto ring = RingUtils::rdlCycleToAtomRing(sssr[i]);
++    sssrRings.insert(ring);
++    res.push_back(std::move(ring));
++  }
++  RDL_deleteCycles(sssr, sssrSize);
++
++  // add additional relevant cycles up to the maximum allowed
++  RDL_cycleIterator *it = RDL_getRCyclesIterator(urfData);
++  while (!RDL_cycleIteratorAtEnd(it) && res.size() < maxAllowed) {
++    auto cycle = RDL_cycleIteratorGetCycle(it);
++    auto r = RingUtils::rdlCycleToAtomRing(cycle);
++    if (!sssrRings.count(r)) {
++      res.push_back(std::move(r));
++    }
++    RDL_deleteCycle(cycle);
++    RDL_cycleIteratorNext(it);
++  }
++  RDL_deleteCycleIterator(it);
++
++  // The RDL code gives rings ordered by size within each disconnected fragment
++  // of the molecule, but doesn't do the sort across fragments. We need to sort
++  // to make sure the rings go from smallest to largest size.
++  std::ranges::sort(res, MolOps::details::ringComparer);
++  return res;
++}
++}  // namespace
++
+ std::vector<std::vector<int>> RingInfo::atomRelevantCycles() const {
+   PRECONDITION(df_init, "RingInfo not initialized");
+   PRECONDITION(dp_urfData, "Ring families not initialized");
++
++  size_t nURF = RDL_getNofURF(dp_urfData.get());
++  auto nRC = RDL_getNofRC(dp_urfData.get());
++  auto maxAllowed = MAX_SYMMETRIZED_RINGS + nURF;
++  if (nRC > maxAllowed) {
++    BOOST_LOG(rdWarningLog)
++        << "Number of relevant cycles truncated to " << maxAllowed
++        << ". Symmetric rings will not be correct." << std::endl;
++    return truncatedRelevantCycles(dp_urfData.get(), maxAllowed);
++  }
++
+   std::vector<std::vector<int>> res;
+-  if (dp_urfData) {
+-    res.reserve(RDL_getNofRC(dp_urfData.get()));
+-
+-    RDL_cycleIterator *it = RDL_getRCyclesIterator(dp_urfData.get());
+-    while (!RDL_cycleIteratorAtEnd(it)) {
+-      auto cycle = RDL_cycleIteratorGetCycle(it);
+-      res.push_back(RingUtils::rdlCycleToAtomRing(cycle));
+-      RDL_deleteCycle(cycle);
+-      RDL_cycleIteratorNext(it);
+-    }
+-    RDL_deleteCycleIterator(it);
++  res.reserve(nRC);
++  RDL_cycleIterator *it = RDL_getRCyclesIterator(dp_urfData.get());
++  while (!RDL_cycleIteratorAtEnd(it) && res.size() < nRC) {
++    auto cycle = RDL_cycleIteratorGetCycle(it);
++    res.push_back(RingUtils::rdlCycleToAtomRing(cycle));
++    RDL_deleteCycle(cycle);
++    RDL_cycleIteratorNext(it);
+   }
++  RDL_deleteCycleIterator(it);
++
++  // The RDL code gives rings ordered by size within each disconnected fragment
++  // of the molecule, but doesn't do the sort across fragments. We need to sort
++  // to make sure the rings go from smallest to largest size.
++  std::ranges::sort(res, MolOps::details::ringComparer);
++
+   return res;
+ }
+ 
+diff --git a/Code/GraphMol/RingInfo.h b/Code/GraphMol/RingInfo.h
+index 2bd1e3a7b..da5b397a0 100644
+--- a/Code/GraphMol/RingInfo.h
++++ b/Code/GraphMol/RingInfo.h
+@@ -20,6 +20,9 @@
+ #include <RingDecomposerLib.h>
+ 
+ namespace RDKit {
++
++constexpr size_t MAX_SYMMETRIZED_RINGS = 10000;
++
+ //! A class to store information about a molecule's rings
+ /*!
+ 
+diff --git a/Code/GraphMol/Wrap/MolOps.cpp b/Code/GraphMol/Wrap/MolOps.cpp
+index b8103cf95..c4b9da860 100644
+--- a/Code/GraphMol/Wrap/MolOps.cpp
++++ b/Code/GraphMol/Wrap/MolOps.cpp
+@@ -1313,6 +1313,7 @@ struct molops_wrapper {
+          python::arg("algorithm") = MolOps::SymmetrizeSSSRAlgorithm::DEFAULT,
+          python::arg("recalcSSSR") = true),
+         docString.c_str());
++    python::scope().attr("MAX_SYMMETRIZED_RINGS") = MAX_SYMMETRIZED_RINGS;
+ 
+     // ------------------------------------------------------------------------
+     docString =
+diff --git a/Code/GraphMol/nbWrap/MolOps.cpp b/Code/GraphMol/nbWrap/MolOps.cpp
+index a7e0d90b1..a43b945e8 100644
+--- a/Code/GraphMol/nbWrap/MolOps.cpp
++++ b/Code/GraphMol/nbWrap/MolOps.cpp
+@@ -1305,6 +1305,7 @@ struct molops_wrapper {
+           "includeHydrogenBonds"_a = false,
+           "algorithm"_a = MolOps::SymmetrizeSSSRAlgorithm::DEFAULT,
+           "recalcSSSR"_a = true, docString.c_str());
++    m.attr("MAX_SYMMETRIZED_RINGS") = MAX_SYMMETRIZED_RINGS;
+ 
+     // ------------------------------------------------------------------------
+     docString =
+diff --git a/Code/GraphMol/ring_systems_test.cpp b/Code/GraphMol/ring_systems_test.cpp
+index e0462ba8b..c009e6afd 100644
+--- a/Code/GraphMol/ring_systems_test.cpp
++++ b/Code/GraphMol/ring_systems_test.cpp
+@@ -201,3 +201,155 @@ TEST_CASE("bulk performance") {
+             << " seconds." << std::endl;
+ }
+ #endif
++
++TEST_CASE("max number of relevant cycles") {
++  SECTION("clipping") {
++    std::string unit = "-C1CCC(CC1)";
++    std::string smiles = "C12CCC(CC1)";
++    for (auto i = 0; i < 20; ++i) {
++      smiles += unit;
++    }
++    smiles += "-C1CCC2(CC1)";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == 23);
++    CHECK(ri->numRelevantCycles() == 4194326);
++    std::vector<std::vector<int>> rings;
++    auto nExpected = MAX_SYMMETRIZED_RINGS + ri->numRingFamilies();
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          static_cast<int>(nExpected));
++    CHECK(rings.size() == nExpected);
++  }
++  SECTION("max-out") {
++    std::string unit = "-C1CCC(CC1)";
++    std::string smiles = "C12CCC(CC1)";
++    for (auto i = 0; i < 31; ++i) {
++      smiles += unit;
++    }
++    smiles += "-C1CCC2(CC1)";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == 34);
++    CHECK_THROWS_AS(ri->numRelevantCycles(), ValueErrorException);
++    std::vector<std::vector<int>> rings;
++    auto nExpected = MAX_SYMMETRIZED_RINGS + ri->numRingFamilies();
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          static_cast<int>(nExpected));
++    CHECK(rings.size() == nExpected);
++  }
++  SECTION("many individual rings") {
++    std::string unit = "C1CC1.";
++    std::string smiles = "";
++    unsigned int nRings = MAX_SYMMETRIZED_RINGS + 1;
++    for (auto i = 0u; i < nRings; ++i) {
++      smiles += unit;
++    }
++    smiles += "C1CC1";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == nRings + 1);
++    CHECK(ri->numRelevantCycles() == ri->numRingFamilies());
++    std::vector<std::vector<int>> rings;
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          static_cast<int>(nRings + 1));
++    CHECK(rings.size() == nRings + 1);
++  }
++  SECTION("many individual rings + symmetry") {
++    std::string unit = "C1CC1.";
++    std::string smiles = "";
++    unsigned int nRings = MAX_SYMMETRIZED_RINGS + 1;
++    for (auto i = 0u; i < nRings; ++i) {
++      smiles += unit;
++    }
++    smiles += "C1CC1";
++    smiles += ".C12CCC(CC1)-C1CCC(CC1)-C1CCC2(CC1)";
++    size_t nExtraRings = 4;
++    size_t nExtraSymmetric = 7;
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == nRings + 1 + nExtraRings);
++    CHECK(ri->numRelevantCycles() == ri->numRingFamilies() + nExtraSymmetric);
++    std::vector<std::vector<int>> rings;
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          static_cast<int>(nRings + 1 + nExtraRings + nExtraSymmetric));
++    CHECK(rings.size() == nRings + 1 + nExtraRings + nExtraSymmetric);
++  }
++  SECTION("SSSR rings are returned when clipping occurs") {
++    std::string unit = "-C1CCC(CC1)";
++    std::string smiles = "C12CCC(CC1)";
++    for (auto i = 0; i < 20; ++i) {
++      smiles += unit;
++    }
++    smiles += "-C1CCC2(CC1).C1CCCCCCC1";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    std::vector<std::vector<int>> rings;
++    CHECK(MolOps::findSSSR(*m, rings) == 24);
++    CHECK(rings.size() == 24);
++    for (auto i = 0; i < 22; ++i) {
++      CHECK(rings[i].size() == 6);
++    }
++    CHECK(rings[22].size() == 8);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    auto nExpected = MAX_SYMMETRIZED_RINGS + ri->numRingFamilies();
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          static_cast<int>(nExpected));
++    CHECK(rings.size() == nExpected);
++    for (auto i = 0; i < 22; ++i) {
++      CHECK(rings[i].size() == 6);
++    }
++    CHECK(rings[22].size() == 8);
++  }
++}
++
++TEST_CASE("rings from molecules with fragments are also ordered") {
++  auto m = "C1CCCCC1.C1CC1.C1CCCC1.C1CCC1"_smiles;
++  REQUIRE(m);
++
++  auto checkit = [](const auto &rings) {
++    REQUIRE(rings.size() == 4);
++    CHECK(rings[0].size() == 3);
++    CHECK(rings[1].size() == 4);
++    CHECK(rings[2].size() == 5);
++    CHECK(rings[3].size() == 6);
++  };
++  std::vector<std::vector<int>> rings;
++  INFO("SSSR");
++  CHECK(MolOps::findSSSR(*m, rings) == 4);
++  checkit(rings);
++  INFO("Symmetrized SSSR");
++  CHECK(MolOps::symmetrizeSSSR(*m, rings) == 4);
++  checkit(rings);
++}
++
++TEST_CASE("rings are ordered lexicographically") {
++  auto m = "c1ccccc1c1ccccc1"_smiles;
++  REQUIRE(m);
++  std::vector<std::vector<int>> rings;
++  CHECK(MolOps::findSSSR(*m, rings) == 2);
++  CHECK(rings[0] < rings[1]);
++}
+\ No newline at end of file
