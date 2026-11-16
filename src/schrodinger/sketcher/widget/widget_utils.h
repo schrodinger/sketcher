@@ -28,10 +28,13 @@ void SKETCHER_API check_button_or_uncheck_group(QAbstractButton* button,
 
 /**
  * Add an event filter to a button's asynchronous popup to suppress replay of
- * dismissing mouse presses over the button and clear its hover and pressed
- * state (but not checked state) when the popup hides. This prevents the popup
- * from reopening on release and handles dismissal paths that do not deliver a
- * mouse leave event to the button, such as losing window focus.
+ * dismissing mouse presses and clear the button's hover and pressed state (but
+ * not checked state) when the popup hides. Suppressing replay makes dismissal
+ * behave the same on all platforms: a click outside the popup only closes it,
+ * so clicking the button doesn't reopen the popup on release and clicking the
+ * canvas doesn't also act on the canvas. Clearing the button state handles
+ * dismissal paths that do not deliver a mouse leave event to the button, such
+ * as losing window focus.
  *
  * Note that the popup owns the event filter.
  */

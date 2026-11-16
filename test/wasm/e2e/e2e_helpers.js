@@ -202,7 +202,7 @@ export async function loadStructure(page, text) {
  * @param {import('@playwright/test').Page} page
  * @param {string} format - a key of Module.Format, e.g. "MDL_MOLV3000"
  */
-async function getExportedText(page, format) {
+export async function getExportedText(page, format) {
   return page.evaluate((name) => Module.sketcher_export_text(Module.Format[name]), format);
 }
 

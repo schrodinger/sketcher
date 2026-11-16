@@ -114,15 +114,17 @@ BOOST_DATA_TEST_CASE(popup_dismiss_by_button,
             BOOST_TEST(button->isChecked() == checked);
         }
 
-        // A later press elsewhere must retain normal outside-click replay.
+        // A press elsewhere (e.g. on the canvas) must also only dismiss the
+        // popup, matching macOS and WASM.
         QTest::mouseClick(window.windowHandle(), Qt::LeftButton, Qt::NoModifier,
                           position);
         BOOST_REQUIRE(QTest::qWaitForWindowExposed(popup));
+        observer.m_replay_suppressed = false;
         const QPoint outside_position(350, 250);
         QTest::mousePress(window.windowHandle(), Qt::LeftButton, Qt::NoModifier,
                           outside_position);
         BOOST_TEST(!popup->isVisible());
-        BOOST_TEST(!observer.m_replay_suppressed);
+        BOOST_TEST(observer.m_replay_suppressed);
         QTest::mouseRelease(window.windowHandle(), Qt::LeftButton,
                             Qt::NoModifier, outside_position);
     }
