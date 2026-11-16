@@ -1,16 +1,19 @@
 
 #define BOOST_TEST_MODULE test_variable_attachment_bond
 
+#include <algorithm>
 #include <optional>
 #include <string>
 
 #include <boost/test/unit_test.hpp>
 
 #include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
@@ -101,6 +104,106 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBonds)
     // the outdated property should be removed after recalculating wedges
     BOOST_CHECK_EQUAL(b->hasProp(RDKit::common_properties::_MolFileBondCfg),
                       false);
+}
+
+/**
+ * Make sure that wedgeMolBonds keeps existing bond directions when asked to,
+ * other than the exceptions described in its docstring
+ */
+BOOST_AUTO_TEST_CASE(test_wedgeMolBonds_keep_existing_wedges)
+{
+    using RDKit::Bond;
+    const unsigned int CHIRAL_ATOM_IDX = 2;
+    const bool KEEP_EXISTING_WEDGES = true;
+    // bond 0 doesn't touch the stereocenter, bond 1 ends at the stereocenter,
+    // and bonds 2 and 3 start at the stereocenter
+    auto make_mol = []() {
+        auto mol = rdkit_extensions::to_rdkit("CC[C@H](Cl)F",
+                                              rdkit_extensions::Format::SMILES);
+        rdkit_extensions::compute2DCoords(*mol);
+        return mol;
+    };
+    // count the wedged and dashed bonds, optionally only those that start at
+    // the stereocenter
+    auto count_wedges = [](const auto& mol, const bool only_from_chiral_atom) {
+        auto bonds = mol.bonds();
+        return std::count_if(bonds.begin(), bonds.end(), [&](auto bond) {
+            return rdkit_extensions::is_wedge_or_dash(*bond) &&
+                   (!only_from_chiral_atom ||
+                    bond->getBeginAtomIdx() == CHIRAL_ATOM_IDX);
+        });
+    };
+
+    // put the wedge on the C-F bond
+    auto mol = make_mol();
+    auto* conf = &mol->getConformer();
+    auto* f_bond = mol->getBondWithIdx(3);
+    BOOST_REQUIRE_EQUAL(f_bond->getBeginAtomIdx(), CHIRAL_ATOM_IDX);
+    RDKit::Chirality::wedgeBond(f_bond, CHIRAL_ATOM_IDX, conf);
+    BOOST_REQUIRE(rdkit_extensions::is_wedge_or_dash(*f_bond));
+    auto correct_dir = f_bond->getBondDir();
+    auto conflicting_dir = correct_dir == Bond::BondDir::BEGINWEDGE
+                               ? Bond::BondDir::BEGINDASH
+                               : Bond::BondDir::BEGINWEDGE;
+
+    // an existing wedge should be left alone, and the stereocenter shouldn't
+    // be given a second wedge
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(f_bond->getBondDir(), correct_dir);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, false), 1);
+
+    // a wedge that disagrees with the chiral tag should be flipped
+    f_bond->setBondDir(conflicting_dir);
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(f_bond->getBondDir(), correct_dir);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, false), 1);
+
+    // wedges, dashes, and wavy bonds that don't touch a stereocenter should be
+    // kept, but double bond direction markers and MDL wedging info shouldn't be
+    auto* non_chiral_bond = mol->getBondWithIdx(0);
+    for (auto bond_dir : {Bond::BondDir::BEGINWEDGE, Bond::BondDir::BEGINDASH,
+                          Bond::BondDir::UNKNOWN}) {
+        non_chiral_bond->setBondDir(bond_dir);
+        rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+        BOOST_CHECK_EQUAL(non_chiral_bond->getBondDir(), bond_dir);
+        BOOST_CHECK_EQUAL(f_bond->getBondDir(), correct_dir);
+    }
+    non_chiral_bond->setBondDir(Bond::BondDir::ENDUPRIGHT);
+    non_chiral_bond->setProp(RDKit::common_properties::_MolFileBondCfg, 1);
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(non_chiral_bond->getBondDir(), Bond::BondDir::NONE);
+    BOOST_CHECK(
+        !non_chiral_bond->hasProp(RDKit::common_properties::_MolFileBondCfg));
+    BOOST_CHECK_EQUAL(f_bond->getBondDir(), correct_dir);
+
+    // a wedge that ends at the stereocenter should be kept, since the
+    // stereocenter has a wedge of its own
+    auto* incoming_bond = mol->getBondWithIdx(1);
+    BOOST_REQUIRE_EQUAL(incoming_bond->getEndAtomIdx(), CHIRAL_ATOM_IDX);
+    incoming_bond->setBondDir(Bond::BondDir::BEGINWEDGE);
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(incoming_bond->getBondDir(), Bond::BondDir::BEGINWEDGE);
+    BOOST_CHECK_EQUAL(incoming_bond->getEndAtomIdx(), CHIRAL_ATOM_IDX);
+    BOOST_CHECK_EQUAL(f_bond->getBondDir(), correct_dir);
+
+    // ...but if it's the only wedge touching the stereocenter, then it should
+    // be replaced with a wedge that starts at the stereocenter
+    mol = make_mol();
+    conf = &mol->getConformer();
+    incoming_bond = mol->getBondWithIdx(1);
+    BOOST_REQUIRE_EQUAL(incoming_bond->getEndAtomIdx(), CHIRAL_ATOM_IDX);
+    incoming_bond->setBondDir(Bond::BondDir::BEGINWEDGE);
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, true), 1);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, false), 1);
+
+    // a stereocenter without any wedges should be given one
+    mol = make_mol();
+    conf = &mol->getConformer();
+    BOOST_REQUIRE_EQUAL(count_wedges(*mol, false), 0);
+    rdkit_extensions::wedgeMolBonds(*mol, conf, KEEP_EXISTING_WEDGES);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, true), 1);
+    BOOST_CHECK_EQUAL(count_wedges(*mol, false), 1);
 }
 
 /**

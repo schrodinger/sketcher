@@ -1,0 +1,115 @@
+diff --git a/Code/GraphMol/RingInfo.cpp b/Code/GraphMol/RingInfo.cpp
+index 6f0d2bd7f..affdb1172 100644
+--- a/Code/GraphMol/RingInfo.cpp
++++ b/Code/GraphMol/RingInfo.cpp
+@@ -10,6 +10,7 @@
+ #include "Rings.h"
+ #include "RingInfo.h"
+ #include <RDGeneral/Invariant.h>
++#include <RDGeneral/Exceptions.h>
+ #include <algorithm>
+ 
+ namespace RDKit {
+@@ -276,7 +277,13 @@ unsigned int RingInfo::numRingFamilies() const {
+ unsigned int RingInfo::numRelevantCycles() const {
+   PRECONDITION(df_init, "RingInfo not initialized");
+   PRECONDITION(dp_urfData, "Ring families not initialized");
+-  return rdcast<unsigned int>(RDL_getNofRC(dp_urfData.get()));
++  auto nURF = RDL_getNofURF(dp_urfData.get());
++  auto nRC = rdcast<unsigned int>(RDL_getNofRC(dp_urfData.get()));
++  if (nRC < nURF) {
++    throw ValueErrorException(
++        "Problems in RDL: Number of relevant cycles is less than the number of unique ring families");
++  }
++  return nRC;
+ };
+ 
+ unsigned int RingInfo::addRingFamily(const INT_VECT &atomIndices,
+@@ -324,10 +331,17 @@ std::vector<std::vector<int>> RingInfo::atomRelevantCycles() const {
+   PRECONDITION(dp_urfData, "Ring families not initialized");
+   std::vector<std::vector<int>> res;
+   if (dp_urfData) {
+-    res.reserve(RDL_getNofRC(dp_urfData.get()));
++    auto nRC = RDL_getNofRC(dp_urfData.get());
++    if (nRC > MAX_SYMMETRIZED_RINGS) {
++      BOOST_LOG(rdWarningLog)
++          << "Number of relevant cycles truncated to " << MAX_SYMMETRIZED_RINGS
++          << ". Ring counts will not be correct." << std::endl;
++      nRC = MAX_SYMMETRIZED_RINGS;
++    }
++    res.reserve(nRC);
+ 
+     RDL_cycleIterator *it = RDL_getRCyclesIterator(dp_urfData.get());
+-    while (!RDL_cycleIteratorAtEnd(it)) {
++    while (!RDL_cycleIteratorAtEnd(it) && res.size() < nRC) {
+       auto cycle = RDL_cycleIteratorGetCycle(it);
+       res.push_back(RingUtils::rdlCycleToAtomRing(cycle));
+       RDL_deleteCycle(cycle);
+diff --git a/Code/GraphMol/RingInfo.h b/Code/GraphMol/RingInfo.h
+index 2bd1e3a7b..da5b397a0 100644
+--- a/Code/GraphMol/RingInfo.h
++++ b/Code/GraphMol/RingInfo.h
+@@ -20,6 +20,9 @@
+ #include <RingDecomposerLib.h>
+ 
+ namespace RDKit {
++
++constexpr size_t MAX_SYMMETRIZED_RINGS = 10000;
++
+ //! A class to store information about a molecule's rings
+ /*!
+ 
+diff --git a/Code/GraphMol/ring_systems_test.cpp b/Code/GraphMol/ring_systems_test.cpp
+index e0462ba8b..69f458837 100644
+--- a/Code/GraphMol/ring_systems_test.cpp
++++ b/Code/GraphMol/ring_systems_test.cpp
+@@ -201,3 +201,48 @@ TEST_CASE("bulk performance") {
+             << " seconds." << std::endl;
+ }
+ #endif
++
++TEST_CASE("max number of relevant cycles") {
++  SECTION("clipping") {
++    std::string unit = "-C1CCC(CC1)";
++    std::string smiles = "C12CCC(CC1)";
++    for (auto i = 0; i < 20; ++i) {
++      smiles += unit;
++    }
++    smiles += "-C1CCC2(CC1)";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == 23);
++    CHECK(ri->numRelevantCycles() == 4194326);
++    std::vector<std::vector<int>> rings;
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          MAX_SYMMETRIZED_RINGS);
++    CHECK(rings.size() == MAX_SYMMETRIZED_RINGS);
++  }
++  SECTION("max-out") {
++    std::string unit = "-C1CCC(CC1)";
++    std::string smiles = "C12CCC(CC1)";
++    for (auto i = 0; i < 31; ++i) {
++      smiles += unit;
++    }
++    smiles += "-C1CCC2(CC1)";
++    v2::SmilesParse::SmilesParserParams params;
++    params.sanitize = false;
++    auto m = v2::SmilesParse::MolFromSmiles(smiles, params);
++    REQUIRE(m);
++    MolOps::findRingFamilies(*m);
++    auto ri = m->getRingInfo();
++    CHECK(ri->numRingFamilies() == 34);
++    CHECK_THROWS_AS(ri->numRelevantCycles(), ValueErrorException);
++    std::vector<std::vector<int>> rings;
++    CHECK(MolOps::symmetrizeSSSR(*m, rings,
++                                 MolOps::SymmetrizeSSSRAlgorithm::RDL) ==
++          MAX_SYMMETRIZED_RINGS);
++    CHECK(rings.size() == MAX_SYMMETRIZED_RINGS);
++  }
++}
+\ No newline at end of file
