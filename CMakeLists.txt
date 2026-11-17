@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 
+if(POLICY CMP0167)
+  # use BoostConfig.cmake instead of FindBoost
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.json VERSIONS)
 string(JSON SKETCHER_VERSION GET ${VERSIONS} sketcher)
 
@@ -87,6 +92,14 @@ find_package(fmt ${FMT_VERSION} REQUIRED)
 find_package(SQLite3 ${SQLITE_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
+
+# CMake 4.3 and newer switch the SQLite namespace to SQLite3 (i.e. adds a "3")
+# and prints many, many copies of a deprecation warning if the SQLite namespace
+# is used. To avoid this while still allowing older versions of CMake to
+# function, we alias the target name here if needed.
+if(NOT TARGET SQLite3::SQLite3)
+  add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 
 # The EXPAT::EXPAT target used in RDKit only exists if FindEXPAT.cmake was used
 # to find Expat. If CMAKE_FIND_PACKAGE_PREFER_CONFIG was passed and we instead
@@ -289,7 +302,7 @@ target_link_libraries(
           RDKit::DistGeomHelpers
           RDKit::MarvinParser
           RDKit::RDInchiLib
-          SQLite::SQLite3
+          SQLite3::SQLite3
           ZLIB::ZLIB
           ${ZSTD_LIB_NAME})
 

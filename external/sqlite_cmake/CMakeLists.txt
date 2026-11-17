@@ -297,6 +297,7 @@ endif()
 # -- Library -------------------------------------------------------------------
 
 add_library(SQLite3)
+add_library(SQLite3::SQLite3 ALIAS SQLite3)
 add_library(SQLite::SQLite3 ALIAS SQLite3)
 
 if(SQLITE_THREADSAFE STREQUAL "0")
@@ -449,14 +450,14 @@ option(SQLITE_BUILD_SHELL "Build the SQLite3 interactive shell." ON)
 
 if(SQLITE_BUILD_SHELL)
   add_executable(Shell)
-  add_executable(SQLite::Shell ALIAS Shell)
+  add_executable(SQLite3::Shell ALIAS Shell)
 
   set_target_properties(Shell PROPERTIES OUTPUT_NAME sqlite3 INSTALL_RPATH
                                                              "$ORIGIN/../lib")
 
   target_sources(Shell PRIVATE shell.c)
 
-  target_link_libraries(Shell PRIVATE SQLite::SQLite3)
+  target_link_libraries(Shell PRIVATE SQLite3::SQLite3)
 
   if(UNIX)
     find_package(PkgConfig)
@@ -481,7 +482,7 @@ endif()
 # -- Testing -------------------------------------------------------------------
 
 if(BUILD_TESTING AND SQLITE_BUILD_SHELL)
-  add_test(NAME SQLiteShellCheckVersion COMMAND SQLite::Shell -version)
+  add_test(NAME SQLiteShellCheckVersion COMMAND SQLite3::Shell -version)
   set_tests_properties(SQLiteShellCheckVersion
                        PROPERTIES PASS_REGULAR_EXPRESSION "${SQLite3_VERSION}")
 endif()
@@ -501,12 +502,12 @@ endif()
 
 install(
   EXPORT SQLite3Targets
-  NAMESPACE SQLite::
+  NAMESPACE SQLite3::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SQLite3)
 
 export(
   EXPORT SQLite3Targets
-  NAMESPACE SQLite::
+  NAMESPACE SQLite3::
   FILE ${CMAKE_CURRENT_BINARY_DIR}/SQLite3Targets.cmake)
 
 include(CMakePackageConfigHelpers)
