@@ -23,6 +23,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
+#include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
@@ -51,29 +52,6 @@ using AttachmentMap =
 using AtomIndexSet = std::unordered_set<unsigned int>;
 
 static const std::string ATOM_PDB_NAME_PROP{"pdbName"};
-
-const std::unordered_map<std::string, std::string> three_character_codes({
-    {"A", "ALA"}, // Alanine
-    {"R", "ARG"}, // Arginine
-    {"N", "ASN"}, // Asparagine
-    {"D", "ASP"}, // Aspartic
-    {"C", "CYS"}, // Cysteine
-    {"Q", "GLN"}, // Glutamine
-    {"E", "GLU"}, // Glutamic
-    {"G", "GLY"}, // Glycine
-    {"H", "HIS"}, // Histidine
-    {"I", "ILE"}, // Isoleucine
-    {"L", "LEU"}, // Leucine
-    {"K", "LYS"}, // Lysine
-    {"M", "MET"}, // Methionine
-    {"F", "PHE"}, // Phenylalanine
-    {"P", "PRO"}, // Proline
-    {"S", "SER"}, // Serine
-    {"T", "THR"}, // Threonine
-    {"W", "TRP"}, // Tryptophan
-    {"Y", "TYR"}, // Tyrosine
-    {"V", "VAL"}, // Valine
-});
 
 static const std::map<unsigned int, std::string> BIOVIA_ATTCHPT_MAP = {
     {1, "Al"}, // Backbone attachment point
@@ -400,9 +378,9 @@ void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
     auto pdb_code = db.getPdbCode(monomer_label, chain_type);
     if (pdb_code) {
         residue_name = *pdb_code;
-    } else if (three_character_codes.find(monomer_label) !=
-               three_character_codes.end()) {
-        residue_name = three_character_codes.at(monomer_label);
+    } else if (auto it = AMINO_ACID_THREE_LETTER_CODES.find(monomer_label);
+               it != AMINO_ACID_THREE_LETTER_CODES.end()) {
+        residue_name = it->second;
     }
 
     // Set PDB residue info on the atoms
