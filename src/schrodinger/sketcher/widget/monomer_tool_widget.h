@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
@@ -32,6 +33,7 @@ namespace sketcher
 {
 
 enum class AminoAcidTool;
+enum class MonomerToolType;
 enum class NucleicAcidTool;
 class AminoAcidSymbolPopup;
 class CustomNucleotidePopup;
@@ -52,6 +54,30 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void updateCheckedButton() override;
     void updateWidgetsEnabled() override;
     std::unordered_set<QAbstractButton*> getCheckableButtons() override;
+
+    /**
+     * Activate a database monomer, or use it to mutate the canvas selection.
+     * The side-bar page switches to match the monomer: PEPTIDE monomers use
+     * the amino acid page, RNA monomers use the nucleic acid page, and CHEM
+     * monomers use chem_page. The monomer becomes that page's last-used
+     * database monomer.
+     *  - Without a canvas selection, the monomer becomes the active draw tool,
+     *    and so the page's last monomeric draw tool.
+     *  - With a canvas selection, the selected monomers of a matching type are
+     *    mutated, and the draw tool is left unchanged.
+     * Either way, the page's AMINO_ACID_TOOL or NUCLEIC_ACID_TOOL is left
+     * alone, so it still names the page's last standard monomer button.
+     *
+     * @param monomer The database monomer. Nothing happens if its symbol is
+     * empty.
+     * @param chem_page The page to use for a CHEM monomer, which belongs on
+     * either page. Defaults to the current page (MONOMER_TOOL_TYPE). Pass it
+     * when restoring a page's monomer before the model has switched to that
+     * page.
+     */
+    void activateMonomerDbMonomer(
+        const rdkit_extensions::MonomerID& monomer,
+        std::optional<MonomerToolType> chem_page = std::nullopt);
 
   protected:
     /** Rebuild monomer analog popups from the current monomer database. */
@@ -94,13 +120,16 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onNucleicAcidClicked(QAbstractButton* button);
 
     /**
-     * Activate the remembered database monomer from either unclassified
-     * button.
+     * Respond to the user clicking an Unclassified button, or choosing a
+     * monomer from its popup, by activating the button's monomer
      */
-    void activateMonomerDbMonomer(QAbstractButton* button);
+    void onUnclassifiedButtonClicked(QAbstractButton* button);
 
-    rdkit_extensions::MonomerID
-    getMonomerDbMonomerForButton(QAbstractButton* button) const;
+    /**
+     * Point each Unclassified button at its page's last-used database
+     * monomer, or at nothing if that monomer isn't in the button's popup
+     */
+    void syncUnclassifiedButtons();
 
     /**
      * Respond to the user clicking on a specific monomeric connection button

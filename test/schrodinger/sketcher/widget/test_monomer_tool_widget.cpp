@@ -6,6 +6,7 @@
 
 #include <QAbstractButton>
 #include <QAction>
+#include <QButtonGroup>
 #include <QEnterEvent>
 #include <QGridLayout>
 #include <QGraphicsSceneMouseEvent>
@@ -15,6 +16,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSignalSpy>
+#include <QStackedWidget>
 #include <QStyleOptionToolButton>
 #include <QTest>
 #include <QTimer>
@@ -500,24 +502,22 @@ BOOST_AUTO_TEST_CASE(unclassified_monomers)
         button->click();
         BOOST_TEST(!popup->isVisible());
         BOOST_TEST(button->isChecked());
+        // the page's standard tool still names the last standard button used
         if (amino_acid) {
-            BOOST_CHECK(model.getAminoAcidTool() ==
-                        AminoAcidTool::UNCLASSIFIED);
+            BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::ALA);
         } else {
-            BOOST_CHECK(model.getNucleicAcidTool() ==
-                        NucleicAcidTool::UNCLASSIFIED);
+            BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::A);
         }
         BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
-        const auto monomer = model.getValue(ModelKey::MONOMER_DB_MONOMER)
-                                 .value<rdkit_extensions::MonomerID>();
+        const auto monomer = model.getMonomerDbMonomer();
         BOOST_TEST(monomer.symbol == symbol);
         BOOST_CHECK(monomer.chain_type ==
                     (amino_acid ? rdkit_extensions::ChainType::PEPTIDE
                                 : rdkit_extensions::ChainType::RNA));
     }
 
-    // The shared model value holds only the active selection. Switching pages
-    // restores each button's own remembered monomer without opening its popup.
+    // Each page stores its own database monomer. Switching pages restores each
+    // page's remembered monomer without opening its popup.
     for (const bool amino_acid : {true, false, true, false}) {
         widget
             .findChild<QAbstractButton*>(amino_acid ? "amino_monomer_btn"
@@ -527,10 +527,14 @@ BOOST_AUTO_TEST_CASE(unclassified_monomers)
         BOOST_TEST(button->isChecked());
         BOOST_TEST(!button->getPopupWidget()->isVisible());
         BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
-        const auto monomer = model.getValue(ModelKey::MONOMER_DB_MONOMER)
-                                 .value<rdkit_extensions::MonomerID>();
-        BOOST_TEST(monomer.symbol == (amino_acid ? "testX2" : "testN2"));
+        BOOST_TEST(model.getMonomerDbMonomer().symbol ==
+                   (amino_acid ? "testX2" : "testN2"));
     }
+    BOOST_TEST(model.getMonomerDbMonomer(MonomerToolType::AMINO_ACID).symbol ==
+               "testX2");
+    BOOST_TEST(
+        model.getMonomerDbMonomer(MonomerToolType::NUCLEIC_ACID).symbol ==
+        "testN2");
     BOOST_TEST(model.getValueString(ModelKey::AMINO_ACID_SYMBOL) == "A");
     BOOST_CHECK(model.getValue(ModelKey::AMINO_ACID_SYMBOL).metaType() ==
                 QMetaType::fromType<QString>());
@@ -549,6 +553,12 @@ BOOST_AUTO_TEST_CASE(unclassified_monomers)
     BOOST_TEST(na_button->getEnumItem() == -1);
     BOOST_TEST(aa_button->text() == "Unclassified");
     BOOST_TEST(na_button->text() == "Unclassified");
+    // The removed monomers were cleared from both pages
+    BOOST_TEST(
+        model.getMonomerDbMonomer(MonomerToolType::AMINO_ACID).symbol.empty());
+    BOOST_TEST(model.getMonomerDbMonomer(MonomerToolType::NUCLEIC_ACID)
+                   .symbol.empty());
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
 }
 
 /**
@@ -623,8 +633,7 @@ BOOST_AUTO_TEST_CASE(unclassified_chem_monomers)
         BOOST_REQUIRE(find_entry("Chemical N") != nullptr);
         chem_button->click();
         const int chem_id = button->getEnumItem();
-        const auto selection = model->getValue(ModelKey::MONOMER_DB_MONOMER)
-                                   .value<rdkit_extensions::MonomerID>();
+        const auto selection = model->getMonomerDbMonomer();
         BOOST_TEST(selection.symbol == "testChem");
         BOOST_CHECK(selection.chain_type == rdkit_extensions::ChainType::CHEM);
         BOOST_CHECK(model->getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
@@ -665,6 +674,491 @@ BOOST_AUTO_TEST_CASE(unclassified_chem_monomers)
     BOOST_TEST(old_na_popup.isNull());
     BOOST_TEST(aa_button->isHidden() == (core_aa_count + core_chem_count == 0));
     BOOST_TEST(na_button->isHidden() == (core_chem_count == 0));
+}
+
+/**
+ * Load a custom monomer database with a PEPTIDE, an RNA and a CHEM monomer
+ */
+static void load_mixed_db_monomers()
+{
+    auto result =
+        rdkit_extensions::MonomerDatabase::instance().loadMonomersFromJson(R"([
+        {"symbol":"pepX","polymer_type":"PEPTIDE","natural_analog":"X",
+         "smiles":"CC","name":"Peptide","monomer_type":"backbone",
+         "author":"test"},
+        {"symbol":"rnaN","polymer_type":"RNA","natural_analog":"N",
+         "smiles":"CCC","name":"Base","monomer_type":"branch","author":"test"},
+        {"symbol":"chem","polymer_type":"CHEM","natural_analog":"",
+         "smiles":"CN","name":"Chem","monomer_type":"undefined",
+         "author":"test"}
+    ])");
+    BOOST_REQUIRE(result.second.empty());
+    BOOST_REQUIRE_EQUAL(result.first.size(), 3);
+}
+
+/**
+ * Confirm that the widget shows the given page, with its page button checked
+ */
+static void check_visible_page(MonomerToolWidget& widget, bool amino_acid)
+{
+    auto* stack = widget.findChild<QStackedWidget*>("amino_or_nucleic_stack");
+    BOOST_REQUIRE(stack != nullptr);
+    BOOST_TEST(stack->currentWidget()->objectName().toStdString() ==
+               (amino_acid ? "amino_page" : "nucleic_page"));
+    BOOST_TEST(
+        widget.findChild<QAbstractButton*>("amino_monomer_btn")->isChecked() ==
+        amino_acid);
+    BOOST_TEST(widget.findChild<QAbstractButton*>("nucleic_monomer_btn")
+                   ->isChecked() == !amino_acid);
+}
+
+/**
+ * Without a canvas selection, activating a database monomer switches to the
+ * monomer's page (CHEM monomers stay on the current page), activates the
+ * monomer, and remembers it only on that page
+ */
+BOOST_AUTO_TEST_CASE(activate_monomer_db_monomer)
+{
+    using rdkit_extensions::MonomerID;
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    load_mixed_db_monomers();
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    const MonomerID pep{"pepX", ChainType::PEPTIDE};
+    const MonomerID rna{"rnaN", ChainType::RNA};
+    const MonomerID chem{"chem", ChainType::CHEM};
+    const MonomerID none{"", ChainType::PEPTIDE};
+    auto* aa_button =
+        widget.findChild<ModularToolButton*>("aa_unclassified_btn");
+    auto* na_button =
+        widget.findChild<ModularToolButton*>("na_unclassified_btn");
+
+    struct Expected {
+        MonomerID monomer;
+        bool amino_acid_page;
+        MonomerID aa_slot;
+        MonomerID na_slot;
+    };
+    for (const auto& expected : {
+             // an RNA monomer switches from the default AA page to the NA page
+             Expected{rna, false, none, rna},
+             // CHEM stays on the current page
+             Expected{chem, false, none, chem},
+             // a peptide switches to the AA page and leaves the NA page's
+             // last-used database monomer alone
+             Expected{pep, true, pep, chem},
+             Expected{chem, true, chem, chem},
+         }) {
+        BOOST_TEST_CONTEXT(expected.monomer.symbol)
+        {
+            widget.activateMonomerDbMonomer(expected.monomer);
+            const auto page = expected.amino_acid_page
+                                  ? MonomerToolType::AMINO_ACID
+                                  : MonomerToolType::NUCLEIC_ACID;
+            BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
+            BOOST_CHECK(model.getMonomerToolType() == page);
+            BOOST_CHECK(model.getMonomerDbMonomer() == expected.monomer);
+            BOOST_CHECK(model.getMonomerDbMonomer(
+                            MonomerToolType::AMINO_ACID) == expected.aa_slot);
+            BOOST_CHECK(model.getMonomerDbMonomer(
+                            MonomerToolType::NUCLEIC_ACID) == expected.na_slot);
+            BOOST_TEST((model.getDrawToolToRestore(page) ==
+                        DrawTool::MONOMER_DB_MONOMER));
+            check_visible_page(widget, expected.amino_acid_page);
+            BOOST_TEST((expected.amino_acid_page ? aa_button : na_button)
+                           ->isChecked());
+        }
+    }
+    // activating database monomers leaves the pages' standard tools alone
+    BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::ALA);
+    BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::RNA_NUCLEOTIDE);
+
+    // an empty monomer is ignored
+    QSignalSpy pinged(&model, &SketcherModel::valuePinged);
+    widget.activateMonomerDbMonomer(none);
+    BOOST_TEST(pinged.empty());
+    BOOST_CHECK(model.getMonomerDbMonomer() == chem);
+}
+
+/**
+ * Each page restores its own last monomeric tool: its database monomer, or its
+ * standard monomer. A page never restores a database tool without a database
+ * monomer.
+ */
+BOOST_AUTO_TEST_CASE(monomer_db_page_switching)
+{
+    using rdkit_extensions::MonomerID;
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    load_mixed_db_monomers();
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    const MonomerID pep{"pepX", ChainType::PEPTIDE};
+    const MonomerID rna{"rnaN", ChainType::RNA};
+    auto* aa_page_button =
+        widget.findChild<QAbstractButton*>("amino_monomer_btn");
+    auto* na_page_button =
+        widget.findChild<QAbstractButton*>("nucleic_monomer_btn");
+    widget.activateMonomerDbMonomer(rna);
+    widget.activateMonomerDbMonomer(pep);
+
+    for (const bool amino_acid : {false, true, false}) {
+        (amino_acid ? aa_page_button : na_page_button)->click();
+        BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
+        BOOST_CHECK(model.getMonomerDbMonomer() == (amino_acid ? pep : rna));
+        check_visible_page(widget, amino_acid);
+        BOOST_TEST(widget
+                       .findChild<QAbstractButton*>(amino_acid
+                                                        ? "aa_unclassified_btn"
+                                                        : "na_unclassified_btn")
+                       ->isChecked());
+    }
+
+    // a standard tool replaces the NA page's DB tool as its last monomeric
+    // tool, but doesn't clear its last-used DB monomer
+    auto* na_a_button = widget.findChild<QAbstractButton*>("na_a_btn");
+    na_a_button->click();
+    BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::A);
+    aa_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
+    BOOST_CHECK(model.getMonomerDbMonomer() == pep);
+    na_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::A);
+    BOOST_CHECK(model.getMonomerDbMonomer() == rna);
+    BOOST_TEST(na_a_button->isChecked());
+
+    // a page whose last tool was its database monomer tool never restores it
+    // without a last-used database monomer, and restores its standard tool
+    // instead
+    model.setValues({{ModelKey::AMINO_ACID_DB_MONOMER,
+                      QVariant::fromValue(MonomerID{"", ChainType::PEPTIDE})}});
+    aa_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getMonomerToolType() == MonomerToolType::AMINO_ACID);
+    BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::ALA);
+    check_visible_page(widget, true);
+    BOOST_TEST(widget.findChild<QAbstractButton*>("ala_btn")->isChecked());
+}
+
+/**
+ * Each page restores its own CHEM database monomer. A CHEM monomer belongs on
+ * either page, so restoring it on a page switch must store it on the page being
+ * switched to, not on the page being left.
+ */
+BOOST_AUTO_TEST_CASE(monomer_db_page_switching_chem)
+{
+    using rdkit_extensions::MonomerID;
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    auto result =
+        rdkit_extensions::MonomerDatabase::instance().loadMonomersFromJson(R"([
+        {"symbol":"CHM1","polymer_type":"CHEM","natural_analog":"",
+         "smiles":"CN","name":"Chem 1","monomer_type":"undefined",
+         "author":"test"},
+        {"symbol":"CHM2","polymer_type":"CHEM","natural_analog":"",
+         "smiles":"CO","name":"Chem 2","monomer_type":"undefined",
+         "author":"test"}
+    ])");
+    BOOST_REQUIRE(result.second.empty());
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    const MonomerID chem1{"CHM1", ChainType::CHEM};
+    const MonomerID chem2{"CHM2", ChainType::CHEM};
+    auto* aa_page_button =
+        widget.findChild<QAbstractButton*>("amino_monomer_btn");
+    auto* na_page_button =
+        widget.findChild<QAbstractButton*>("nucleic_monomer_btn");
+    aa_page_button->click();
+    widget.activateMonomerDbMonomer(chem2);
+    na_page_button->click();
+    widget.activateMonomerDbMonomer(chem1);
+    BOOST_CHECK(model.getMonomerDbMonomer(MonomerToolType::AMINO_ACID) ==
+                chem2);
+    BOOST_CHECK(model.getMonomerDbMonomer(MonomerToolType::NUCLEIC_ACID) ==
+                chem1);
+
+    for (const bool amino_acid : {true, false, true}) {
+        (amino_acid ? aa_page_button : na_page_button)->click();
+        BOOST_CHECK(model.getMonomerToolType() ==
+                    (amino_acid ? MonomerToolType::AMINO_ACID
+                                : MonomerToolType::NUCLEIC_ACID));
+        BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
+        BOOST_CHECK(model.getMonomerDbMonomer() ==
+                    (amino_acid ? chem2 : chem1));
+        // the other page's last-used database monomer is untouched
+        BOOST_CHECK(model.getMonomerDbMonomer(
+                        amino_acid ? MonomerToolType::NUCLEIC_ACID
+                                   : MonomerToolType::AMINO_ACID) ==
+                    (amino_acid ? chem1 : chem2));
+        check_visible_page(widget, amino_acid);
+    }
+}
+
+/**
+ * Sketch a custom monomer through the custom monomer button's menu, as a user
+ * would. The menu offers a monomer of the current page's chain type, or a CHEM
+ * structure.
+ */
+static void sketch_custom_monomer(MonomerToolWidget& widget, bool chem,
+                                  const QString& smiles)
+{
+    auto* button = widget.findChild<CustomMonomerButton*>("custom_monomer_btn");
+    BOOST_REQUIRE(button != nullptr);
+    auto* menu = button->findChild<QMenu*>();
+    BOOST_REQUIRE(menu != nullptr);
+    menu->actions()[chem ? 2 : 0]->trigger();
+    // Earlier dialogs are deleted later, so find the one that's open
+    CustomMonomerDialog* dialog = nullptr;
+    for (auto* child : button->findChildren<CustomMonomerDialog*>()) {
+        if (child->isVisible()) {
+            dialog = child;
+        }
+    }
+    BOOST_REQUIRE(dialog != nullptr);
+    dialog->addSMILES(smiles.toStdString());
+    dialog->accept();
+}
+
+/**
+ * Switching to the other page and straight back restores the connection tool
+ * that was active, on either page
+ */
+BOOST_DATA_TEST_CASE(page_round_trip_restores_connection_tool,
+                     bdata::make({true, false}) *
+                         bdata::make({"covalent_or_disulfide_btn",
+                                      "hbond_btn"}),
+                     start_on_amino_acid_page, connection_button_name)
+{
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    auto* aa_page_button =
+        widget.findChild<QAbstractButton*>("amino_monomer_btn");
+    auto* na_page_button =
+        widget.findChild<QAbstractButton*>("nucleic_monomer_btn");
+    auto* start_page_button =
+        start_on_amino_acid_page ? aa_page_button : na_page_button;
+    auto* other_page_button =
+        start_on_amino_acid_page ? na_page_button : aa_page_button;
+    auto* connection_button =
+        widget.findChild<QAbstractButton*>(connection_button_name);
+    BOOST_REQUIRE(connection_button != nullptr);
+    start_page_button->click();
+    connection_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMERIC_CONNECTION);
+    const auto connection_tool =
+        model.getValueInt(ModelKey::MONOMERIC_CONNECTION_TOOL);
+
+    // the other page restores its own standard tool
+    other_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_TEST(!connection_button->isChecked());
+
+    start_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMERIC_CONNECTION);
+    BOOST_TEST(model.getValueInt(ModelKey::MONOMERIC_CONNECTION_TOOL) ==
+               connection_tool);
+    check_visible_page(widget, start_on_amino_acid_page);
+    BOOST_TEST(connection_button->isChecked());
+}
+
+/**
+ * Switching pages while a shared tool (select, move-rotate or erase) is active
+ * keeps that tool active and doesn't disturb either page's last monomeric tool
+ */
+BOOST_DATA_TEST_CASE(page_round_trip_keeps_shared_tool,
+                     bdata::make({DrawTool::SELECT, DrawTool::MOVE_ROTATE,
+                                  DrawTool::ERASE}),
+                     shared_tool)
+{
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    auto* aa_page_button =
+        widget.findChild<QAbstractButton*>("amino_monomer_btn");
+    auto* na_page_button =
+        widget.findChild<QAbstractButton*>("nucleic_monomer_btn");
+    auto* hbond_button = widget.findChild<QAbstractButton*>("hbond_btn");
+    auto* na_c_button = widget.findChild<QAbstractButton*>("na_c_btn");
+    // the amino acid page's last tool is the H-bond tool, and the nucleic acid
+    // page's is C
+    model.setValue(ModelKey::DRAW_TOOL, DrawTool::MONOMER);
+    hbond_button->click();
+    na_page_button->click();
+    na_c_button->click();
+    BOOST_REQUIRE(model.getDrawTool() == DrawTool::MONOMER);
+
+    model.setValue(ModelKey::DRAW_TOOL, shared_tool);
+    for (const bool amino_acid : {true, false, true}) {
+        (amino_acid ? aa_page_button : na_page_button)->click();
+        BOOST_CHECK(model.getDrawTool() == shared_tool);
+        BOOST_CHECK(model.getMonomerToolType() ==
+                    (amino_acid ? MonomerToolType::AMINO_ACID
+                                : MonomerToolType::NUCLEIC_ACID));
+        check_visible_page(widget, amino_acid);
+        BOOST_TEST(!hbond_button->isChecked());
+        BOOST_TEST(!na_c_button->isChecked());
+    }
+    BOOST_CHECK(model.getDrawToolToRestore(MonomerToolType::AMINO_ACID) ==
+                DrawTool::MONOMERIC_CONNECTION);
+    BOOST_CHECK(model.getDrawToolToRestore(MonomerToolType::NUCLEIC_ACID) ==
+                DrawTool::MONOMER);
+
+    // a monomeric tool chosen afterwards is recorded as usual, and the other
+    // page still restores its own tool
+    widget.findChild<QAbstractButton*>("gly_btn")->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::GLY);
+    na_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::C);
+    BOOST_TEST(na_c_button->isChecked());
+    aa_page_button->click();
+    BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::GLY);
+    BOOST_TEST(widget.findChild<QAbstractButton*>("gly_btn")->isChecked());
+}
+
+/**
+ * Switching to the other page and straight back restores a custom monomer
+ * tool, as long as the shared stored custom monomer still belongs on the page
+ */
+BOOST_AUTO_TEST_CASE(page_round_trip_restores_custom_monomer_tool)
+{
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    auto* aa_page_button =
+        widget.findChild<QAbstractButton*>("amino_monomer_btn");
+    auto* na_page_button =
+        widget.findChild<QAbstractButton*>("nucleic_monomer_btn");
+    auto* custom_button =
+        widget.findChild<QAbstractButton*>("custom_monomer_btn");
+    auto* ala_button = widget.findChild<QAbstractButton*>("ala_btn");
+    auto check_custom_monomer = [&](const QString& smiles,
+                                    ChainType chain_type) {
+        BOOST_CHECK(model.getDrawTool() == DrawTool::CUSTOM_MONOMER);
+        const auto monomer = model.getCustomMonomer();
+        BOOST_TEST(monomer.first == smiles);
+        BOOST_CHECK(monomer.second == chain_type);
+        BOOST_TEST(custom_button->isChecked());
+    };
+
+    // a custom peptide on the amino acid page
+    aa_page_button->click();
+    sketch_custom_monomer(widget, /*chem=*/false, "CC");
+    check_custom_monomer("CC", ChainType::PEPTIDE);
+    na_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_TEST(!custom_button->isChecked());
+    aa_page_button->click();
+    check_custom_monomer("CC", ChainType::PEPTIDE);
+    check_visible_page(widget, true);
+
+    // a custom base on the nucleic acid page replaces the stored peptide, so
+    // the amino acid page falls back to its standard tool
+    na_page_button->click();
+    sketch_custom_monomer(widget, /*chem=*/false, "CCC");
+    check_custom_monomer("CCC", ChainType::RNA);
+    aa_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::ALA);
+    BOOST_TEST(ala_button->isChecked());
+    na_page_button->click();
+    check_custom_monomer("CCC", ChainType::RNA);
+    check_visible_page(widget, false);
+
+    // a CHEM custom monomer can be restored on either page
+    sketch_custom_monomer(widget, /*chem=*/true, "CO");
+    check_custom_monomer("CO", ChainType::CHEM);
+    aa_page_button->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    na_page_button->click();
+    check_custom_monomer("CO", ChainType::CHEM);
+    check_visible_page(widget, false);
+}
+
+/**
+ * The page follows MONOMER_TOOL_TYPE under every draw tool
+ */
+BOOST_DATA_TEST_CASE(monomer_page_follows_model,
+                     bdata::make({DrawTool::SELECT, DrawTool::MOVE_ROTATE,
+                                  DrawTool::MONOMERIC_CONNECTION,
+                                  DrawTool::MONOMER}),
+                     draw_tool)
+{
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    model.setValue(ModelKey::DRAW_TOOL, draw_tool);
+    for (const bool amino_acid : {false, true}) {
+        model.setValue(ModelKey::MONOMER_TOOL_TYPE,
+                       amino_acid ? MonomerToolType::AMINO_ACID
+                                  : MonomerToolType::NUCLEIC_ACID);
+        check_visible_page(widget, amino_acid);
+    }
+}
+
+/**
+ * Removing an inactive page's database monomer means that returning to the
+ * page restores its standard fallback tool
+ */
+BOOST_AUTO_TEST_CASE(monomer_db_repair_inactive_page_fallback)
+{
+    using rdkit_extensions::MonomerID;
+    auto& db = rdkit_extensions::MonomerDatabase::instance();
+    struct ResetDatabase {
+        ~ResetDatabase()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_database;
+    load_mixed_db_monomers();
+    SketcherModel model;
+    MonomerToolWidget widget;
+    widget.setModel(&model);
+    widget.show();
+    widget.activateMonomerDbMonomer({"rnaN", ChainType::RNA});
+    widget.activateMonomerDbMonomer({"ac", ChainType::PEPTIDE});
+    auto* na_button =
+        widget.findChild<ModularToolButton*>("na_unclassified_btn");
+    BOOST_TEST(na_button->getEnumItem() != -1);
+    db.resetMonomerDefinitions();
+    // the AA page's core monomer is still available
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER_DB_MONOMER);
+    BOOST_CHECK(model.getMonomerDbMonomer() ==
+                (MonomerID{"ac", ChainType::PEPTIDE}));
+    BOOST_TEST(na_button->getEnumItem() == -1);
+    widget.findChild<QAbstractButton*>("nucleic_monomer_btn")->click();
+    BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);
+    BOOST_CHECK(model.getNucleicAcidTool() == NucleicAcidTool::RNA_NUCLEOTIDE);
+    BOOST_TEST(widget.findChild<QAbstractButton*>("na_rna_btn")->isChecked());
 }
 
 } // namespace sketcher

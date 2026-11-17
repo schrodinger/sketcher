@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -318,6 +319,13 @@ class SKETCHER_API MonomerDatabaseFilter
  */
 SKETCHER_API MonomerDbPolymerType
 get_monomer_db_polymer_type(const rdkit_extensions::MonomerInfo& info);
+
+/**
+ * @return the ID (symbol and chain type) of the given monomer, or std::nullopt
+ * if its symbol or polymer type is missing, or its polymer type is invalid
+ */
+SKETCHER_API std::optional<rdkit_extensions::MonomerID>
+get_monomer_id(const rdkit_extensions::MonomerInfo& info);
 
 /**
  * @return the text to display for a single polymer type flag ("Peptide",

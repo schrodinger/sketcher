@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QVariant>
 #include <boost/functional/hash.hpp>
+#include <boost/signals2/connection.hpp>
 
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/public_constants.h"
@@ -30,7 +31,8 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 enum class ChainType;
-}
+struct MonomerID;
+} // namespace rdkit_extensions
 
 namespace sketcher
 {
@@ -311,17 +313,23 @@ enum class ModelKey {
     CUSTOM_NUCLEOTIDE,   /// a tuple of (sugar, base, phosphate) to use for the
                          ///   CUSTOM_NUCLEOTIDE tool
     CUSTOM_MONOMER,
-    INTERFACE_TYPE,     /// whether the Sketcher is intended for use with
-                        ///   atomistic models, monomeric models, or both
-    TOOL_SET,           /// whether the side bar shows the atomistic tools or
-                        ///   monomeric tools, which (along with
-                        ///   MONOMER_TOOL_TYPE) controls the keyboard
-                        ///   shortcuts (i.e. should "C" activate carbon,
-                        ///   cysteine, or cytosine)
-    MOLECULE_TYPE,      /// whether the Sketcher workspace contains an
-                        ///   atomistic model, a monomeric model, or is empty
-    MONOMER_DB_MONOMER, /// database monomer identity
-                        /// (rdkit_extensions::MonomerID)
+    INTERFACE_TYPE,        /// whether the Sketcher is intended for use with
+                           ///   atomistic models, monomeric models, or both
+    TOOL_SET,              /// whether the side bar shows the atomistic tools or
+                           ///   monomeric tools, which (along with
+                           ///   MONOMER_TOOL_TYPE) controls the keyboard
+                           ///   shortcuts (i.e. should "C" activate carbon,
+                           ///   cysteine, or cytosine)
+    MOLECULE_TYPE,         /// whether the Sketcher workspace contains an
+                           ///   atomistic model, a monomeric model, or is empty
+    AMINO_ACID_DB_MONOMER, /// the amino acid page's last-used database
+                           ///   monomer: a PEPTIDE or CHEM
+                           ///   rdkit_extensions::MonomerID, with an empty
+                           ///   symbol if there is none
+    NUCLEIC_ACID_DB_MONOMER, /// the nucleic acid page's last-used database
+                             ///   monomer: an RNA or CHEM
+                             ///   rdkit_extensions::MonomerID, with an empty
+                             ///   symbol if there is none
 };
 
 enum class MoleculeType {
@@ -362,7 +370,6 @@ enum class AminoAcidTool {
     TYR,
     VAL,
     UNK,
-    UNCLASSIFIED,
 };
 
 const std::unordered_map<AminoAcidTool, std::string>
@@ -442,7 +449,6 @@ enum class NucleicAcidTool {
     RNA_NUCLEOTIDE,
     DNA_NUCLEOTIDE,
     CUSTOM_NUCLEOTIDE,
-    UNCLASSIFIED,
 };
 
 const std::unordered_map<NucleicAcidTool, std::string>
@@ -505,6 +511,21 @@ SKETCHER_API QString std_nucleobase_to_qstring(StdNucleobase base,
 SKETCHER_API std::vector<ModelKey> get_model_keys();
 
 /**
+ * @param page A side-bar monomer page
+ * @return the key that stores the page's last-used database monomer:
+ * AMINO_ACID_DB_MONOMER or NUCLEIC_ACID_DB_MONOMER
+ */
+SKETCHER_API ModelKey get_monomer_db_monomer_key(MonomerToolType page);
+
+/**
+ * @return whether the given draw tool belongs to the monomeric side-bar tools:
+ * MONOMER, MONOMERIC_CONNECTION, CUSTOM_MONOMER or MONOMER_DB_MONOMER. The
+ * select, move-rotate and erase tools are shared by both tool sets, so they
+ * aren't monomeric tools.
+ */
+SKETCHER_API bool is_monomeric_draw_tool(DrawTool draw_tool);
+
+/**
  * Model for shared state among the various sketcher views.
  *
  * In order to reduce coupling, any state that needs to be accessed by more than
@@ -553,6 +574,35 @@ class SKETCHER_API SketcherModel : public QObject
     InterfaceTypeType getInterfaceType() const;
     ToolSet getToolSet() const;
     MoleculeType getMoleculeType() const;
+
+    /**
+     * @return the last-used database monomer of the current side-bar page
+     * (MONOMER_TOOL_TYPE), which has an empty symbol if there is none
+     */
+    rdkit_extensions::MonomerID getMonomerDbMonomer() const;
+
+    /**
+     * @param page A side-bar monomer page
+     * @return the page's last-used database monomer, which has an empty symbol
+     * if there is none
+     */
+    rdkit_extensions::MonomerID getMonomerDbMonomer(MonomerToolType page) const;
+
+    /**
+     * @param page A side-bar monomer page
+     * @return the draw tool to activate when the user switches to the page,
+     * either from the other monomer page or from the atomistic tools. This is
+     * the last monomeric draw tool used on the page, so that switching away
+     * and straight back restores the same tool. If that tool can no longer
+     * be used, this falls back to MONOMER, which activates the last standard
+     * monomer button used on the page:
+     *  - MONOMER_DB_MONOMER can't be used if the page has no last-used
+     *    database monomer, e.g. because a new monomer database removed it.
+     *  - CUSTOM_MONOMER can't be used if the stored custom monomer is empty or
+     *    belongs on the other page. Both pages share one stored custom
+     *    monomer, so a CHEM custom monomer can be used on either page.
+     */
+    DrawTool getDrawToolToRestore(MonomerToolType page) const;
 
     /**
      * Retrieve data from the model's state map.
@@ -857,6 +907,59 @@ class SKETCHER_API SketcherModel : public QObject
     bool m_render_peptides_linearly = false;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
+
+  private:
+    /**
+     * Store values without emitting any signals.
+     *
+     * @param key_value_map (key, value) pairs to assign to the model
+     * @return the keys whose values changed
+     * @throw std::runtime_error if a value's type differs from the type of the
+     * key's current value
+     */
+    std::unordered_set<ModelKey>
+    storeValues(const std::unordered_map<ModelKey, QVariant>& key_value_map);
+
+    /**
+     * Emit valuesChanged for the given keys, if there are any.
+     */
+    void emitValuesChanged(const std::unordered_set<ModelKey>& changed_keys);
+
+    /**
+     * Assign values and emit valuesChanged, but not valuePinged, so that the
+     * update never mutates a canvas selection.
+     *
+     * @param key_value_map (key, value) pairs to assign to the model
+     */
+    void setValuesWithoutPinging(
+        const std::unordered_map<ModelKey, QVariant>& key_value_map);
+
+    /**
+     * Repair the database monomer state after the monomer database changes.
+     * For each page whose last-used database monomer is no longer in the
+     * Monomer Database table (see get_monomer_database_table_monomers()):
+     *  - clear the page's last-used database monomer;
+     *  - if the page's database monomer tool is active, switch to the page's
+     *    standard monomer tool, i.e. the last standard monomer button used on
+     *    the page.
+     * A page whose last monomeric tool was its database monomer tool then
+     * restores its standard monomer tool instead (see getDrawToolToRestore()).
+     * The update never mutates a canvas selection.
+     */
+    void onMonomerDatabaseChanged();
+
+    /**
+     * If the active draw tool is a monomeric draw tool, record it as the last
+     * monomeric draw tool of the current page (see getDrawToolToRestore())
+     */
+    void recordMonomericDrawTool();
+
+    // The last monomeric draw tool used on each side-bar page
+    std::unordered_map<MonomerToolType, DrawTool> m_last_monomeric_draw_tool;
+
+    // Declared last so that it disconnects before the other members are
+    // destroyed
+    boost::signals2::scoped_connection m_database_connection;
 };
 
 } // namespace sketcher

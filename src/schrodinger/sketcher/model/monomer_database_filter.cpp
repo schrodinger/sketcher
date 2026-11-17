@@ -459,18 +459,39 @@ bool MonomerDatabaseFilter::matches(const MonomerInfo& info) const
     return false;
 }
 
-MonomerDbPolymerType get_monomer_db_polymer_type(const MonomerInfo& info)
+/**
+ * @return the chain type of the given monomer, or std::nullopt if its polymer
+ * type is missing or invalid
+ */
+static std::optional<ChainType> get_chain_type(const MonomerInfo& info)
 {
     if (!info.polymer_type.has_value()) {
-        return MonomerDbPolymerType::NONE;
+        return std::nullopt;
     }
-    ChainType chain_type;
     try {
-        chain_type = rdkit_extensions::toChainType(*info.polymer_type);
+        return rdkit_extensions::toChainType(*info.polymer_type);
     } catch (const std::invalid_argument&) {
+        return std::nullopt;
+    }
+}
+
+std::optional<rdkit_extensions::MonomerID>
+get_monomer_id(const MonomerInfo& info)
+{
+    auto chain_type = get_chain_type(info);
+    if (!info.symbol.has_value() || !chain_type.has_value()) {
+        return std::nullopt;
+    }
+    return rdkit_extensions::MonomerID{*info.symbol, *chain_type};
+}
+
+MonomerDbPolymerType get_monomer_db_polymer_type(const MonomerInfo& info)
+{
+    auto chain_type = get_chain_type(info);
+    if (!chain_type.has_value()) {
         return MonomerDbPolymerType::NONE;
     }
-    switch (chain_type) {
+    switch (*chain_type) {
         case ChainType::PEPTIDE:
             return MonomerDbPolymerType::PEPTIDE;
         case ChainType::RNA:
