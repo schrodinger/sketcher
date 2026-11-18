@@ -955,7 +955,15 @@ static void check_annotation_label_placement(
 {
     const auto& rect = item.m_annotation_label_rect;
     BOOST_REQUIRE(rect.isValid());
-    BOOST_TEST(item.m_bounding_rect.contains(rect));
+    // The bounding rect is the union of the shape's bounding rect and the
+    // annotation rect, but QRectF stores a width rather than a right edge, so
+    // left + (right - left) may round to slightly less than right. As a
+    // result, the union may not strictly contain the annotation rect, so we
+    // allow for a small amount of rounding error.
+    const qreal tolerance = 1e-6;
+    BOOST_TEST(item.m_bounding_rect
+                   .adjusted(-tolerance, -tolerance, tolerance, tolerance)
+                   .contains(rect));
     BOOST_TEST(!item.m_selection_highlighting_path.intersects(rect));
     for (const auto& subrect : item.getSubrects()) {
         BOOST_TEST(!subrect.intersects(rect));
