@@ -592,3 +592,96 @@ BOOST_AUTO_TEST_CASE(test_image_generation_with_large_molecules)
     save_image_file(*large_mol, tmp_file, opts);
     BOOST_TEST(boost::filesystem::exists(tmp_file));
 }
+
+/**
+ * @return the SVG for the given molecule rendered with the given options
+ */
+static QString get_svg(const RDKit::ROMol& mol, const RenderOptions& opts)
+{
+    return QString::fromUtf8(get_image_bytes(mol, ImageFormat::SVG, opts));
+}
+
+/**
+ * @return whether the given SVG contains a text element with exactly the given
+ * text
+ */
+static bool svg_contains_text(const QString& svg, const QString& text)
+{
+    QXmlStreamReader reader(svg);
+    while (!reader.atEnd()) {
+        reader.readNext();
+        if (reader.isStartElement() && reader.name() == QLatin1String("text") &&
+            reader.readElementText().trimmed() == text) {
+            return true;
+        }
+    }
+    return false;
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_annotations_with_halos)
+{
+    // SKETCH-2918: annotations shouldn't replace the atom labels or remove any
+    // halos
+    auto mol = rdkit_extensions::to_rdkit(
+        "S=C(Nc1ccccc1)N1CCCN(c2ccc(C(F)(Br)I)cn2)CC1");
+    const QColor halo_color("#fed2b7");
+    RenderOptions opts;
+    opts.background_color = Qt::white;
+    const auto unannotated_svg = get_svg(*mol, opts);
+    BOOST_TEST(!unannotated_svg.contains(halo_color.name()));
+
+    opts.rdatom_index_to_annotation = {{0, "1.5 +/- 1.2"},
+                                       {2, "12.2 +/- 1.0"},
+                                       {13, "0.4 +/- 1.0"},
+                                       {23, "2.8 +/- 1.0"}};
+    const auto annotated_svg = get_svg(*mol, opts);
+    for (const auto& annotation : opts.rdatom_index_to_annotation) {
+        BOOST_TEST(svg_contains_text(annotated_svg,
+                                     QString::fromStdString(annotation)));
+        BOOST_TEST(!svg_contains_text(unannotated_svg,
+                                      QString::fromStdString(annotation)));
+    }
+    for (const auto* atom_label : {"S", "N", "H", "Br", "I", "F"}) {
+        BOOST_TEST(svg_contains_text(annotated_svg, atom_label));
+    }
+
+    for (auto index : opts.rdatom_index_to_annotation.keys()) {
+        opts.rdatom_index_to_halo_color[index] = halo_color;
+    }
+    const auto annotated_and_haloed_svg = get_svg(*mol, opts);
+    BOOST_TEST(annotated_and_haloed_svg.contains(halo_color.name()));
+    for (const auto& annotation : opts.rdatom_index_to_annotation) {
+        BOOST_TEST(svg_contains_text(annotated_and_haloed_svg,
+                                     QString::fromStdString(annotation)));
+    }
+    for (const auto* atom_label : {"S", "N", "H"}) {
+        BOOST_TEST(svg_contains_text(annotated_and_haloed_svg, atom_label));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_labels_with_halos)
+{
+    // Make sure that specifying the same atom in rdatom_index_to_label and
+    // rdatom_index_to_halo_color gives a labeled atom with a halo
+    auto mol = rdkit_extensions::to_rdkit("CCN");
+    const QColor halo_color("#fed2b7");
+    RenderOptions opts;
+    opts.rdatom_index_to_label = {{2, "AtomTwo"}};
+    opts.rdatom_index_to_halo_color = {{2, halo_color}};
+    const auto svg = get_svg(*mol, opts);
+    BOOST_TEST(svg_contains_text(svg, "AtomTwo"));
+    BOOST_TEST(!svg_contains_text(svg, "N"));
+    BOOST_TEST(svg.contains(halo_color.name()));
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_annotations_are_included_in_image)
+{
+    // a long annotation makes the molecule's drawing larger, so it must be
+    // scaled down further to fit in the same image
+    auto mol = rdkit_extensions::to_rdkit("CCN");
+    RenderOptions opts;
+    const auto unannotated_scale = get_best_image_scale({mol.get()}, opts);
+    opts.rdatom_index_to_annotation = {{2, "a long annotation for this atom"}};
+    const auto annotated_scale = get_best_image_scale({mol.get()}, opts);
+    BOOST_TEST(annotated_scale < unannotated_scale);
+}

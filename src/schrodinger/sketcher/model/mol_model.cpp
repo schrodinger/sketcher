@@ -152,6 +152,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
     for (auto* atom : mol.atoms()) {
         atom->clearProp(TAG_PROPERTY);
         atom->clearProp(USER_COLOR);
+        atom->clearProp(USER_ANNOTATION);
         atom->clearProp(rdkit_extensions::MONOMER_ITEM_SIZE);
         atom->clearProp(RDKit::common_properties::atomNote);
         clear_monomeric_property(atom);

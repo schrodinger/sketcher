@@ -1,14 +1,20 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <QGraphicsPathItem>
+#include <QLineF>
 #include <QMarginsF>
+#include <QPainterPath>
+#include <QPainterPathStroker>
 #include <QRectF>
 #include <QString>
 
@@ -17,6 +23,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
@@ -34,11 +41,15 @@ namespace sketcher
 class TestAtomItem : public AtomItem
 {
   public:
+    using AtomItem::clearLabels;
     using AtomItem::determineValenceErrorIsVisible;
     using AtomItem::findHsDirection;
+    using AtomItem::getAnnotationAnchorPoints;
     using AtomItem::getQueryLabel;
     using AtomItem::getSubrects;
     using AtomItem::getTooltip;
+    using AtomItem::m_annotation_label_rect;
+    using AtomItem::m_annotation_label_text;
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_rect;
     using AtomItem::m_charge_and_radical_label_text;
@@ -895,6 +906,188 @@ BOOST_AUTO_TEST_CASE(test_atom_index_display)
     BOOST_REQUIRE_EQUAL(atom_items[4]->getSubrects().size(), 1);
     for (const auto& item : atom_items) {
         check_highlighting_path_type(*item, false);
+    }
+}
+
+/**
+ * Create atom items for the given SMILES, where the specified atoms have the
+ * given annotations
+ */
+static std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
+                 std::shared_ptr<TestScene>>
+create_annotated_atom_items(
+    const std::string& smiles,
+    const std::vector<std::pair<unsigned int, std::string>>& annotations)
+{
+    auto [atom_items, test_scene] = createAtomItems(smiles);
+    for (const auto& [index, annotation] : annotations) {
+        auto* atom = test_scene->m_mol_model->getMol()->getAtomWithIdx(index);
+        const_cast<RDKit::Atom*>(atom)->setProp(USER_ANNOTATION, annotation);
+        atom_items[index]->updateCachedData();
+    }
+    return {atom_items, test_scene};
+}
+
+/**
+ * @return the distance between the given item's annotation label and the
+ * nearest center of the components of its label that represent the atom itself
+ * (or the atom's position if it's unlabeled)
+ */
+static qreal get_distance_to_atom_label(const TestAtomItem& item)
+{
+    qreal min_distance = std::numeric_limits<qreal>::max();
+    for (const auto& anchor_point : item.getAnnotationAnchorPoints()) {
+        min_distance = std::min(
+            min_distance,
+            get_distance_to_rect(anchor_point, item.m_annotation_label_rect));
+    }
+    return min_distance;
+}
+
+/**
+ * Make sure that the annotation label for the given atom item is close to the
+ * atom and doesn't overlap any of the atom's other labels, its highlighting,
+ * any bonds, or any other atom's main label.
+ */
+static void check_annotation_label_placement(
+    const TestAtomItem& item,
+    const std::vector<std::shared_ptr<TestAtomItem>>& all_items)
+{
+    const auto& rect = item.m_annotation_label_rect;
+    BOOST_REQUIRE(rect.isValid());
+    BOOST_TEST(item.m_bounding_rect.contains(rect));
+    BOOST_TEST(!item.m_selection_highlighting_path.intersects(rect));
+    for (const auto& subrect : item.getSubrects()) {
+        BOOST_TEST(!subrect.intersects(rect));
+    }
+    // the label should be close to the atom's label (or to the atom itself if
+    // it's unlabeled)
+    BOOST_TEST(get_distance_to_atom_label(item) <
+               0.75 * BOND_LENGTH * VIEW_SCALE);
+
+    std::unordered_map<const RDKit::Atom*, QPointF> atom_to_local_pos;
+    for (const auto& other_item : all_items) {
+        atom_to_local_pos[other_item->getAtom()] =
+            other_item->pos() - item.pos();
+        if (other_item.get() != &item &&
+            other_item->m_main_label_rect.isValid()) {
+            BOOST_TEST(!other_item->m_main_label_rect
+                            .translated(other_item->pos() - item.pos())
+                            .intersects(rect));
+        }
+    }
+    QPainterPathStroker stroker;
+    stroker.setWidth(BOND_DEFAULT_PEN_WIDTH);
+    for (const auto* bond : item.getAtom()->getOwningMol().bonds()) {
+        QPainterPath bond_line;
+        bond_line.moveTo(atom_to_local_pos.at(bond->getBeginAtom()));
+        bond_line.lineTo(atom_to_local_pos.at(bond->getEndAtom()));
+        BOOST_TEST(!stroker.createStroke(bond_line).intersects(rect));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_no_annotation_label)
+{
+    // empty annotations should be ignored
+    auto [atom_items, test_scene] =
+        create_annotated_atom_items("CCN", {{2, ""}});
+    for (const auto& item : atom_items) {
+        BOOST_TEST(item->m_annotation_label_text.isEmpty());
+        BOOST_TEST(!item->m_annotation_label_rect.isValid());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_annotation_label)
+{
+    // SKETCH-2918: annotations should be added next to the atom label (or to
+    // the unlabeled carbon) without changing the label itself
+    for (const auto& [smiles, index, main_label_text] :
+         {std::make_tuple("CCN", 2u, "N"), std::make_tuple("CCN", 1u, ""),
+          std::make_tuple("[NH4+]", 0u, "N"), std::make_tuple("C", 0u, "C"),
+          std::make_tuple("CC(=O)[O-]", 3u, "O"),
+          std::make_tuple("[13CH3:5]C", 0u, "C"),
+          std::make_tuple("c1ccncc1", 3u, "N"),
+          std::make_tuple("c1ccncc1", 0u, "")}) {
+        BOOST_TEST_CONTEXT(smiles << ", atom " << index)
+        {
+            auto [unannotated_items, unannotated_scene] =
+                createAtomItems(smiles);
+            const auto& unannotated_item = unannotated_items[index];
+            auto [atom_items, test_scene] =
+                create_annotated_atom_items(smiles, {{index, "12.2 +/- 1.0"}});
+            const auto& item = atom_items[index];
+            BOOST_TEST(item->m_annotation_label_text == "12.2 +/- 1.0");
+            BOOST_TEST(item->m_main_label_text == main_label_text);
+            check_annotation_label_placement(*item, atom_items);
+            // the annotation shouldn't affect any of the other labels or the
+            // highlighting (and therefore halos)
+            BOOST_TEST(item->m_main_label_text ==
+                       unannotated_item->m_main_label_text);
+            BOOST_CHECK(item->getSubrects() == unannotated_item->getSubrects());
+            BOOST_CHECK(item->m_selection_highlighting_path ==
+                        unannotated_item->m_selection_highlighting_path);
+            BOOST_CHECK(item->m_shape == unannotated_item->m_shape);
+            // only the annotated atom should have an annotation label
+            for (const auto& other_item : atom_items) {
+                if (other_item != item) {
+                    BOOST_TEST(!other_item->m_annotation_label_rect.isValid());
+                }
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_annotation_labels_avoid_bonds_and_labels)
+{
+    // SKETCH-2918: the molecule and annotations from the case
+    auto [atom_items, test_scene] = create_annotated_atom_items(
+        "S=C(Nc1ccccc1)N1CCCN(c2ccc(C(F)(Br)I)cn2)CC1",
+        {{0, "1.5 +/- 1.2"},
+         {2, "12.2 +/- 1.0"},
+         {13, "0.4 +/- 1.0"},
+         {23, "2.8 +/- 1.0"},
+         // an unlabeled carbon in the middle of the diazepane ring
+         {11, "0.1 +/- 0.1"},
+         // a carbon with four substituents
+         {18, "9.9 +/- 9.9"}});
+    for (auto index : {0, 2, 13, 23, 11, 18}) {
+        BOOST_TEST_CONTEXT("atom " << index)
+        {
+            check_annotation_label_placement(*atom_items[index], atom_items);
+        }
+    }
+    BOOST_TEST(atom_items[0]->m_main_label_text == "S");
+    BOOST_TEST(atom_items[2]->m_main_label_text == "N");
+    BOOST_TEST(atom_items[2]->m_H_label_rect.isValid());
+    // SKETCH-2918: the NH annotation should be right next to the "NH" label,
+    // not between the N and the neighboring thiocarbonyl carbon
+    BOOST_TEST(get_distance_to_atom_label(*atom_items[2]) < 20.0);
+}
+
+BOOST_AUTO_TEST_CASE(test_clearLabels)
+{
+    // atoms with isotope, charge, H, H count, mapping, chirality, and
+    // annotation labels
+    for (const auto& [smiles, index] : {std::make_pair("[13NH3+:2]C", 0u),
+                                        std::make_pair("F[C@H](Cl)Br", 1u)}) {
+        BOOST_TEST_CONTEXT(smiles)
+        {
+            auto [atom_items, test_scene] =
+                create_annotated_atom_items(smiles, {{index, "annotation"}});
+            auto& item = *atom_items[index];
+            BOOST_TEST_REQUIRE(!item.getSubrects().empty());
+            BOOST_TEST_REQUIRE(item.m_annotation_label_rect.isValid());
+            item.clearLabels();
+            for (const auto& text :
+                 {item.m_main_label_text, item.m_charge_and_radical_label_text,
+                  item.m_H_count_label_text, item.m_chirality_label_text,
+                  item.m_mapping_label_text, item.m_isotope_label_text,
+                  item.m_query_label_text, item.m_annotation_label_text}) {
+                BOOST_TEST(text.isEmpty());
+            }
+            BOOST_TEST(item.getSubrects().empty());
+            BOOST_TEST(!item.m_annotation_label_rect.isValid());
+        }
     }
 }
 
