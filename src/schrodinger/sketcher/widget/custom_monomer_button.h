@@ -2,9 +2,8 @@
 
 #include <string>
 
-#include <QToolButton>
-
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/widget/menu_arrow_tool_button.h"
 
 class QAction;
 class QMenu;
@@ -24,7 +23,7 @@ namespace sketcher
  * Its checked state is controlled by the owning tool widget, rather than
  * clicks.
  */
-class SKETCHER_API CustomMonomerButton : public QToolButton
+class SKETCHER_API CustomMonomerButton : public MenuArrowToolButton
 {
     Q_OBJECT
 
@@ -45,12 +44,6 @@ class SKETCHER_API CustomMonomerButton : public QToolButton
                                rdkit_extensions::ChainType monomer_type);
 
   protected:
-    /**
-     * Overriden QToolButton method: Paint centered contents with a standard
-     * menu arrow on hover or check.
-     */
-    void paintEvent(QPaintEvent* event) override;
-
     /**
      * Overriden QToolButton method: Preserve the model-controlled checked state
      * when opening the menu.

@@ -234,6 +234,30 @@ BOOST_AUTO_TEST_CASE(calc_popup_position_placement)
 }
 
 /**
+ * The maximum popup height is the room on whichever side of the anchor has
+ * more room, and a popup of that height is placed without overlapping the
+ * anchor
+ */
+BOOST_AUTO_TEST_CASE(calc_max_popup_height_room)
+{
+    const QRect bounds(0, 0, 800, 600);
+    // more room below
+    const QRect high_anchor(100, 200, 30, 30);
+    BOOST_TEST(calc_max_popup_height(high_anchor, bounds) == 370);
+    BOOST_TEST(calc_popup_position(QSize(200, 370), high_anchor, bounds) ==
+               QPoint(100, 230));
+    // more room above
+    const QRect low_anchor(100, 400, 30, 30);
+    BOOST_TEST(calc_max_popup_height(low_anchor, bounds) == 400);
+    BOOST_TEST(calc_popup_position(QSize(200, 400), low_anchor, bounds) ==
+               QPoint(100, 0));
+    // bounds that don't start at the origin
+    const QRect offset_bounds(1000, 200, 800, 600);
+    BOOST_TEST(calc_max_popup_height(QRect(1100, 300, 30, 30), offset_bounds) ==
+               470);
+}
+
+/**
  * Press-and-hold popups are shown next to their button using the shared
  * placement rules and the button screen's available geometry
  */

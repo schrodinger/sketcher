@@ -3,9 +3,6 @@
 #include <QAction>
 #include <QMenu>
 #include <QString>
-#include <QStyleOptionButton>
-#include <QStyleOptionToolButton>
-#include <QStylePainter>
 
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
@@ -23,9 +20,9 @@ static const QString SKETCH_PEPTIDE_TEXT = QStringLiteral("Sketch Residue...");
 static const QString SKETCH_NUCLEIC_ACID_TEXT =
     QStringLiteral("Sketch Base...");
 
-CustomMonomerButton::CustomMonomerButton(QWidget* parent) : QToolButton(parent)
+CustomMonomerButton::CustomMonomerButton(QWidget* parent) :
+    MenuArrowToolButton(parent)
 {
-    setAttribute(Qt::WA_Hover, true);
     setCheckable(true);
     setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
 
@@ -71,36 +68,6 @@ void CustomMonomerButton::nextCheckState()
     // this function intentionally left blank so that clicking on the button
     // doesn't immediately toggle the check state. (We explicitly toggle the
     // check state later when the tool change happens.)
-}
-
-void CustomMonomerButton::paintEvent(QPaintEvent* event)
-{
-    QStylePainter painter(this);
-    QStyleOptionToolButton option;
-    initStyleOption(&option);
-    if (isChecked() ||
-        (isEnabled() && (option.state & QStyle::State_MouseOver))) {
-        option.features |= QStyleOptionToolButton::HasMenu;
-    }
-
-    // Paint the full-row background and native menu indicator separately from
-    // the label so the icon and text stay centered together.
-    auto background = option;
-    background.text.clear();
-    background.icon = QIcon();
-    painter.drawComplexControl(QStyle::CC_ToolButton, background);
-
-    QStyleOptionButton label;
-    label.initFrom(this);
-    label.rect = option.rect;
-    label.state = option.state;
-    label.palette = option.palette;
-    label.fontMetrics = option.fontMetrics;
-    label.text = option.text;
-    label.icon = option.icon;
-    label.iconSize = option.iconSize;
-    painter.setFont(option.font);
-    painter.drawControl(QStyle::CE_PushButtonLabel, label);
 }
 
 } // namespace sketcher

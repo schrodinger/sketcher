@@ -1,0 +1,101 @@
+[
+    {
+        "symbol": "dAla",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "A",
+        "smiles": "C[C@@H](N[H:1])C(=O)[OH:2]",
+        "core_smiles": "C[C@@H](N)C(=O)O",
+        "name": "D-Alanine",
+        "monomer_type": "Backbone",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "Hyp",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "P",
+        "smiles": "O[C@@H]1C[C@H](C(=O)[OH:2])N([H:1])C1",
+        "core_smiles": "O[C@@H]1C[C@H](C(=O)O)NC1",
+        "name": "Hydroxyproline",
+        "monomer_type": "Backbone",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "Aib",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "X",
+        "smiles": "CC(C)(N[H:1])C(=O)[OH:2]",
+        "core_smiles": "CC(C)(N)C(=O)O",
+        "name": "Aminoisobutyric acid",
+        "monomer_type": "Backbone",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "Bz",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "",
+        "smiles": "O=C([OH:2])c1ccccc1",
+        "core_smiles": "O=C(O)c1ccccc1",
+        "name": "Benzoyl cap",
+        "monomer_type": "Terminal",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "LongPeptideSymbol",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "G",
+        "smiles": "CN(CC(=O)[OH:2])[H:1]",
+        "core_smiles": "CNCC(=O)O",
+        "name": "Long symbol glycine analog",
+        "monomer_type": "Backbone",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "meA",
+        "polymer_type": "RNA",
+        "natural_analog": "A",
+        "smiles": "CNc1ncnc2c1ncn2[H:1]",
+        "core_smiles": "CNc1ncnc2ncnc12",
+        "name": "N6-Methyladenine",
+        "monomer_type": "Branch",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "NAx",
+        "polymer_type": "RNA",
+        "natural_analog": "N",
+        "smiles": "O=c1ccn([H:1])c(=O)[nH]1",
+        "core_smiles": "O=c1cc[nH]c(=O)[nH]1",
+        "name": "Unclassified base",
+        "monomer_type": "Branch",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "CHM1",
+        "polymer_type": "CHEM",
+        "natural_analog": "",
+        "smiles": "C",
+        "core_smiles": "C",
+        "name": "CHM1 test structure",
+        "monomer_type": "Undefined",
+        "author": "Test",
+        "pdbcode": ""
+    },
+    {
+        "symbol": "CHM2",
+        "polymer_type": "CHEM",
+        "natural_analog": "",
+        "smiles": "CC",
+        "core_smiles": "CC",
+        "name": "CHM2 test structure",
+        "monomer_type": "Undefined",
+        "author": "Test",
+        "pdbcode": ""
+    }
+]

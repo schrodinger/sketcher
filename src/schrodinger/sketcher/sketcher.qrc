@@ -41,12 +41,17 @@
     <file>icons/cursor-arrow.svg</file>
     <file>icons/enumeration_attachment_point.svg</file>
     <file>icons/enumeration_attachment_point_dis.svg</file>
+    <file>icons/filter-menu_lb.png</file>
+    <file>icons/filter-menu_lb_act.png</file>
+    <file>icons/filter-menu_lb_filtering.png</file>
+    <file>icons/filter-menu_lb_hvr.png</file>
     <file>icons/menu_corner_arrow.svg</file>
     <file>icons/menu_corner_arrow_dis.svg</file>
     <file>icons/mode_compound.svg</file>
     <file>icons/mode_erase.svg</file>
     <file>icons/mode_erase_dis.svg</file>
     <file>icons/mode_monomer.svg</file>
+    <file>icons/monomer_db.svg</file>
     <file>icons/monomeric_connection.svg</file>
     <file>icons/monomeric_hbond.svg</file>
     <file>icons/periodic_table.svg</file>
@@ -77,6 +82,7 @@
     <file>icons/ring_cyclopropane.svg</file>
     <file>icons/ring_cyclopropane_dis.svg</file>
     <file>icons/rotate.svg</file>
+    <file>icons/search.svg</file>
     <file>icons/select_ellipse.svg</file>
     <file>icons/select_ellipse_dis.svg</file>
     <file>icons/select_lasso.svg</file>

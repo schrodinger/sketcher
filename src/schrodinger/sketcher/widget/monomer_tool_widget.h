@@ -37,6 +37,7 @@ enum class MonomerToolType;
 enum class NucleicAcidTool;
 class AminoAcidSymbolPopup;
 class CustomNucleotidePopup;
+class MonomerDatabasePopup;
 class NucleicAcidSymbolPopup;
 class NucleotidePopup;
 
@@ -79,6 +80,13 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
         const rdkit_extensions::MonomerID& monomer,
         std::optional<MonomerToolType> chem_page = std::nullopt);
 
+    /**
+     * Set whether the Monomer Database popup's Load Database... (or Update
+     * Database...) link is visible. This applies even if the popup hasn't
+     * been created yet.
+     */
+    void setLoadMonomerDatabaseVisible(bool visible);
+
   protected:
     /** Rebuild monomer analog popups from the current monomer database. */
     void updateMonomerButtons();
@@ -120,16 +128,23 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onNucleicAcidClicked(QAbstractButton* button);
 
     /**
-     * Respond to the user clicking an Unclassified button, or choosing a
-     * monomer from its popup, by activating the button's monomer
+     * Respond to the user clicking the Monomer Database button by showing the
+     * Monomer Database popup, or by closing it if it's already open
      */
-    void onUnclassifiedButtonClicked(QAbstractButton* button);
+    void onMonomerDbButtonClicked();
 
     /**
-     * Point each Unclassified button at its page's last-used database
-     * monomer, or at nothing if that monomer isn't in the button's popup
+     * Respond to the user clicking the last-used database monomer button by
+     * activating the current page's last-used database monomer, if there is
+     * one
      */
-    void syncUnclassifiedButtons();
+    void onMonomerDbLastUsedButtonClicked();
+
+    /**
+     * @return The Monomer Database popup, which is created the first time
+     * this is called
+     */
+    MonomerDatabasePopup* getMonomerDatabasePopup();
 
     /**
      * Respond to the user clicking on a specific monomeric connection button
@@ -138,6 +153,8 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
 
   private:
     boost::signals2::scoped_connection m_database_connection;
+    MonomerDatabasePopup* m_monomer_db_popup = nullptr;
+    bool m_load_monomer_database_visible = true;
 };
 
 } // namespace sketcher

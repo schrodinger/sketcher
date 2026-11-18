@@ -85,6 +85,10 @@ QVariant MonomerDatabaseTableModel::headerData(int section,
         auto label = MONOMER_DB_COLUMN_LABELS[section].second;
         return QString::fromUtf8(label.data(),
                                  static_cast<qsizetype>(label.size()));
+    } else if (role == Qt::InitialSortOrderRole) {
+        // Otherwise, the header's initial sort order for a newly clicked
+        // column depends on the platform's style
+        return QVariant::fromValue(Qt::AscendingOrder);
     }
     return QVariant();
 }

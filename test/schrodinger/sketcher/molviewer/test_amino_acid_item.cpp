@@ -6,6 +6,7 @@
 #include "schrodinger/sketcher/molviewer/amino_acid_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/monomer_label_text.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 
 #include "../qapplication_required_fixture.h"

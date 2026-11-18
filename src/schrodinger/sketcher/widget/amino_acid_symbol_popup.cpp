@@ -35,11 +35,6 @@ QString AminoAcidSymbolPopup::getSymbolForId(int id) const
     return QString::fromStdString(it->second.symbol);
 }
 
-rdkit_extensions::MonomerID AminoAcidSymbolPopup::getMonomerForId(int id) const
-{
-    return m_id_to_monomer.at(id);
-}
-
 void AminoAcidSymbolPopup::generateButtonPackets()
 {
     auto buttons = m_group->buttons();

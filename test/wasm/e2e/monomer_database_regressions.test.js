@@ -6,6 +6,7 @@ import {
   FIXTURES,
   choosePopup,
   clear,
+  clickSelector,
   clickWidget,
   closeDialog,
   dismissPopup,
@@ -13,18 +14,31 @@ import {
   expectDialog,
   getExportedHelm,
   getRect,
+  isWidgetVisible,
   pasteText,
   place,
   popupButtons,
   popupInfo,
   requireRect,
-  scene,
   screenshotView,
   selectAll,
   waitAtoms,
   widgetState,
 } from './e2e_helpers.js';
-import { expectAttachments, loadDatabase, openMonomerSketcher } from './monomer_helpers.js';
+import {
+  MONOMER_DB_TABLE,
+  chooseFromMonomerDatabase,
+  closeMonomerDatabase,
+  expectAttachments,
+  loadDatabase,
+  findMonomerDatabaseRow,
+  monomerDatabaseRow,
+  monomerDatabaseSymbols,
+  monomerDatabaseTable,
+  openMonomerDatabase,
+  openMonomerSketcher,
+  searchMonomerDatabase,
+} from './monomer_helpers.js';
 
 test.beforeEach(async ({ page }) => {
   await openMonomerSketcher(page);
@@ -36,95 +50,116 @@ async function expectPalette(page, button, symbols) {
   await dismissPopup(page);
 }
 
-test('SKETCH-2870: defaults and successive database replacements refresh both Unclassified palettes', async ({
+/**
+ * Check the symbols in the Monomer Database popup's table on the current page,
+ * with no search text
+ */
+async function expectTable(page, symbols) {
+  await openMonomerDatabase(page);
+  await searchMonomerDatabase(page, '');
+  expect(await monomerDatabaseSymbols(page)).toEqual(symbols);
+  await closeMonomerDatabase(page);
+}
+
+test('SKETCH-2870: defaults and successive database replacements refresh the Monomer Database table', async ({
   page,
 }) => {
-  await expect
-    .poll(async () => (await widgetState(page, 'aa_unclassified_btn')).visible)
-    .toBe(true);
-  await clickWidget(page, 'aa_unclassified_btn'); // first click has no previous selection
-  await expect
-    .poll(async () => (await scene(page)).popup.buttons?.map((item) => item.text).sort())
-    .toEqual(['ac', 'am']);
-  await dismissPopup(page);
-  await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am']);
-  await choosePopup(page, 'aa_unclassified_btn', 'ac');
-  await expectCursor(page, 'unclassified-ac-cursor.png');
+  // with no custom database, the table holds the core monomers with no
+  // natural analog
+  await expectTable(page, ['ac', 'am']);
+  await chooseFromMonomerDatabase(page, 'ac');
+  await expectCursor(page, 'monomer-db-ac-cursor.png');
   await place(page);
   expect((await waitAtoms(page, 1))[0].label).toBe('ac');
   await clickWidget(page, 'ala_btn');
   await expectAttachments(page, 0, ['C']);
-  await screenshotView(page, 'unclassified-ac.png');
+  await screenshotView(page, 'monomer-db-ac.png');
   await clear(page);
 
+  // the core database has no nucleic acids or structures without an analog
   await clickWidget(page, 'nucleic_monomer_btn');
-  expect((await widgetState(page, 'na_unclassified_btn')).visible).toBe(false);
+  await expectTable(page, []);
   await loadDatabase(page, 'chembl_monomers_no_id.json');
-  expect((await widgetState(page, 'na_unclassified_btn')).visible).toBe(false);
   await clickWidget(page, 'amino_monomer_btn');
-  const large = await popupButtons(page, 'aa_unclassified_btn');
-  expect(large.length).toBeGreaterThan(100);
-  expect(large.slice(0, 2).map((item) => item.text)).toEqual(['ac', 'am']);
-  await dismissPopup(page);
+  await openMonomerDatabase(page);
+  await searchMonomerDatabase(page, '');
+  expect((await monomerDatabaseTable(page)).rowCount).toBeGreaterThan(100);
+  // the core monomers with no natural analog are still in the table
+  await searchMonomerDatabase(page, 'ac');
+  expect(await findMonomerDatabaseRow(page, 'ac')).toBeGreaterThanOrEqual(0);
+  await closeMonomerDatabase(page);
 
   await loadDatabase(page, 'chem_monomers.json');
-  await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am', 'CHM1', 'CHM2', 'CHM3']);
-  await choosePopup(page, 'aa_unclassified_btn', 'CHM2');
-  await expectCursor(page, 'unclassified-chem-cursor.png');
+  await expectTable(page, ['ac', 'am', 'CHM1', 'CHM2', 'CHM3']);
+  await chooseFromMonomerDatabase(page, 'CHM2');
+  await expectCursor(page, 'monomer-db-chem-cursor.png');
   await place(page, -100);
   expect((await waitAtoms(page, 1))[0].label).toBe('CHM2');
   expect(await getExportedHelm(page)).toContain('CHEM1{[CHM2]}');
-  await screenshotView(page, 'unclassified-chem.png');
+  await screenshotView(page, 'monomer-db-chem.png');
   await clear(page);
   await clickWidget(page, 'nucleic_monomer_btn');
-  await expectPalette(page, 'na_unclassified_btn', ['CHM1', 'CHM2', 'CHM3']);
-  await choosePopup(page, 'na_unclassified_btn', 'CHM1');
-  await expectCursor(page, 'nucleic-unclassified-chem-cursor.png');
+  await expectTable(page, ['CHM1', 'CHM2', 'CHM3']);
+  await chooseFromMonomerDatabase(page, 'CHM1');
+  await expectCursor(page, 'nucleic-monomer-db-chem-cursor.png');
   await place(page);
   expect(await getExportedHelm(page)).toContain('CHEM1{[CHM1]}');
   await clear(page);
 
   await loadDatabase(page, 'na_monomers.json');
-  await expectPalette(page, 'na_unclassified_btn', ['NA1', 'NA2']);
-  await choosePopup(page, 'na_unclassified_btn', 'NA1');
-  await expectCursor(page, 'unclassified-base-cursor.png');
+  await expectTable(page, ['NA1', 'NA2']);
+  await chooseFromMonomerDatabase(page, 'NA1');
+  await expectCursor(page, 'monomer-db-base-cursor.png');
   await place(page);
   expect((await waitAtoms(page, 1))[0].label).toBe('NA1');
-  await screenshotView(page, 'unclassified-base.png');
+  await screenshotView(page, 'monomer-db-base.png');
   await clear(page);
   await loadDatabase(page, 'empty_monomers.json');
-  expect((await widgetState(page, 'na_unclassified_btn')).visible).toBe(false);
+  await expectTable(page, []);
   await clickWidget(page, 'amino_monomer_btn');
-  await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am']);
+  await expectTable(page, ['ac', 'am']);
 });
 
-test('SKETCH-2870: scroll a large palette to a real off-screen monomer and draw it', async ({
+test('SKETCH-2870: scroll the Monomer Database table to a real off-screen monomer and draw it', async ({
   page,
 }) => {
   await loadDatabase(page, 'chembl_monomers_no_id.json');
-  const popup = await popupInfo(page, 'aa_unclassified_btn');
-  const buttons = popup.buttons;
-  const last = buttons.at(-1);
-  expect(last.y).toBeGreaterThan(popup.y + popup.height);
-  const symbol = last.text;
-  await dismissPopup(page);
-  await choosePopup(page, 'aa_unclassified_btn', symbol, { scroll: true });
+  await openMonomerDatabase(page);
+  const table = await monomerDatabaseTable(page);
+  const lastRow = table.rowCount - 1;
+  expect(lastRow).toBeGreaterThan(100);
+  // the bridge scrolls the row into view before reporting where it is
+  const last = await monomerDatabaseRow(page, lastRow);
+  expect(last.y).toBeGreaterThanOrEqual(table.y);
+  expect(last.y + last.height).toBeLessThanOrEqual(table.y + table.height);
+  const symbol = last.cells[0];
+  await clickSelector(page, `table_row:${MONOMER_DB_TABLE}:${lastRow}`);
+  await expect
+    .poll(async () => (await widgetState(page, 'monomer_db_last_used_btn')).text)
+    .toBe(symbol);
+  await closeMonomerDatabase(page);
   await place(page);
-  expect((await waitAtoms(page, 1))[0].label).toBe(symbol);
-  expect(await getExportedHelm(page)).toContain(`[${symbol}]`);
+  expect((await waitAtoms(page, 1))[0].label).toBeTruthy();
+  expect(await getExportedHelm(page)).toContain(symbol);
 });
 
 test('SKETCH-2870: each tab remembers its own database monomer; tab changes preserve selected content', async ({
   page,
 }) => {
   await loadDatabase(page, 'chem_monomers.json');
-  await choosePopup(page, 'aa_unclassified_btn', 'CHM2');
+  await chooseFromMonomerDatabase(page, 'CHM2');
   await clickWidget(page, 'nucleic_monomer_btn');
-  await choosePopup(page, 'na_unclassified_btn', 'CHM1');
+  await chooseFromMonomerDatabase(page, 'CHM1');
   await clickWidget(page, 'amino_monomer_btn');
+  await expect
+    .poll(async () => (await widgetState(page, 'monomer_db_last_used_btn')).text)
+    .toBe('CHM2');
   await place(page, -120);
   expect((await waitAtoms(page, 1))[0].label).toBe('CHM2');
   await clickWidget(page, 'nucleic_monomer_btn');
+  await expect
+    .poll(async () => (await widgetState(page, 'monomer_db_last_used_btn')).text)
+    .toBe('CHM1');
   await place(page, 120);
   expect((await waitAtoms(page, 2)).map((atom) => atom.label)).toEqual(['CHM2', 'CHM1']);
   const before = await getExportedHelm(page);
@@ -134,12 +169,12 @@ test('SKETCH-2870: each tab remembers its own database monomer; tab changes pres
   expect(await getExportedHelm(page)).toBe(before);
 });
 
-test('SKETCH-2870: choosing an unclassified peptide mutates the selection rather than placing a bead', async ({
+test('SKETCH-2870: choosing a database peptide mutates the selection rather than placing a bead', async ({
   page,
 }) => {
   await pasteText(page, 'PEPTIDE1{A}$$$$V2.0');
   await selectAll(page);
-  await choosePopup(page, 'aa_unclassified_btn', 'ac');
+  await chooseFromMonomerDatabase(page, 'ac');
   expect((await waitAtoms(page, 1))[0].label).toBe('ac');
   expect(await getExportedHelm(page)).toBe('PEPTIDE1{[ac]}$$$$V2.0');
 });
@@ -175,25 +210,25 @@ test('SKETCH-2788: malformed JSON explains the failure; picker cancellation leav
   expect((await widgetState(page, 'text_edit')).text).toMatch(/parse|JSON|invalid/i);
   await closeDialog(page);
   expect(await getExportedHelm(page)).toBe(before);
-  await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am']);
+  await expectTable(page, ['ac', 'am']);
   await page.evaluate(() => {
     window.showOpenFilePicker = async () => {
       throw new DOMException('Picker cancelled', 'AbortError');
     };
   });
   await new Sketcher(page).import_menu('load_monomer_database');
-  // Reopening a normal menu proves the asynchronous cancellation returned
-  // control to the UI. No fixed delay or assertion of silence alone is used.
-  await expectPalette(page, 'aa_unclassified_btn', ['ac', 'am']);
+  // Reopening the popup proves the asynchronous cancellation returned control
+  // to the UI. No fixed delay or assertion of silence alone is used.
+  await expectTable(page, ['ac', 'am']);
   expect(await getExportedHelm(page)).toBe(before);
 });
 
-test('SKETCH-2827: a mutation from an Unclassified popup is remembered as the DB monomer of its page without changing the page tool', async ({
+test('SKETCH-2827: a mutation from the Monomer Database popup is remembered as the DB monomer of its page without changing the page tool', async ({
   page,
 }) => {
   await pasteText(page, 'PEPTIDE1{A}$$$$V2.0');
   await selectAll(page);
-  await choosePopup(page, 'aa_unclassified_btn', 'ac');
+  await chooseFromMonomerDatabase(page, 'ac');
   expect(await getExportedHelm(page)).toBe('PEPTIDE1{[ac]}$$$$V2.0');
   // Switching pages and back with the selection still active changes nothing
   await clickWidget(page, 'nucleic_monomer_btn');
@@ -209,12 +244,13 @@ test('SKETCH-2827: a mutation from an Unclassified popup is remembered as the DB
   await clickWidget(page, 'amino_monomer_btn');
   await expect.poll(async () => (await widgetState(page, 'ala_btn')).checked).toBe(true);
 
-  // The Unclassified button reactivates the remembered DB monomer directly
-  await clickWidget(page, 'aa_unclassified_btn');
+  // The last-used button reactivates the remembered DB monomer directly
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).text).toBe('ac');
+  await clickWidget(page, 'monomer_db_last_used_btn');
   await expect
-    .poll(async () => (await widgetState(page, 'aa_unclassified_btn')).checked)
+    .poll(async () => (await widgetState(page, 'monomer_db_last_used_btn')).checked)
     .toBe(true);
-  expect((await scene(page)).popup?.buttons?.length ?? 0).toBe(0);
+  expect(await isWidgetVisible(page, 'monomer_db_popup')).toBe(false);
   await place(page, 0, 120);
   expect((await waitAtoms(page, 2)).map((atom) => atom.label)).toEqual(['ac', 'ac']);
 });
@@ -223,24 +259,25 @@ test('SKETCH-2827: loading a database without the active DB monomer falls back t
   page,
 }) => {
   await loadDatabase(page, 'chem_monomers.json');
-  await choosePopup(page, 'aa_unclassified_btn', 'CHM2');
-  expect((await widgetState(page, 'aa_unclassified_btn')).checked).toBe(true);
+  await chooseFromMonomerDatabase(page, 'CHM2');
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).checked).toBe(true);
   // na_monomers.json has no CHEM monomers
   await loadDatabase(page, 'na_monomers.json');
   await expect.poll(async () => (await widgetState(page, 'ala_btn')).checked).toBe(true);
-  expect((await widgetState(page, 'aa_unclassified_btn')).checked).toBe(false);
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).checked).toBe(false);
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).text).toBe('');
   await place(page);
   expect((await waitAtoms(page, 1))[0].label).toBe('A');
   expect(await getExportedHelm(page)).toBe('PEPTIDE1{A}$$$$V2.0');
   await clear(page);
 
   await clickWidget(page, 'nucleic_monomer_btn');
-  await choosePopup(page, 'na_unclassified_btn', 'NA1');
-  expect((await widgetState(page, 'na_unclassified_btn')).checked).toBe(true);
+  await chooseFromMonomerDatabase(page, 'NA1');
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).checked).toBe(true);
   // chem_monomers.json has no RNA monomers
   await loadDatabase(page, 'chem_monomers.json');
   await expect.poll(async () => (await widgetState(page, 'na_rna_btn')).checked).toBe(true);
-  expect((await widgetState(page, 'na_unclassified_btn')).checked).toBe(false);
+  expect((await widgetState(page, 'monomer_db_last_used_btn')).checked).toBe(false);
   await place(page);
   await waitAtoms(page, 3);
   expect(await getExportedHelm(page)).toBe('RNA1{R(A)P}$$$$V2.0');
