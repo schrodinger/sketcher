@@ -609,6 +609,10 @@ export async function openContextMenu(page, selector, ...path) {
  *
  * Throws if no action matches or the match is disabled.
  *
+ * Many menu actions that open a dialog are connected with a queued connection
+ * (SKETCH-2653), so the dialog may not be showing yet when this returns. Wait
+ * for it, e.g. with expectDialog(), before querying its widgets.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {string} nameOrText - objectName, or the row's visible text
  */

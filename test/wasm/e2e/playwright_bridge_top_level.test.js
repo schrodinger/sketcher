@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   activateAction,
   clickPopupTool,
+  expectDialog,
   getExportedSmiles,
   loadStructure,
   openContextMenu,
@@ -17,6 +18,10 @@ test.describe('Playwright bridge top-level Qt surfaces', () => {
     await waitForSketcherReady(page);
     await loadStructure(page, SOURCE);
     await activateAction(page, 'Paste in Text...');
+    // The action opens the dialog through a queued connection, and until the
+    // dialog is showing, "state:status_lbl" would fall back to the hidden
+    // label of the same name in the Save Image dialog.
+    await expectDialog(page, 'Paste in Structure Text');
 
     const status = await widgetState(page, 'status_lbl');
     expect(status.text).toBe('Specified structure will <b>replace</b> Sketcher content');
