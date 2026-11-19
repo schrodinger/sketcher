@@ -257,6 +257,16 @@ jobs:
         id: sketcher-build
         run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
+      # Upload before running the tests so that the build is available for
+      # download as soon as possible
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
+          path: |
+            build/sketcher_app
+            !build/sketcher_app/*.manifest
+
       - name: Run tests
         working-directory: build
         if: matrix.build-name != 'wasm' && matrix.build-name != 'memtest'
@@ -282,15 +292,6 @@ jobs:
         # test gets its own isolated X display rather than sharing one.
         run: |
           ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure
-
-      - name: Upload artifact
-        if: always() && steps.sketcher-build.outcome == 'success'
-        uses: actions/upload-artifact@v6
-        with:
-          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
-          path: |
-            build/sketcher_app
-            !build/sketcher_app/*.manifest
 
       - name: Publish sketcher npm package
         if: matrix.build-name == 'wasm' && inputs.publish-npm-package
