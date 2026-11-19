@@ -15,3 +15,9 @@ if(SQLITE_ENABLE_ICU)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/SQLite3Targets.cmake")
+
+# Match the target names provided by CMake 4.3+'s FindSQLite3 module, which
+# uses the SQLite3:: namespace but still accepts the older SQLite:: name
+if(NOT TARGET SQLite::SQLite3)
+    add_library(SQLite::SQLite3 ALIAS SQLite3::SQLite3)
+endif()
