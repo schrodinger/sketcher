@@ -367,6 +367,126 @@ void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
                                      residue_num, old_mol_size);
 }
 
+struct InlinePeptideBackbone {
+    RDKit::Atom* nitrogen;
+    RDKit::Atom* alpha;
+    RDKit::Atom* carbonyl;
+    RDKit::Atom* oxygen;
+};
+
+RDKit::Atom* carbonylFromR2(RDKit::RWMol& monomer, RDKit::Atom* core)
+{
+    if (core->getAtomicNum() == 6)
+        return core;
+    // R2 may leave through an oxygen bonded to the carbonyl carbon.
+    if (core->getAtomicNum() == 8) {
+        for (auto* neighbor : monomer.atomNeighbors(core)) {
+            if (neighbor->getAtomicNum() == 6)
+                return neighbor;
+        }
+    }
+    return nullptr;
+}
+
+RDKit::Atom* carbonylOxygen(const RDKit::RWMol& monomer, RDKit::Atom* carbonyl)
+{
+    for (auto* neighbor : monomer.atomNeighbors(carbonyl)) {
+        const auto* bond =
+            monomer.getBondBetweenAtoms(carbonyl->getIdx(), neighbor->getIdx());
+        if (neighbor->getAtomicNum() == 8 &&
+            bond->getBondType() == RDKit::Bond::DOUBLE)
+            return neighbor;
+    }
+    return nullptr;
+}
+
+bool hasTerminalCarbonylSubstituent(const RDKit::RWMol& monomer,
+                                    RDKit::Atom* carbonyl)
+{
+    for (auto* neighbor : monomer.atomNeighbors(carbonyl)) {
+        const auto* bond =
+            monomer.getBondBetweenAtoms(carbonyl->getIdx(), neighbor->getIdx());
+        // Terminal peptide residues may end as either an acid or an amide.
+        if ((neighbor->getAtomicNum() == 7 || neighbor->getAtomicNum() == 8) &&
+            bond->getBondType() == RDKit::Bond::SINGLE)
+            return true;
+    }
+    return false;
+}
+
+std::optional<InlinePeptideBackbone>
+findInlinePeptideBackbone(RDKit::RWMol& monomer,
+                          const AttachmentMap& attachment_points,
+                          unsigned int residue_num, unsigned int atom_offset)
+{
+    const auto first = attachment_points.find({residue_num, 1});
+    const auto second = attachment_points.find({residue_num, 2});
+    if (first == attachment_points.end())
+        return std::nullopt;
+
+    auto* nitrogen =
+        monomer.getAtomWithIdx(first->second.core_atom - atom_offset);
+    if (nitrogen->getAtomicNum() != 7)
+        return std::nullopt;
+    RDKit::Atom* r2_carbonyl = nullptr;
+    if (second != attachment_points.end()) {
+        r2_carbonyl = carbonylFromR2(
+            monomer,
+            monomer.getAtomWithIdx(second->second.core_atom - atom_offset));
+        if (!r2_carbonyl)
+            return std::nullopt;
+    }
+
+    // Without R2, a terminal acid or amide identifies the backbone end.
+    // Accept it only when the N-CA-C(=O) path is unambiguous.
+    std::optional<InlinePeptideBackbone> match;
+    for (auto* alpha : monomer.atomNeighbors(nitrogen)) {
+        if (alpha->getAtomicNum() != 6)
+            continue;
+        for (auto* carbonyl : monomer.atomNeighbors(alpha)) {
+            if (carbonyl->getAtomicNum() != 6 ||
+                (r2_carbonyl && carbonyl != r2_carbonyl))
+                continue;
+            auto* oxygen = carbonylOxygen(monomer, carbonyl);
+            if (!oxygen || (!r2_carbonyl &&
+                            !hasTerminalCarbonylSubstituent(monomer, carbonyl)))
+                continue;
+            if (match)
+                return std::nullopt;
+            match = InlinePeptideBackbone{nitrogen, alpha, carbonyl, oxygen};
+        }
+    }
+    return match;
+}
+
+void nameInlinePeptideBackbone(RDKit::RWMol& monomer,
+                               const AttachmentMap& attachment_points,
+                               unsigned int residue_num,
+                               unsigned int atom_offset)
+{
+    // CXSMILES often lacks pdbName fields. R1 and either R2 or a terminal
+    // acid/amide identify the N-CA-C(=O) path for atomistic layout.
+    const auto backbone = findInlinePeptideBackbone(monomer, attachment_points,
+                                                    residue_num, atom_offset);
+    if (!backbone)
+        return;
+    const auto set_name = [](RDKit::Atom* atom, const char* name) {
+        if (!atom->hasProp(ATOM_PDB_NAME_PROP))
+            atom->setProp(ATOM_PDB_NAME_PROP, std::string(name));
+    };
+    set_name(backbone->nitrogen, " N  ");
+    set_name(backbone->alpha, " CA ");
+    set_name(backbone->carbonyl, " C  ");
+    set_name(backbone->oxygen, " O  ");
+    for (auto* neighbor : monomer.atomNeighbors(backbone->alpha)) {
+        if (neighbor != backbone->nitrogen && neighbor != backbone->carbonyl &&
+            neighbor->getAtomicNum() != 1) {
+            set_name(neighbor, " CB ");
+            break;
+        }
+    }
+}
+
 void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
                     unsigned int residue_number, char chain_id,
                     ChainType chain_type, unsigned int current_residue,
@@ -528,10 +648,15 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         }
 
         auto residue_number = get_residue_number(monomer);
+        const auto atom_offset = atomistic_mol.getNumAtoms();
         fillAttachmentPointMap(
             *new_monomer,
             monomer->getProp<bool>(SMILES_MONOMER) ? nullptr : &monomer_info,
-            attachment_point_map, residue_number, atomistic_mol.getNumAtoms());
+            attachment_point_map, residue_number, atom_offset);
+        if (chain_type == ChainType::PEPTIDE &&
+            monomer->getProp<bool>(SMILES_MONOMER))
+            nameInlinePeptideBackbone(*new_monomer, attachment_point_map,
+                                      residue_number, atom_offset);
         setResidueInfo(*new_monomer, monomer_label, residue_number, chain_id,
                        chain_type, total_residue_count, db);
         ++total_residue_count;
