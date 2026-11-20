@@ -212,7 +212,8 @@ void orient_peptide_sidechain(const RDKit::ROMol& mol,
         if (neighbor->getAtomicNum() == 1) {
             continue;
         }
-        if (atom_id == nitrogen || atom_id == carbonyl || !in_residue(atom_id)) {
+        if (atom_id == nitrogen || atom_id == carbonyl ||
+            !in_residue(atom_id)) {
             continue;
         }
         pending.push_back(atom_id);
@@ -319,7 +320,8 @@ void place_terminal_amide_nitrogen(const RDKit::ROMol& mol,
                                    RDKit::Conformer& output)
 {
     // After placing C and O in the backbone layout, put a terminal C(=O)NH2
-    // nitrogen in the remaining trigonal direction and move its H atoms with it.
+    // nitrogen in the remaining trigonal direction and move its H atoms with
+    // it.
     const RDKit::Atom* amide = nullptr;
     for (const auto* neighbor :
          mol.atomNeighbors(mol.getAtomWithIdx(carbonyl))) {
@@ -400,16 +402,14 @@ void place_alpha_hydrogen(const RDKit::ROMol& mol,
                                      backbone.x / backbone_length, 0);
     if (const auto beta = named_atom(mol, residue, "CB")) {
         const auto beta_direction = output.getAtomPos(*beta) - alpha_position;
-        if (direction.x * beta_direction.x +
-                direction.y * beta_direction.y >
+        if (direction.x * beta_direction.x + direction.y * beta_direction.y >
             0) {
             direction *= -1;
         }
     }
-    output.setAtomPos(
-        hydrogens.front(),
-        alpha_position +
-            direction * (RDDepict::BOND_LEN * SIDECHAIN_BOND_SCALE));
+    output.setAtomPos(hydrogens.front(),
+                      alpha_position + direction * (RDDepict::BOND_LEN *
+                                                    SIDECHAIN_BOND_SCALE));
 }
 
 bool place_peptide_backbone_residue(const RDKit::ROMol& mol,
@@ -807,8 +807,7 @@ struct PeptideTurn {
 void open_turn_angles(const RDKit::ROMol& mol, const ResidueMap& residues,
                       const std::vector<ResidueKey>& chain,
                       const PeptideTurn& turn, double target_turn_angle,
-                      size_t spread_residue_count,
-                      RDKit::Conformer& output)
+                      size_t spread_residue_count, RDKit::Conformer& output)
 {
     // Adjust a turn to target_turn_angle (radians) across the requested
     // residues. Rotate only downstream atoms so an S-S bridge cannot pull
@@ -1041,10 +1040,9 @@ ResidueShape choose_peptide_shape(
     const RDKit::ROMol& mol, const RDKit::Conformer& monomer_conf,
     const ResidueMap& residues, const DisulfidePartners& disulfide_partners,
     const std::vector<ResidueKey>& chain, std::vector<PeptideTurn>& turns,
-    size_t index, double previous_side,
-    const RDGeom::Point3D& previous_outward,
-    const RDGeom::Point3D& frame_along,
-    const RDGeom::Point3D& frame_normal, PeptideShapeState& state)
+    size_t index, double previous_side, const RDGeom::Point3D& previous_outward,
+    const RDGeom::Point3D& frame_along, const RDGeom::Point3D& frame_normal,
+    PeptideShapeState& state)
 {
     // Use the same CIS_N_CA or CIS_CA_CO shape for every residue in a bend.
     // Choose it from the bend direction relative to the preceding residue's
@@ -1060,9 +1058,8 @@ ResidueShape choose_peptide_shape(
         const auto cross = turn.incoming_axis.x * previous_outward.y -
                            turn.incoming_axis.y * previous_outward.x;
         // Opposite sides use CIS_N_CA; the same side uses CIS_CA_CO.
-        state.bend_shape = cross * turn.turn_side < 0
-                               ? ResidueShape::CIS_N_CA
-                               : ResidueShape::CIS_CA_CO;
+        state.bend_shape = cross * turn.turn_side < 0 ? ResidueShape::CIS_N_CA
+                                                      : ResidueShape::CIS_CA_CO;
         state.bend_end = index + turn.residue_count;
         // Proline can use only CIS_N_CA in a bend because its ring closes
         // at N. Keep that shape for the entire bend.
@@ -1071,10 +1068,11 @@ ResidueShape choose_peptide_shape(
             state.bend_shape = ResidueShape::CIS_N_CA;
         }
     }
-    const auto initial_shape = initial_residue_shape(mol, residues.at(chain[index]));
+    const auto initial_shape =
+        initial_residue_shape(mol, residues.at(chain[index]));
     auto straight_shape = straight_shape_facing_disulfide(
-        chain[index], initial_shape, disulfide_partners, residues,
-        monomer_conf, frame_normal, previous_side);
+        chain[index], initial_shape, disulfide_partners, residues, monomer_conf,
+        frame_normal, previous_side);
     if (!state.bend_shape && state.next_turn < turns.size() &&
         index + 1 == turns[state.next_turn].first_residue &&
         straight_shape == ResidueShape::ALL_TRANS) {
@@ -1102,10 +1100,9 @@ ResidueShape choose_peptide_shape(
 }
 
 bool place_peptide_n_terminal_cap(
-    const RDKit::ROMol& mol, const ResidueMap& residues,
-    const ResidueKey& cap, const RDGeom::Point3D& first_nitrogen,
-    const RDGeom::Point3D& along, double first_side,
-    bool first_linear_cis_n_ca, RDKit::Conformer& output)
+    const RDKit::ROMol& mol, const ResidueMap& residues, const ResidueKey& cap,
+    const RDGeom::Point3D& first_nitrogen, const RDGeom::Point3D& along,
+    double first_side, bool first_linear_cis_n_ca, RDKit::Conformer& output)
 {
     // Match the cap's C-N angle to the first residue's side-chain phase.
     const auto bond_length = RDDepict::BOND_LEN * BACKBONE_BOND_SCALE;
@@ -1115,13 +1112,12 @@ bool place_peptide_n_terminal_cap(
     const RDGeom::Point3D normal(-along.y, along.x, 0);
     const auto cap_run = first_linear_cis_n_ca ? rise : run;
     const auto cap_rise = first_linear_cis_n_ca ? run : rise;
-    const auto carbonyl_position = first_nitrogen - along * cap_run +
-                                   normal * (first_side * cap_rise);
+    const auto carbonyl_position =
+        first_nitrogen - along * cap_run + normal * (first_side * cap_rise);
     const auto oxygen_position =
         carbonyl_position + normal * (first_side * small_bond_length);
-    return place_n_terminal_carbonyl_cap(mol, residues.at(cap),
-                                         carbonyl_position, oxygen_position,
-                                         output);
+    return place_n_terminal_carbonyl_cap(
+        mol, residues.at(cap), carbonyl_position, oxygen_position, output);
 }
 
 struct PeptideBackbonePositions {
@@ -1150,14 +1146,14 @@ PeptideBackbonePositions next_peptide_backbone_positions(
         mirror_frame_across_bond(alpha - nitrogen, frame_along, frame_normal);
     }
     const auto outward = frame_normal * side;
-    const auto carbonyl = alpha + frame_along * run -
-                          frame_normal * (side * rise);
+    const auto carbonyl =
+        alpha + frame_along * run - frame_normal * (side * rise);
     if (shape == ResidueShape::CIS_CA_CO) {
         mirror_frame_across_bond(carbonyl - alpha, frame_along, frame_normal);
     }
     const auto oxygen = carbonyl - frame_normal * (side * small_bond_length);
-    const auto next_nitrogen = carbonyl + frame_along * run +
-                               frame_normal * (side * rise);
+    const auto next_nitrogen =
+        carbonyl + frame_along * run + frame_normal * (side * rise);
     return {alpha, carbonyl, oxygen, next_nitrogen, outward};
 }
 
@@ -1234,7 +1230,8 @@ ResidueKeys place_peptide_chains(
                 shape, side, nitrogen_position, frame_along, frame_normal);
             const auto placed = place_peptide_backbone_residue(
                 mol, residue, nitrogen_position, positions.alpha,
-                positions.carbonyl, positions.oxygen, positions.outward, output);
+                positions.carbonyl, positions.oxygen, positions.outward,
+                output);
             // A final amine has N but no CA or carbonyl; place it separately.
             if (!placed && !(i + 1 == chain.size() &&
                              place_terminal_amine(mol, residue,
@@ -1282,10 +1279,11 @@ ResidueKeys place_peptide_chains(
     return placed_peptides;
 }
 
-std::optional<RDGeom::Point3D> free_trigonal_direction(
-    const RDGeom::Point3D& center, const RDGeom::Point3D& first_neighbor,
-    std::optional<RDGeom::Point3D> second_neighbor,
-    std::optional<RDGeom::Point3D> avoid)
+std::optional<RDGeom::Point3D>
+free_trigonal_direction(const RDGeom::Point3D& center,
+                        const RDGeom::Point3D& first_neighbor,
+                        std::optional<RDGeom::Point3D> second_neighbor,
+                        std::optional<RDGeom::Point3D> avoid)
 {
     // With two bonds, use the third trigonal direction. With one bond,
     // choose the 120-degree direction farther from the atom to avoid.
@@ -1309,13 +1307,13 @@ std::optional<RDGeom::Point3D> free_trigonal_direction(
         return -opposite / length;
     }
     const RDGeom::Point3D origin(0, 0, 0);
-    const auto left = rotate_around(direction, origin,
-                                    2 * std::numbers::pi / 3);
+    const auto left =
+        rotate_around(direction, origin, 2 * std::numbers::pi / 3);
     if (!avoid) {
         return left;
     }
-    const auto right = rotate_around(direction, origin,
-                                     -2 * std::numbers::pi / 3);
+    const auto right =
+        rotate_around(direction, origin, -2 * std::numbers::pi / 3);
     const auto away = *avoid - center;
     return right.x * away.x + right.y * away.y <
                    left.x * away.x + left.y * away.y
@@ -1365,9 +1363,9 @@ bool place_unnamed_terminal_residue(const RDKit::ROMol& mol,
                     continue;
                 }
                 output.setAtomPos(
-                    atom_id, nitrogen_position +
-                                 *outward * (RDDepict::BOND_LEN *
-                                             SIDECHAIN_BOND_SCALE));
+                    atom_id,
+                    nitrogen_position +
+                        *outward * (RDDepict::BOND_LEN * SIDECHAIN_BOND_SCALE));
                 return true;
             }
 
@@ -1389,9 +1387,9 @@ bool place_unnamed_terminal_residue(const RDKit::ROMol& mol,
                     continue;
                 }
                 output.setAtomPos(
-                    atom_id, carbonyl_position +
-                                 *outward * (RDDepict::BOND_LEN *
-                                             BACKBONE_BOND_SCALE));
+                    atom_id,
+                    carbonyl_position +
+                        *outward * (RDDepict::BOND_LEN * BACKBONE_BOND_SCALE));
                 return true;
             }
 
@@ -1498,9 +1496,8 @@ void place_remaining_residues(const RDKit::ROMol& mol,
         if (placed_peptides.contains(key)) {
             continue;
         }
-        if (place_unnamed_terminal_residue(
-                mol, residue, residues, atom_residue, placed_peptides,
-                output)) {
+        if (place_unnamed_terminal_residue(mol, residue, residues, atom_residue,
+                                           placed_peptides, output)) {
             continue;
         }
         RDGeom::Point3D target;
@@ -2153,7 +2150,8 @@ index_adjacent_backbone(const RDKit::ROMol& mol, const ResidueMap& residues,
         for (const auto* bond : backbone_bonds) {
             if (neighbor_keys.contains(
                     atom_residue.at(bond->getBeginAtomIdx())) ||
-                neighbor_keys.contains(atom_residue.at(bond->getEndAtomIdx()))) {
+                neighbor_keys.contains(
+                    atom_residue.at(bond->getEndAtomIdx()))) {
                 local.bonds.push_back(bond);
             }
         }

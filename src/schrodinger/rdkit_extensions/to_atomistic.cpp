@@ -410,12 +410,11 @@ RDKit::Atom* carbonylFromR2(RDKit::RWMol& monomer, RDKit::Atom* core)
     return nullptr;
 }
 
-RDKit::Atom* carbonylOxygen(const RDKit::RWMol& monomer,
-                            RDKit::Atom* carbonyl)
+RDKit::Atom* carbonylOxygen(const RDKit::RWMol& monomer, RDKit::Atom* carbonyl)
 {
     for (auto* neighbor : monomer.atomNeighbors(carbonyl)) {
-        const auto* bond = monomer.getBondBetweenAtoms(
-            carbonyl->getIdx(), neighbor->getIdx());
+        const auto* bond =
+            monomer.getBondBetweenAtoms(carbonyl->getIdx(), neighbor->getIdx());
         if (neighbor->getAtomicNum() == 8 &&
             bond->getBondType() == RDKit::Bond::DOUBLE)
             return neighbor;
@@ -427,28 +426,28 @@ bool hasTerminalCarbonylSubstituent(const RDKit::RWMol& monomer,
                                     RDKit::Atom* carbonyl)
 {
     for (auto* neighbor : monomer.atomNeighbors(carbonyl)) {
-        const auto* bond = monomer.getBondBetweenAtoms(
-            carbonyl->getIdx(), neighbor->getIdx());
+        const auto* bond =
+            monomer.getBondBetweenAtoms(carbonyl->getIdx(), neighbor->getIdx());
         // Terminal peptide residues may end as either an acid or an amide.
-        if ((neighbor->getAtomicNum() == 7 ||
-             neighbor->getAtomicNum() == 8) &&
+        if ((neighbor->getAtomicNum() == 7 || neighbor->getAtomicNum() == 8) &&
             bond->getBondType() == RDKit::Bond::SINGLE)
             return true;
     }
     return false;
 }
 
-std::optional<InlinePeptideBackbone> findInlinePeptideBackbone(
-    RDKit::RWMol& monomer, const AttachmentMap& attachment_points,
-    unsigned int residue_num, unsigned int atom_offset)
+std::optional<InlinePeptideBackbone>
+findInlinePeptideBackbone(RDKit::RWMol& monomer,
+                          const AttachmentMap& attachment_points,
+                          unsigned int residue_num, unsigned int atom_offset)
 {
     const auto first = attachment_points.find({residue_num, 1});
     const auto second = attachment_points.find({residue_num, 2});
     if (first == attachment_points.end())
         return std::nullopt;
 
-    auto* nitrogen = monomer.getAtomWithIdx(first->second.core_atom -
-                                            atom_offset);
+    auto* nitrogen =
+        monomer.getAtomWithIdx(first->second.core_atom - atom_offset);
     if (nitrogen->getAtomicNum() != 7)
         return std::nullopt;
     RDKit::Atom* r2_carbonyl = nullptr;
@@ -471,9 +470,8 @@ std::optional<InlinePeptideBackbone> findInlinePeptideBackbone(
                 (r2_carbonyl && carbonyl != r2_carbonyl))
                 continue;
             auto* oxygen = carbonylOxygen(monomer, carbonyl);
-            if (!oxygen ||
-                (!r2_carbonyl &&
-                 !hasTerminalCarbonylSubstituent(monomer, carbonyl)))
+            if (!oxygen || (!r2_carbonyl &&
+                            !hasTerminalCarbonylSubstituent(monomer, carbonyl)))
                 continue;
             if (match)
                 return std::nullopt;
@@ -490,8 +488,8 @@ void nameInlinePeptideBackbone(RDKit::RWMol& monomer,
 {
     // CXSMILES often lacks pdbName fields. R1 and either R2 or a terminal
     // acid/amide identify the N-CA-C(=O) path for atomistic layout.
-    const auto backbone = findInlinePeptideBackbone(
-        monomer, attachment_points, residue_num, atom_offset);
+    const auto backbone = findInlinePeptideBackbone(monomer, attachment_points,
+                                                    residue_num, atom_offset);
     if (!backbone)
         return;
     const auto set_name = [](RDKit::Atom* atom, const char* name) {
@@ -503,8 +501,7 @@ void nameInlinePeptideBackbone(RDKit::RWMol& monomer,
     set_name(backbone->carbonyl, " C  ");
     set_name(backbone->oxygen, " O  ");
     for (auto* neighbor : monomer.atomNeighbors(backbone->alpha)) {
-        if (neighbor != backbone->nitrogen &&
-            neighbor != backbone->carbonyl &&
+        if (neighbor != backbone->nitrogen && neighbor != backbone->carbonyl &&
             neighbor->getAtomicNum() != 1) {
             set_name(neighbor, " CB ");
             break;
