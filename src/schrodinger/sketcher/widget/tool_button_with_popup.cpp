@@ -2,9 +2,6 @@
 
 #include <stdexcept>
 
-#include <QApplication>
-#include <QPoint>
-#include <QScreen>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
 #include <QTimer>
@@ -102,42 +99,7 @@ void ToolButtonWithPopup::showPopup()
         return;
     }
 
-    // The coordinates at the top left of this button
-    auto button_pos = mapToGlobal(QPoint());
-    auto button_x = button_pos.x();
-    auto button_y = button_pos.y();
-    // A rectangle for the desktop screen
-    auto screen_rec = QApplication::screenAt(QCursor::pos())->geometry();
-    auto screen_x = screen_rec.x();
-    auto screen_y = screen_rec.y();
-    // A rectangle for the popup
-    auto popup_rec = m_popup_wdg->geometry();
-
-    float pos_x = 0;
-    if (button_x < screen_x) {
-        // Edge case where cursor is not on the same screen as the top left
-        // corner of the button
-        pos_x = screen_x;
-    } else {
-        pos_x = button_x + std::min(0, screen_x + screen_rec.width() -
-                                           button_x - popup_rec.width());
-    }
-
-    // Include the height of the button because we want to show the popup below
-    // the button by default
-    float pos_y = 0;
-    if (button_y < screen_y) {
-        // Edge case where cursor is not on the same screen as the top left
-        // corner of the button
-        pos_y = screen_y;
-    } else if (button_y + popup_rec.height() + geometry().height() >
-               screen_y + screen_rec.height()) {
-        pos_y = button_y - popup_rec.height();
-    } else {
-        pos_y = button_y + geometry().height();
-    }
-    m_popup_wdg->move(QPoint(pos_x, pos_y));
-    m_popup_wdg->show();
+    show_popup_next_to_widget(m_popup_wdg, this);
 
     // If the user presses and holds to show the popup, we want this button to
     // be activated as if it were clicked

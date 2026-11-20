@@ -202,7 +202,7 @@ export async function loadStructure(page, text) {
  * @param {import('@playwright/test').Page} page
  * @param {string} format - a key of Module.Format, e.g. "MDL_MOLV3000"
  */
-async function getExportedText(page, format) {
+export async function getExportedText(page, format) {
   return page.evaluate((name) => Module.sketcher_export_text(Module.Format[name]), format);
 }
 
@@ -608,6 +608,10 @@ export async function openContextMenu(page, selector, ...path) {
  * is. Everything else, popup widgets included, gets a real mouse event.
  *
  * Throws if no action matches or the match is disabled.
+ *
+ * Many menu actions that open a dialog are connected with a queued connection
+ * (SKETCH-2653), so the dialog may not be showing yet when this returns. Wait
+ * for it, e.g. with expectDialog(), before querying its widgets.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} nameOrText - objectName, or the row's visible text

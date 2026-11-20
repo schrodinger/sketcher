@@ -31,8 +31,7 @@ int get_monomer_symbol_button_id(
     }
     rdkit_extensions::MonomerID selection;
     if (model->getDrawTool() == DrawTool::MONOMER_DB_MONOMER) {
-        selection = model->getValue(ModelKey::MONOMER_DB_MONOMER)
-                        .value<rdkit_extensions::MonomerID>();
+        selection = model->getMonomerDbMonomer();
     } else if (model->getDrawTool() == DrawTool::MONOMER) {
         if (tool_type == MonomerToolType::AMINO_ACID) {
             selection = {model->getValueString(ModelKey::AMINO_ACID_SYMBOL)
