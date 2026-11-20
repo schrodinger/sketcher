@@ -18,6 +18,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_monomer_database_popup.h"
+#include "schrodinger/sketcher/widget/monomer_database_filter_popup.h"
 #include "schrodinger/sketcher/widget/monomer_database_table_model.h"
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
@@ -113,6 +114,16 @@ MonomerDatabasePopup::MonomerDatabasePopup(const SketcherModel* model,
     connect(m_model, &SketcherModel::selectionChanged, this,
             &MonomerDatabasePopup::onModelSelectionChanged);
 
+    auto* filter_button = m_ui->monomer_db_filter_btn;
+    m_filter_popup = new MonomerDatabaseFilterPopup(filter_button, this);
+    configure_button_popup(filter_button, m_filter_popup);
+    // A click outside the filter popup, including on the filter button, only
+    // dismisses it and doesn't fire this signal/slot
+    connect(filter_button, &QToolButton::clicked, this,
+            &MonomerDatabasePopup::onFilterButtonClicked);
+    connect(m_filter_popup, &MonomerDatabaseFilterPopup::filterChanged, this,
+            &MonomerDatabasePopup::onFilterChanged);
+
     // Read the database directly rather than relying on any other database
     // listener (such as SketcherModel) having run first
     m_database_connection =
@@ -147,7 +158,21 @@ void MonomerDatabasePopup::refilter()
     m_ui->monomer_db_table->setColumnHidden(
         static_cast<int>(MonomerDbColumn::POLYMER_TYPE),
         count_flags(m_filter.getPolymerTypes()) == 1);
+    m_ui->monomer_db_filter_btn->setStyleSheet(
+        m_filter.isFiltering() ? MONOMER_DATABASE_FILTER_BUTTON_FILTERING_STYLE
+                               : MONOMER_DATABASE_FILTER_BUTTON_STYLE);
     updateTableRows();
+}
+
+void MonomerDatabasePopup::onFilterChanged(const MonomerDatabaseFilter& filter)
+{
+    m_filter = filter;
+    refilter();
+}
+
+void MonomerDatabasePopup::onFilterButtonClicked()
+{
+    m_filter_popup->showPopup(m_filter);
 }
 
 void MonomerDatabasePopup::updateTableRows()
@@ -278,12 +303,16 @@ void MonomerDatabasePopup::onAvailableGeometryChanged()
     if (isVisible() && m_anchor) {
         updateGeometryToFit(get_global_geometry(m_anchor),
                             get_popup_bounds(m_anchor));
+        // Moving this popup may have moved the filter button
+        m_filter_popup->reposition();
     }
 }
 
 void MonomerDatabasePopup::hideEvent(QHideEvent* event)
 {
     SketcherViewWithWasmOutlineFix::hideEvent(event);
+    // The filter popup is a separate window, so it doesn't hide with this one
+    m_filter_popup->hide();
     m_page_at_close = m_model->getMonomerToolType();
     for (const auto& connection : m_screen_connections) {
         disconnect(connection);

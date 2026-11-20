@@ -11,6 +11,7 @@
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
 #include <QFile>
 #include <QFileDialog>
 #include <QGraphicsSceneMouseEvent>
@@ -38,10 +39,12 @@
 #include "schrodinger/sketcher/dialog/custom_title_bar.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
+#include "schrodinger/sketcher/widget/monomer_database_filter_popup.h"
 #include "schrodinger/sketcher/widget/monomer_database_last_used_button.h"
 #include "schrodinger/sketcher/widget/monomer_database_popup.h"
 #include "schrodinger/sketcher/widget/monomer_database_table_view.h"
 #include "schrodinger/sketcher/widget/monomer_tool_widget.h"
+#include "schrodinger/sketcher/widget/multi_select_combo_box.h"
 #include "schrodinger/sketcher/widget/sketcher_top_bar.h"
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
@@ -1256,6 +1259,395 @@ BOOST_AUTO_TEST_CASE(bounds)
     BOOST_TEST(popup->size() == minimum_size);
     BOOST_TEST(popup->pos() == tiny_bounds.topLeft());
     popup->hide();
+}
+
+/**
+ * Click the filter button and return the filter popup, which must then be
+ * visible
+ */
+static MonomerDatabaseFilterPopup*
+open_filter_popup(MonomerDatabasePopup& popup)
+{
+    find_popup_child<QToolButton>(popup, "monomer_db_filter_btn")->click();
+    auto* filter_popup = find_popup_child<MonomerDatabaseFilterPopup>(
+        popup, "monomer_db_filter_popup");
+    BOOST_REQUIRE(filter_popup->isVisible());
+    return filter_popup;
+}
+
+/**
+ * Check or uncheck a polymer type in the filter popup as the user would
+ */
+static void set_polymer_type_checked(MonomerDatabaseFilterPopup& filter_popup,
+                                     const QString& text, bool checked)
+{
+    auto* combo =
+        filter_popup.findChild<MultiSelectComboBox*>("polymer_type_combo");
+    BOOST_REQUIRE(combo != nullptr);
+    const int row = combo->findText(text);
+    BOOST_REQUIRE(row >= 0);
+    combo->setItemChecked(row, checked);
+}
+
+/**
+ * Choose an item of one of the filter popup's single-select combo boxes as the
+ * user would
+ */
+static void choose_filter_item(MonomerDatabaseFilterPopup& filter_popup,
+                               const char* combo_name, const QString& text)
+{
+    auto* combo = filter_popup.findChild<QComboBox*>(combo_name);
+    BOOST_REQUIRE(combo != nullptr);
+    const int row = combo->findText(text);
+    BOOST_REQUIRE_MESSAGE(row >= 0, text.toStdString());
+    combo->setCurrentIndex(row);
+}
+
+/**
+ * @return Whether the filter button shows the "filtering" (orange) icon
+ */
+static bool is_filter_button_filtering(MonomerDatabasePopup& popup)
+{
+    auto* button =
+        find_popup_child<QToolButton>(popup, "monomer_db_filter_btn");
+    return button->styleSheet() ==
+           MONOMER_DATABASE_FILTER_BUTTON_FILTERING_STYLE;
+}
+
+/**
+ * The filter popup opens from the filter button with each page's default
+ * filter, and Clear All produces the most permissive filter on either page
+ * while keeping the search text and sort. The filter button is orange
+ * whenever any filter is applied.
+ */
+BOOST_AUTO_TEST_CASE(filter_defaults_and_clear_all)
+{
+    PopupFixture fixture;
+    load_custom_monomers(TEST_MONOMERS_JSON, NUM_TEST_MONOMERS);
+    struct Case {
+        bool amino_acid;
+        QList<QVariant> checked_polymer_types;
+        bool monomer_type_enabled;
+    };
+    for (const auto& [amino_acid, checked_polymer_types, monomer_type_enabled] :
+         {Case{true,
+               {static_cast<unsigned>(MonomerDbPolymerType::PEPTIDE),
+                static_cast<unsigned>(MonomerDbPolymerType::CHEM)},
+               true},
+          Case{false,
+               {static_cast<unsigned>(MonomerDbPolymerType::NUCLEIC_ACID),
+                static_cast<unsigned>(MonomerDbPolymerType::CHEM)},
+               false}}) {
+        BOOST_TEST_CONTEXT("amino_acid=" << amino_acid)
+        {
+            fixture.clickPageButton(amino_acid);
+            auto* popup = fixture.openPopup();
+            BOOST_TEST(is_filter_button_filtering(*popup));
+            QTest::keyClicks(get_search_box(*popup), "e");
+            auto* table = get_monomer_db_table(*popup);
+            table->sortByColumn(static_cast<int>(MonomerDbColumn::NAME),
+                                Qt::DescendingOrder);
+            const auto sort = popup->getSort();
+
+            auto* filter_popup = open_filter_popup(*popup);
+            auto* polymer_type_combo =
+                filter_popup->findChild<MultiSelectComboBox*>(
+                    "polymer_type_combo");
+            BOOST_CHECK(polymer_type_combo->checkedData() ==
+                        checked_polymer_types);
+            BOOST_TEST(filter_popup->findChild<QComboBox*>("monomer_type_combo")
+                           ->isEnabled() == monomer_type_enabled);
+            BOOST_TEST(
+                filter_popup->findChild<QComboBox*>("natural_analog_combo")
+                    ->isEnabled());
+            auto* filters_applied_label =
+                filter_popup->findChild<QLabel*>("filters_applied_lbl");
+            BOOST_TEST(filters_applied_label->text() == "1 filter applied");
+
+            find_popup_child<QToolButton>(*popup, "filter_clear_all_link")
+                ->click();
+            BOOST_CHECK(popup->getFilter() == MonomerDatabaseFilter());
+            BOOST_TEST(!is_filter_button_filtering(*popup));
+            BOOST_TEST(polymer_type_combo->getDisplayText() == "Any");
+            BOOST_TEST(!polymer_type_combo->font().bold());
+            BOOST_TEST(filters_applied_label->text() == "No filters applied");
+            BOOST_TEST(get_search_box(*popup)->text() == "e");
+            BOOST_CHECK(popup->getSort() == sort);
+            // every polymer type is shown, so the Type column is too
+            BOOST_TEST(!table->isColumnHidden(
+                static_cast<int>(MonomerDbColumn::POLYMER_TYPE)));
+            filter_popup->hide();
+            popup->hide();
+        }
+    }
+}
+
+/**
+ * Every filter change re-filters the table live. With {Peptide, Structure},
+ * Terminal or a specific analog hides the structure rows and None keeps them.
+ * The Type column hides when the filter allows a single polymer type, and no
+ * polymer types empties the table.
+ */
+BOOST_AUTO_TEST_CASE(live_filtering)
+{
+    PopupFixture fixture;
+    load_custom_monomers(TEST_MONOMERS_JSON, NUM_TEST_MONOMERS);
+    auto* popup = fixture.openPopup();
+    auto* table = get_monomer_db_table(*popup);
+    auto* filter_popup = open_filter_popup(*popup);
+    auto check_symbols = [&](const std::vector<std::string>& symbols) {
+        BOOST_TEST(get_monomer_db_symbols(*table) == symbols,
+                   boost::test_tools::per_element());
+        BOOST_TEST(get_match_count_text(*popup).toStdString() ==
+                   std::to_string(symbols.size()) +
+                       (symbols.size() == 1 ? " match" : " matches"));
+    };
+    check_symbols({"ac", "am", "chem1", "pepA", "pepX", "Zeta"});
+
+    choose_filter_item(*filter_popup, "monomer_type_combo", "Terminal");
+    check_symbols({"ac", "am"});
+    choose_filter_item(*filter_popup, "monomer_type_combo", "Backbone");
+    check_symbols({"pepA", "pepX", "Zeta"});
+    choose_filter_item(*filter_popup, "monomer_type_combo", "Any");
+    choose_filter_item(*filter_popup, "natural_analog_combo", "A");
+    check_symbols({"pepA"});
+    choose_filter_item(*filter_popup, "natural_analog_combo", "Any");
+    check_symbols({"pepA", "Zeta"});
+    choose_filter_item(*filter_popup, "natural_analog_combo", "None");
+    check_symbols({"ac", "am", "chem1", "pepX"});
+    BOOST_TEST(!table->isColumnHidden(
+        static_cast<int>(MonomerDbColumn::POLYMER_TYPE)));
+
+    // a single polymer type hides the Type column
+    set_polymer_type_checked(*filter_popup, "Structure", false);
+    check_symbols({"ac", "am", "pepX"});
+    BOOST_TEST(
+        table->isColumnHidden(static_cast<int>(MonomerDbColumn::POLYMER_TYPE)));
+    BOOST_TEST(is_filter_button_filtering(*popup));
+
+    // no polymer types shows nothing, and rechecking Peptide restores the
+    // remembered analog
+    set_polymer_type_checked(*filter_popup, "Peptide", false);
+    check_symbols({});
+    BOOST_TEST(is_filter_button_filtering(*popup));
+    set_polymer_type_checked(*filter_popup, "Peptide", true);
+    check_symbols({"ac", "am", "pepX"});
+
+    // every polymer type shows everything and makes the button normal
+    set_polymer_type_checked(*filter_popup, "Structure", true);
+    set_polymer_type_checked(*filter_popup, "Nucleic acid", true);
+    check_symbols({"ac", "am", "chem1", "pepA", "pepX", "rnaA", "Zeta"});
+    BOOST_TEST(!table->isColumnHidden(
+        static_cast<int>(MonomerDbColumn::POLYMER_TYPE)));
+    BOOST_TEST(!is_filter_button_filtering(*popup));
+    filter_popup->hide();
+    popup->hide();
+}
+
+/**
+ * Values hidden by applicability survive closing and reopening the filter
+ * popup, and a page-default reset forgets them
+ */
+BOOST_AUTO_TEST_CASE(remembered_values_across_reopening)
+{
+    PopupFixture fixture;
+    load_custom_monomers(TEST_MONOMERS_JSON, NUM_TEST_MONOMERS);
+    auto* popup = fixture.openPopup();
+    auto* table = get_monomer_db_table(*popup);
+    auto* filter_popup = open_filter_popup(*popup);
+    set_polymer_type_checked(*filter_popup, "Structure", false);
+    choose_filter_item(*filter_popup, "monomer_type_combo", "Backbone");
+    choose_filter_item(*filter_popup, "natural_analog_combo", "A");
+    BOOST_TEST(get_monomer_db_symbols(*table) ==
+                   (std::vector<std::string>{"pepA"}),
+               boost::test_tools::per_element());
+    set_polymer_type_checked(*filter_popup, "Nucleic acid", true);
+    BOOST_TEST(get_monomer_db_symbols(*table).size() == 6);
+    filter_popup->hide();
+
+    // the reopened popup shows the disabled combos' effective values
+    filter_popup = open_filter_popup(*popup);
+    auto* monomer_type_combo =
+        filter_popup->findChild<QComboBox*>("monomer_type_combo");
+    auto* analog_combo =
+        filter_popup->findChild<QComboBox*>("natural_analog_combo");
+    BOOST_TEST(monomer_type_combo->currentText() == "Any");
+    BOOST_TEST(!monomer_type_combo->isEnabled());
+    BOOST_TEST(analog_combo->currentText() == "Any or None");
+    BOOST_TEST(!analog_combo->isEnabled());
+    // restoring Peptide only restores Backbone and A
+    set_polymer_type_checked(*filter_popup, "Nucleic acid", false);
+    BOOST_TEST(monomer_type_combo->currentText() == "Backbone");
+    BOOST_TEST(monomer_type_combo->font().bold());
+    BOOST_TEST(analog_combo->currentText() == "A");
+    BOOST_TEST(analog_combo->font().bold());
+    BOOST_TEST(get_monomer_db_symbols(*table) ==
+                   (std::vector<std::string>{"pepA"}),
+               boost::test_tools::per_element());
+    set_polymer_type_checked(*filter_popup, "Nucleic acid", true);
+    filter_popup->hide();
+    popup->hide();
+
+    // a page-default reset forgets them. (Opening the popup on the other page
+    // makes that the page at close, so that the popup resets when it opens on
+    // this page again.)
+    fixture.clickPageButton(false);
+    fixture.openPopup()->hide();
+    fixture.clickPageButton(true);
+    popup = fixture.openPopup();
+    BOOST_CHECK(popup->getFilter() ==
+                MonomerDatabaseFilter(MonomerDbPolymerType::PEPTIDE |
+                                      MonomerDbPolymerType::CHEM));
+    popup->hide();
+}
+
+/**
+ * Hiding the Monomer Database popup, e.g. with the load link, also hides the
+ * filter popup, and reopening on the same page keeps the filter
+ */
+BOOST_AUTO_TEST_CASE(load_link_keeps_filter)
+{
+    PopupFixture fixture;
+    auto* popup = fixture.openPopup();
+    auto* filter_popup = open_filter_popup(*popup);
+    choose_filter_item(*filter_popup, "monomer_type_combo", "Terminal");
+    const auto filter = popup->getFilter();
+    BOOST_REQUIRE(filter.getMonomerType() == MonomerTypeFilter::TERMINAL);
+
+    get_load_link(*popup)->click();
+    BOOST_TEST(!popup->isVisible());
+    BOOST_TEST(!filter_popup->isVisible());
+    get_file_chooser(fixture.widget)->reject();
+    QApplication::processEvents();
+
+    popup = fixture.openPopup();
+    BOOST_CHECK(popup->getFilter() == filter);
+    BOOST_TEST(get_monomer_db_symbols(*get_monomer_db_table(*popup)) ==
+                   (std::vector<std::string>{"ac", "am"}),
+               boost::test_tools::per_element());
+    popup->hide();
+}
+
+/**
+ * After enabling Nucleic acid on the amino acid page, choosing an RNA row
+ * switches to the nucleic acid page while the popup stays open and anchored.
+ * Closing and reopening it there keeps the filter and search text.
+ */
+BOOST_AUTO_TEST_CASE(cross_page_row_choice)
+{
+    PopupFixture fixture;
+    load_custom_monomers(TEST_MONOMERS_JSON, NUM_TEST_MONOMERS);
+    auto& model = fixture.model;
+    auto* popup = fixture.openPopup();
+    const auto popup_pos = popup->pos();
+    QTest::keyClicks(get_search_box(*popup), "a");
+    auto* filter_popup = open_filter_popup(*popup);
+    set_polymer_type_checked(*filter_popup, "Nucleic acid", true);
+    filter_popup->hide();
+    const auto filter = popup->getFilter();
+
+    click_monomer_db_row(*get_monomer_db_table(*popup), "rnaA");
+    BOOST_CHECK(model.getMonomerToolType() == MonomerToolType::NUCLEIC_ACID);
+    BOOST_CHECK(model.getMonomerDbMonomer() ==
+                (MonomerID{"rnaA", ChainType::RNA}));
+    BOOST_TEST(popup->isVisible());
+    BOOST_TEST(popup->pos() == popup_pos);
+    popup->hide();
+
+    popup = fixture.openPopup();
+    BOOST_CHECK(popup->getFilter() == filter);
+    BOOST_TEST(get_search_box(*popup)->text() == "a");
+    popup->hide();
+}
+
+/**
+ * @return The widget after the given one that Tab moves the focus to, i.e. the
+ * next visible, enabled widget in the focus chain that accepts Tab focus
+ */
+static QWidget* get_next_tab_stop(QWidget* widget)
+{
+    for (auto* next = widget->nextInFocusChain(); next != widget;
+         next = next->nextInFocusChain()) {
+        if ((next->focusPolicy() & Qt::TabFocus) && next->isVisible() &&
+            next->isEnabled()) {
+            return next;
+        }
+    }
+    return nullptr;
+}
+
+/**
+ * Tab moves the focus from the search box to the filter button, then to the
+ * table and then to the links
+ */
+BOOST_AUTO_TEST_CASE(tab_order)
+{
+    PopupFixture fixture;
+    auto* popup = fixture.openPopup();
+    QWidget* widget = get_search_box(*popup);
+    for (const auto* name : {"monomer_db_filter_btn", "monomer_db_table",
+                             "monomer_db_load_link", "monomer_db_close_link"}) {
+        BOOST_TEST_CONTEXT(name)
+        {
+            widget = get_next_tab_stop(widget);
+            BOOST_REQUIRE(widget != nullptr);
+            BOOST_TEST(widget->objectName().toStdString() == name);
+        }
+    }
+    popup->hide();
+}
+
+/**
+ * With a canvas selection under Select or Move/Rotate, navigating to an RNA
+ * row doesn't switch pages, while committing it does, keeping the draw tool
+ * and each page's last monomeric tool
+ */
+BOOST_AUTO_TEST_CASE(cross_page_mutation)
+{
+    for (const auto draw_tool : {DrawTool::SELECT, DrawTool::MOVE_ROTATE}) {
+        BOOST_TEST_CONTEXT("draw_tool=" << static_cast<int>(draw_tool))
+        {
+            MutationFixture fixture;
+            auto& sk = fixture.sk;
+            auto* sketcher_model = sk.m_sketcher_model;
+            sketcher_model->setValue(ModelKey::DRAW_TOOL, draw_tool);
+            BOOST_REQUIRE(sketcher_model->hasActiveSelection());
+            const auto amino_acid_tool = sketcher_model->getAminoAcidTool();
+            const auto aa_restore = sketcher_model->getDrawToolToRestore(
+                MonomerToolType::AMINO_ACID);
+            const auto na_restore = sketcher_model->getDrawToolToRestore(
+                MonomerToolType::NUCLEIC_ACID);
+
+            auto* popup = open_monomer_db_popup(sk);
+            BOOST_REQUIRE(popup->isMutationMode());
+            auto* filter_popup = open_filter_popup(*popup);
+            set_polymer_type_checked(*filter_popup, "Nucleic acid", true);
+            filter_popup->hide();
+            auto* table = get_monomer_db_table(*popup);
+            table->setFocus();
+            while (get_current_symbol(*table) != "rnaA") {
+                const auto previous = get_current_symbol(*table);
+                QTest::keyClick(table, Qt::Key_Down);
+                BOOST_REQUIRE(get_current_symbol(*table) != previous);
+            }
+            BOOST_CHECK(sketcher_model->getMonomerToolType() ==
+                        MonomerToolType::AMINO_ACID);
+
+            QTest::keyClick(table, Qt::Key_Return);
+            BOOST_CHECK(sketcher_model->getMonomerToolType() ==
+                        MonomerToolType::NUCLEIC_ACID);
+            BOOST_CHECK(sketcher_model->getDrawTool() == draw_tool);
+            BOOST_CHECK(sketcher_model->getAminoAcidTool() == amino_acid_tool);
+            BOOST_CHECK(sketcher_model->getDrawToolToRestore(
+                            MonomerToolType::AMINO_ACID) == aa_restore);
+            BOOST_CHECK(sketcher_model->getDrawToolToRestore(
+                            MonomerToolType::NUCLEIC_ACID) == na_restore);
+            // the selected peptide can't become an RNA monomer
+            BOOST_TEST(fixture.getHelm() == "PEPTIDE1{A}$$$$V2.0");
+            BOOST_TEST(popup->isVisible());
+            popup->hide();
+        }
+    }
 }
 
 } // namespace sketcher

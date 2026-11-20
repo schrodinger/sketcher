@@ -1,0 +1,28 @@
+Keep a focus change from reordering open popups on WebAssembly.
+
+On wasm, clicking a popup activates it, and QGuiApplicationPrivate::
+processFocusWindowEvent() then moves it to the end of popup_list. If a child
+popup is open, clicking its parent popup therefore makes the parent the active
+popup, so the click goes to the parent instead of closing the child, and the
+child stays open. Reported as QTBUG-152514.
+
+diff --git a/src/gui/kernel/qguiapplication.cpp b/src/gui/kernel/qguiapplication.cpp
+--- a/src/gui/kernel/qguiapplication.cpp
++++ b/src/gui/kernel/qguiapplication.cpp
+@@ -2699,7 +2699,16 @@
+             if (platformWindow->isAlertState())
+                 platformWindow->setAlertState(false);
+         activatedPopup = (newFocus->flags() & Qt::WindowType_Mask) == Qt::Popup;
++#ifdef Q_OS_WASM
++        // The wasm platform plugin activates a popup when it's clicked. Don't
++        // let that move an open popup above the popups that were opened from
++        // it, since they would then no longer get the mouse and key events
++        // that close them. A popup is already appended to popup_list when it's
++        // shown.
++        if (activatedPopup && !popup_list.contains(newFocus))
++#else
+         if (activatedPopup)
++#endif
+             activatePopup(newFocus);
+     }
+ 

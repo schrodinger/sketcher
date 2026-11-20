@@ -188,5 +188,35 @@ const QString MONOMER_DATABASE_POPUP_STYLE{
     "QTableView { selection-background-color: " +
     CHECKED_BACKGROUND_COLOR + "; selection-color: #333333; }"};
 
+/// style for the Monomer Database popup's filter button when no filtering is
+/// applied (i.e. the most permissive filter)
+const QString MONOMER_DATABASE_FILTER_BUTTON_STYLE{
+    "QToolButton { border: none; background-color: transparent; "
+    "    image: url(:icons/filter-menu_lb.png); }"
+    "QToolButton:hover { image: url(:icons/filter-menu_lb_hvr.png); }"
+    "QToolButton:pressed { image: url(:icons/filter-menu_lb_act.png); }"};
+
+/// style for the Monomer Database popup's filter button when filtering is
+/// applied
+const QString MONOMER_DATABASE_FILTER_BUTTON_FILTERING_STYLE{
+    "QToolButton { border: none; background-color: transparent; "
+    "    image: url(:icons/filter-menu_lb_filtering.png); }"};
+
+/// style for the Monomer Database popup's nested filter popup
+const QString MONOMER_DATABASE_FILTER_POPUP_STYLE{
+    "#monomer_db_filter_popup { background-color: white; "
+    "    border: 1px solid " +
+    POPUP_TITLE_BAR_COLOR +
+    "; }"
+    "#filters_applied_lbl { font-size: 11px; font-style: italic; "
+    "    color: " +
+    INFO_TEXT_COLOR +
+    "; }"
+    "#filter_close_btn { font-size: 14px; font-weight: bold; "
+    "    color: " +
+    INFO_TEXT_COLOR +
+    "; background-color: transparent; border: none; }"
+    "#filter_close_btn:hover { color: #333333; }"};
+
 } // namespace sketcher
 } // namespace schrodinger

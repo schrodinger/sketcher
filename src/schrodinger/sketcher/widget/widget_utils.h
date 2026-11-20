@@ -113,6 +113,16 @@ SKETCHER_API QRect get_popup_bounds(const QWidget* anchor);
 SKETCHER_API void show_popup_next_to_widget(QWidget* popup, QWidget* anchor);
 
 /**
+ * Move a popup next to an anchor widget at its current size, positioned using
+ * calc_popup_position() within get_popup_bounds(), e.g. to keep an open popup
+ * next to an anchor that moved
+ *
+ * @param popup The popup to move, which must be a top-level widget
+ * @param anchor The widget to move the popup next to
+ */
+SKETCHER_API void move_popup_next_to_widget(QWidget* popup, QWidget* anchor);
+
+/**
  * Switch the combo box to the entry with the specified Qt.UserRole data
  *
  * Note that this method is intentionally defined in the header so that the
