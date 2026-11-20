@@ -129,9 +129,14 @@ void show_popup_next_to_widget(QWidget* popup, QWidget* anchor)
         popup->adjustSize();
         popup->setAttribute(Qt::WA_Resized, false);
     }
+    move_popup_next_to_widget(popup, anchor);
+    popup->show();
+}
+
+void move_popup_next_to_widget(QWidget* popup, QWidget* anchor)
+{
     popup->move(calc_popup_position(popup->size(), get_global_geometry(anchor),
                                     get_popup_bounds(anchor)));
-    popup->show();
 }
 
 QRect get_global_geometry(const QWidget* widget)

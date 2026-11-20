@@ -28,6 +28,7 @@ namespace sketcher
 {
 
 enum class MonomerToolType;
+class MonomerDatabaseFilterPopup;
 class MonomerDatabaseTableModel;
 class SketcherModel;
 
@@ -144,9 +145,20 @@ class SKETCHER_API MonomerDatabasePopup : public SketcherViewWithWasmOutlineFix
     void refreshDatabase();
 
     /**
-     * Re-run the filter and sort, then update the table
+     * Re-run the filter and sort, then update the table and the widgets that
+     * depend on the filter (the filter button and the Type column)
      */
     void refilter();
+
+    /**
+     * Respond to the user changing the filter in the filter popup
+     */
+    void onFilterChanged(const MonomerDatabaseFilter& filter);
+
+    /**
+     * Open the filter popup, initialized from the current filter
+     */
+    void onFilterButtonClicked();
 
     /**
      * Apply the search text to the filtered rows and reset the table model,
@@ -206,6 +218,7 @@ class SKETCHER_API MonomerDatabasePopup : public SketcherViewWithWasmOutlineFix
     std::unique_ptr<Ui::MonomerDatabasePopup> m_ui;
     const SketcherModel* m_model;
     MonomerDatabaseTableModel* m_table_model = nullptr;
+    MonomerDatabaseFilterPopup* m_filter_popup = nullptr;
     // The table's source list, which is shared with the table model
     std::shared_ptr<const std::vector<rdkit_extensions::MonomerInfo>>
         m_all_monomers;

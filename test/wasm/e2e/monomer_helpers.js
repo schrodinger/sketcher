@@ -246,3 +246,94 @@ export async function chooseFromMonomerDatabase(
   await clickSelector(page, `table_row:${MONOMER_DB_TABLE}:${row}`);
   if (close) await closeMonomerDatabase(page);
 }
+
+/**
+ * Move the keyboard focus from the open popup's search box to its table with
+ * Tab, which makes the table's first row current if no row is current. The tab
+ * order is the search box, the filter button and then the table.
+ */
+export async function tabFromSearchToMonomerDatabaseTable(page) {
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+}
+
+export async function isMonomerDatabaseFilterOpen(page) {
+  return isWidgetVisible(page, 'monomer_db_filter_popup');
+}
+
+/**
+ * Open the Monomer Database popup's filter popup from its filter button,
+ * opening the Monomer Database popup first if needed
+ */
+export async function openMonomerDatabaseFilter(page) {
+  await openMonomerDatabase(page);
+  if (await isMonomerDatabaseFilterOpen(page)) return;
+  await clickWidget(page, 'monomer_db_filter_btn');
+  await expect.poll(() => isMonomerDatabaseFilterOpen(page)).toBe(true);
+}
+
+/** Close the filter popup with its x, unless it's already closed */
+export async function closeMonomerDatabaseFilter(page) {
+  if (!(await isMonomerDatabaseFilterOpen(page))) return;
+  await clickWidget(page, 'filter_close_btn');
+  await expect.poll(() => isMonomerDatabaseFilterOpen(page)).toBe(false);
+}
+
+/**
+ * Open a combo box's dropdown, unless it's already open, and return the combo
+ * box's state
+ */
+export async function openComboDropdown(page, combo) {
+  if (!(await widgetState(page, combo)).open) {
+    await clickWidget(page, combo);
+    await expect.poll(async () => (await widgetState(page, combo)).open).toBe(true);
+  }
+  return widgetState(page, combo);
+}
+
+/**
+ * Click an item of a combo box's dropdown, opening the dropdown first if
+ * needed. A single-select combo box closes its dropdown, while a multi-select
+ * one toggles the item and stays open.
+ */
+export async function clickComboItem(page, combo, text) {
+  await openComboDropdown(page, combo);
+  await clickSelector(page, `combo_item:${combo}:${text}`);
+}
+
+/**
+ * Choose an item of one of the filter popup's single-select combo boxes
+ * ("monomer_type_combo" or "natural_analog_combo")
+ */
+export async function chooseFilterItem(page, combo, text) {
+  await clickComboItem(page, combo, text);
+  await expect.poll(async () => (await widgetState(page, combo)).text).toBe(text);
+  await expect.poll(async () => (await widgetState(page, combo)).open).toBe(false);
+}
+
+/**
+ * Check or uncheck a polymer type ("Peptide", "Nucleic acid" or "Structure")
+ * in the filter popup's polymer type dropdown, which stays open
+ */
+export async function setPolymerTypeChecked(page, text, checked) {
+  const { items } = await openComboDropdown(page, 'polymer_type_combo');
+  const item = items.find((candidate) => candidate.text === text);
+  expect(item, `polymer type ${text}`).toBeDefined();
+  if (item.checked === checked) return;
+  await clickComboItem(page, 'polymer_type_combo', text);
+  await expect
+    .poll(
+      async () =>
+        (await widgetState(page, 'polymer_type_combo')).items.find(
+          (candidate) => candidate.text === text,
+        ).checked,
+    )
+    .toBe(checked);
+}
+
+/** Close the polymer type dropdown with Escape, unless it's already closed */
+export async function closePolymerTypeDropdown(page) {
+  if (!(await widgetState(page, 'polymer_type_combo')).open) return;
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await widgetState(page, 'polymer_type_combo')).open).toBe(false);
+}

@@ -43,6 +43,7 @@
 
 #include <QAbstractButton>
 #include <QAbstractItemModel>
+#include <QAbstractItemView>
 #include <QAbstractSpinBox>
 #include <QAction>
 #include <QApplication>
@@ -97,12 +98,14 @@
 #include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "schrodinger/sketcher/widget/multi_select_combo_box.h"
 #include "schrodinger/sketcher/widget/tool_button_with_popup.h"
 #include "sketcher_instance.h"
 
 using schrodinger::sketcher::AbstractAtomOrMonomerItem;
 using schrodinger::sketcher::AbstractBondOrConnectorItem;
 using schrodinger::sketcher::InteractiveItemFlagType;
+using schrodinger::sketcher::MultiSelectComboBox;
 using schrodinger::sketcher::Scene;
 using schrodinger::sketcher::SketcherWidget;
 using schrodinger::sketcher::ToolButtonWithPopup;
@@ -369,6 +372,38 @@ void add_table_state(const QTableView& table, QJsonObject& result)
 }
 
 /**
+ * Add a combo box's state to a widget's JSON: its displayed "text" (for a
+ * multi-select combo box, its checked items joined with ", ", or "Any"),
+ * whether its text is "bold", whether its dropdown is "open", and its "items",
+ * each with its "text", whether it's "enabled" and, for a checkable item,
+ * whether it's "checked". Items of an open dropdown are reached with a
+ * "combo_item:" selector.
+ */
+void add_combo_box_state(const QComboBox& combo_box, QJsonObject& result)
+{
+    const auto* multi_select =
+        qobject_cast<const MultiSelectComboBox*>(&combo_box);
+    result["text"] = multi_select != nullptr ? multi_select->getDisplayText()
+                                             : combo_box.currentText();
+    result["bold"] = combo_box.font().bold();
+    result["open"] = combo_box.view()->isVisible();
+    QJsonArray items;
+    const auto* model = combo_box.model();
+    for (int row = 0; row < combo_box.count(); ++row) {
+        const auto index = model->index(row, combo_box.modelColumn());
+        QJsonObject item;
+        item["text"] = combo_box.itemText(row);
+        item["enabled"] = index.flags().testFlag(Qt::ItemIsEnabled);
+        if (index.flags().testFlag(Qt::ItemIsUserCheckable)) {
+            item["checked"] =
+                index.data(Qt::CheckStateRole).toInt() == Qt::Checked;
+        }
+        items.append(item);
+    }
+    result["items"] = items;
+}
+
+/**
  * Find a child widget by objectName and report its geometry and state as JSON.
  *
  * @param sketcher the widget tree to search
@@ -409,7 +444,7 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
     } else if (auto* label = qobject_cast<QLabel*>(widget)) {
         result["text"] = without_mnemonic(label->text());
     } else if (auto* combo_box = qobject_cast<QComboBox*>(widget)) {
-        result["text"] = combo_box->currentText();
+        add_combo_box_state(*combo_box, result);
     } else if (auto* line_edit = qobject_cast<QLineEdit*>(widget)) {
         result["text"] = line_edit->text();
     } else if (auto* spin_box = qobject_cast<QAbstractSpinBox*>(widget)) {
@@ -486,6 +521,55 @@ std::string table_row_rect(SketcherWidget& sketcher, const std::string& value)
                          table->selectionModel()->isRowSelected(row);
     result["current"] =
         table->currentIndex().isValid() && table->currentIndex().row() == row;
+    return to_json(result);
+}
+
+/**
+ * Resolve a "combo_item:<objectName>:<text>" selector: report the row of the
+ * named visible combo box's open dropdown whose text is <text>, scrolled into
+ * view, with its "checked" state if it's checkable.
+ *
+ * Like a "table_row:" selector, scrolling is the one state change this makes.
+ *
+ * @return the JSON object described by sketcher_get_rect(), or "{}" if no such
+ * visible combo box, open dropdown or item exists
+ * @throw std::runtime_error if the selector value is malformed
+ */
+std::string combo_item_rect(SketcherWidget& sketcher, const std::string& value)
+{
+    const auto separator = value.find(':');
+    if (separator == std::string::npos) {
+        throw std::runtime_error("playwright test bridge: malformed combo item "
+                                 "selector '" +
+                                 value +
+                                 "' (expected \"<objectName>:<text>\")");
+    }
+    auto* combo_box = qobject_cast<QComboBox*>(find_visible_widget(
+        sketcher, QString::fromStdString(value.substr(0, separator))));
+    if (combo_box == nullptr || !combo_box->view()->isVisible()) {
+        return "{}";
+    }
+    const int row = combo_box->findText(
+        QString::fromStdString(value.substr(separator + 1)));
+    if (row < 0) {
+        return "{}";
+    }
+    auto* view = combo_box->view();
+    const auto index = combo_box->model()->index(row, combo_box->modelColumn());
+    view->scrollTo(index);
+    const auto rect =
+        view->visualRect(index).intersected(view->viewport()->rect());
+    if (rect.isEmpty()) {
+        return "{}";
+    }
+    auto result =
+        rect_json(map_to_sketcher(*view->viewport(), sketcher, rect.topLeft()),
+                  rect.size(), index.flags().testFlag(Qt::ItemIsEnabled));
+    result["text"] = combo_box->itemText(row);
+    if (index.flags().testFlag(Qt::ItemIsUserCheckable)) {
+        result["checked"] =
+            index.data(Qt::CheckStateRole).toInt() == Qt::Checked;
+    }
     return to_json(result);
 }
 
@@ -700,6 +784,10 @@ std::string dialog_rect(SketcherWidget& sketcher, const std::string& value)
  *   "table_row:<objectName>:<row>"
  *                          a row of a visible table, scrolled into view, with
  *                          its "cells", "selected" and "current" state
+ *   "combo_item:<objectName>:<text>"
+ *                          an item of a visible combo box's open dropdown, by
+ *                          its text, scrolled into view, with its "checked"
+ *                          state if it's checkable
  *
  * Use "widget:" to find something to click, since only a visible widget can be
  * clicked. Use "state:" to ask whether a control is checked or enabled when it
@@ -720,8 +808,10 @@ std::string dialog_rect(SketcherWidget& sketcher, const std::string& value)
  * whitespace removed, while a value the user typed or chose is reported
  * verbatim. Every widget reports its Qt "styleSheet" so a test can verify a
  * user-visible state conveyed by styling; a button additionally reports
- * "checked" and "toolTip", and a table reports "rowCount", "headers",
- * "selectedRow" and "currentRow".
+ * "checked" and "toolTip", a table reports "rowCount", "headers",
+ * "selectedRow" and "currentRow", and a combo box reports "bold", "open" and
+ * "items" (see add_combo_box_state()). A multi-select combo box's "text" is
+ * the text it displays rather than its current item.
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
  * menu first. It does not reach a QToolButton's menu, which cannot be open and
@@ -769,10 +859,13 @@ std::string sketcher_get_rect(const std::string& selector)
     if (kind == "table_row") {
         return table_row_rect(sketcher, value);
     }
+    if (kind == "combo_item") {
+        return combo_item_rect(sketcher, value);
+    }
     throw std::runtime_error(
         "playwright test bridge: unrecognized selector kind '" + kind +
-        "' (expected 'widget', 'state', 'atom', 'bond', 'menu', 'dialog', or "
-        "'table_row')");
+        "' (expected 'widget', 'state', 'atom', 'bond', 'menu', 'dialog', "
+        "'table_row', or 'combo_item')");
 }
 
 /**
