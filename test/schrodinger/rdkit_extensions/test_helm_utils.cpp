@@ -107,6 +107,28 @@ BOOST_AUTO_TEST_CASE(TestDisulfideConnectorType)
     }
 }
 
+// Connector classification treats a named RNA base differently from backbone
+// monomers, but an inline SMILES monomer has no named base type.
+BOOST_AUTO_TEST_CASE(TestNucleicAcidBaseConnectorType)
+{
+    using schrodinger::rdkit_extensions::ConnectorType;
+    using schrodinger::rdkit_extensions::get_connector_type;
+
+    auto mol = helm_to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    const auto* base_bond = mol->getBondBetweenAtoms(0, 1);
+    const auto* backbone_bond = mol->getBondBetweenAtoms(0, 2);
+    BOOST_REQUIRE(base_bond != nullptr);
+    BOOST_REQUIRE(backbone_bond != nullptr);
+    BOOST_CHECK(get_connector_type(base_bond, false) ==
+                ConnectorType::NA_BACKBONE_TO_BASE);
+    BOOST_CHECK(get_connector_type(backbone_bond, false) ==
+                ConnectorType::NA_BACKBONE);
+
+    mol->getAtomWithIdx(1)->setProp(::SMILES_MONOMER, true);
+    BOOST_CHECK(get_connector_type(base_bond, false) ==
+                ConnectorType::NA_BACKBONE);
+}
+
 BOOST_AUTO_TEST_CASE(TestGetInterpolymerConnections)
 {
     auto mol = helm_to_rdkit("PEPTIDE1{C.C}|PEPTIDE2{C}|PEPTIDE3{C}$"

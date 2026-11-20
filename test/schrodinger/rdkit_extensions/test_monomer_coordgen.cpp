@@ -1176,4 +1176,103 @@ BOOST_AUTO_TEST_CASE(VerticalAlignmentDoesNotReverseForDiagonalLabels)
     BOOST_CHECK_GE(final_right_separation, initial_right_separation - 1e-6);
 }
 
+/**
+ * A crowded pair must not prevent a separate pair from correcting the tilt
+ * introduced when a label on its parent chain grows.
+ */
+BOOST_AUTO_TEST_CASE(VerticalAlignmentClearanceIsPerConnectedGroup)
+{
+    using namespace schrodinger::rdkit_extensions;
+    auto mol =
+        helm_to_rdkit("PEPTIDE1{[Phe_34diCl].C.C.C.C.C}|PEPTIDE2{[D-2Nal].C}|"
+                      "PEPTIDE3{[Phe_4F].C.C.C}|"
+                      "PEPTIDE4{[Phe_34diCl].C.C.C.C.C}|PEPTIDE5{[D-2Nal].C}|"
+                      "PEPTIDE6{[Phe_4F].C.C.C}|PEPTIDE7{A}|PEPTIDE8{A}$"
+                      "PEPTIDE1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,PEPTIDE2,3:R3-1:R3|"
+                      "PEPTIDE2,PEPTIDE3,2:R3-3:R3|"
+                      "PEPTIDE4,PEPTIDE4,6:R2-1:R1|PEPTIDE4,PEPTIDE5,3:R3-1:R3|"
+                      "PEPTIDE5,PEPTIDE6,2:R3-3:R3$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    const double bond = MONOMER_BOND_LENGTH;
+    const double h = bond * std::sqrt(3.0) / 2;
+    const double group_offset = 20;
+    const double blocker_offset = 1.0;
+    const double blocker_y_offset = 0.2;
+    const std::array<RDGeom::Point3D, 12> first_group = {
+        RDGeom::Point3D{0, 1.5 * bond, 0},
+        {-h, bond, 0},
+        {-h, 0, 0},
+        {0, -0.5 * bond, 0},
+        {h, 0, 0},
+        {h, bond, 0},
+        {-h, -2 * bond, 0},
+        {-h - bond, -2 * bond, 0},
+        {-h - 3 * bond, -4 * bond, 0},
+        {-h - 2 * bond, -4 * bond, 0},
+        {-h - bond, -4 * bond, 0},
+        {-h, -4 * bond, 0}};
+    for (unsigned int i = 0; i < first_group.size(); ++i) {
+        conf.setAtomPos(i, first_group[i]);
+        conf.setAtomPos(i + 12,
+                        first_group[i] + RDGeom::Point3D{group_offset, 0, 0});
+    }
+    // These labels limit the correction of the second group only.
+    conf.setAtomPos(24, {group_offset - h - blocker_offset,
+                         -2 * bond + blocker_y_offset, 0});
+    conf.setAtomPos(25, {group_offset - h + blocker_offset,
+                         -2 * bond + blocker_y_offset, 0});
+
+    std::unordered_map<int, RDGeom::Point3D> sizes;
+    for (const int offset : {0, 12}) {
+        sizes.emplace(offset, RDGeom::Point3D(4, MONOMER_MINIMUM_SIZE, 0));
+        sizes.emplace(offset + 6,
+                      RDGeom::Point3D(2.5, MONOMER_MINIMUM_SIZE, 0));
+        sizes.emplace(offset + 8,
+                      RDGeom::Point3D(3.5, MONOMER_MINIMUM_SIZE, 0));
+    }
+    resize_monomers(*mol, sizes);
+
+    const double first_tilt = conf.getAtomPos(2).x - conf.getAtomPos(6).x;
+    const double second_tilt = conf.getAtomPos(7).x - conf.getAtomPos(10).x;
+    const double crowded_tilt = conf.getAtomPos(14).x - conf.getAtomPos(18).x;
+    BOOST_CHECK_SMALL(first_tilt, 1e-6);
+    BOOST_CHECK_SMALL(second_tilt, 1e-6);
+    BOOST_CHECK_GT(std::abs(crowded_tilt), 1e-3);
+}
+
+/**
+ * Two initially vertical connections between the same polymers can need
+ * different corrections after resizing. The rigid translation should share
+ * the residual tilt equally instead of leaving all of it on one bond.
+ */
+BOOST_AUTO_TEST_CASE(MultipleVerticalConnectionsShareCorrection)
+{
+    using namespace schrodinger::rdkit_extensions;
+    auto mol = helm_to_rdkit("PEPTIDE1{A.C.C.C.C.C}|PEPTIDE2{C.C}$"
+                             "PEPTIDE1,PEPTIDE1,6:R2-1:R1|"
+                             "PEPTIDE1,PEPTIDE2,1:R3-1:R3|"
+                             "PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$V2.0");
+    compute_monomer_mol_coords(*mol);
+    auto& conf = mol->getConformer();
+    const double bond = MONOMER_BOND_LENGTH;
+    const double h = bond * std::sqrt(3.0) / 2;
+    conf.setAtomPos(0, {0, 1.5 * bond, 0});
+    conf.setAtomPos(1, {-h, bond, 0});
+    conf.setAtomPos(2, {-h, 0, 0});
+    conf.setAtomPos(3, {0, -0.5 * bond, 0});
+    conf.setAtomPos(4, {h, 0, 0});
+    conf.setAtomPos(5, {h, bond, 0});
+    conf.setAtomPos(6, {0, -2 * bond, 0});
+    conf.setAtomPos(7, {-h, -2 * bond, 0});
+
+    resize_monomers(*mol, {{0, {4, MONOMER_MINIMUM_SIZE, 0}},
+                           {6, {2.5, MONOMER_MINIMUM_SIZE, 0}}});
+
+    const double first_tilt = conf.getAtomPos(0).x - conf.getAtomPos(6).x;
+    const double second_tilt = conf.getAtomPos(1).x - conf.getAtomPos(7).x;
+    BOOST_CHECK_SMALL(first_tilt + second_tilt, 1e-6);
+    BOOST_CHECK_GT(std::abs(first_tilt), 1e-3);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

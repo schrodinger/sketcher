@@ -305,11 +305,6 @@ MonomerType get_monomer_type(std::string_view res_name,
     return MonomerType::NA_BASE;
 }
 
-MonomerType get_na_monomer_type_from_res_name(const std::string_view res_name)
-{
-    return get_monomer_type(res_name, rdkit_extensions::ChainType::RNA);
-}
-
 std::string get_monomer_res_name(const RDKit::Atom* const monomer)
 {
     bool is_smiles = false;
@@ -1537,8 +1532,8 @@ bool get_is_custom_bond(const std::string_view res_name_one,
         return linkage != BACKBONE_LINKAGE;
     } else if (chain_type_one == ChainType::RNA &&
                chain_type_two == ChainType::RNA) {
-        auto monomer_type_one = get_na_monomer_type_from_res_name(res_name_one);
-        auto monomer_type_two = get_na_monomer_type_from_res_name(res_name_two);
+        auto monomer_type_one = get_monomer_type(res_name_one, chain_type_one);
+        auto monomer_type_two = get_monomer_type(res_name_two, chain_type_two);
         std::unordered_set<MonomerType> monomer_types = {monomer_type_one,
                                                          monomer_type_two};
         if (monomer_types ==

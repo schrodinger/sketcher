@@ -7,23 +7,17 @@
 
 #include <algorithm>
 #include <boost/dynamic_bitset.hpp>
-#include <cctype>
-#include <optional>
 #include <rdkit/GraphMol/RWMol.h>
-#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
-#include <stack>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/helm/dynamic_bitset_on_bits_wrapper.h"
 #include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
-#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 using ::RDKit::RWMol;
@@ -200,10 +194,11 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
     bond->getPropIfPresent(is_secondary_connection ? CUSTOM_BOND : LINKAGE,
                            linkage);
     if (linkage == PEPTIDE_SIDE_CHAIN_LINKAGE) {
+        constexpr unsigned int peptide_r3_attachment_point = 3;
         const auto begin_element = get_attachment_point_element_for_monomer(
-            bond->getBeginAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+            bond->getBeginAtom(), peptide_r3_attachment_point);
         const auto end_element = get_attachment_point_element_for_monomer(
-            bond->getEndAtom(), PEPTIDE_R3_ATTACHMENT_POINT);
+            bond->getEndAtom(), peptide_r3_attachment_point);
         return begin_element.value_or("") == "S" &&
                        end_element.value_or("") == "S"
                    ? ConnectorType::PEPTIDE_DISULFIDE

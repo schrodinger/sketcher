@@ -24,31 +24,70 @@ namespace schrodinger::rdkit_extensions
 
 enum class ChainType;
 
-// Read a CXSMILES _R# label, if present.
+/**
+ * Read a positive attachment point number from a CXSMILES atom label such as
+ * "_R3". Return std::nullopt when no positive number can be read.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::optional<unsigned int>
 get_attachment_point_num_from_atom_label(const RDKit::Atom& atom);
 
-// Numbered attachment points may use an atom map, a CXSMILES _R# label, or
-// an isotope on a dummy atom, in that order of precedence.
+/**
+ * Get an atom's numbered attachment point, if any. Recognize a positive atom
+ * map number first, then a CXSMILES "_R#" label, then an isotope number on a
+ * dummy atom. Return std::nullopt if none is present.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::optional<unsigned int>
 get_attachment_point_num(const RDKit::Atom& atom);
 
-// Return each attachment point number and the heavy element at that site.
+/**
+ * Return the numbered attachment points in an atomistic monomer molecule.
+ * Each pair contains the attachment point number and the symbol of its heavy
+ * atom. This assumes valid attachment points; duplicate numbers and unbound
+ * dummy atoms are not checked.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol);
 
+/**
+ * Return numbered attachment points and their heavy atom symbols from extended
+ * SMILES. Attachment points may be atom-map numbers, isotope-numbered dummy
+ * atoms, or CXSMILES labels such as "_R1". For example, all three forms below
+ * describe alanine:
+ *   C[C@H](N[H:1])C(=O)[OH:2]
+ *   [1*]N[C@@H](C)C(=O)O[2*]
+ *   *N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|
+ *
+ * As with the molecule overload, duplicate or unbound attachment points are
+ * not validated.
+ * @throws std::invalid_argument if smiles is not valid extended SMILES.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_smiles(const std::string& smiles);
 
-// Unknown RNA base N has R1; other missing monomers have R1 and R2.
+/**
+ * Return numbered attachment points and heavy atom symbols for a database
+ * monomer. If it is missing, unknown RNA base N has R1; all other missing
+ * monomers have R1 and R2. Fallback points have empty element symbols.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_res(const std::string& resname, ChainType chain_type);
 
-// Inspect the inline SMILES or database residue represented by a monomer atom.
+/**
+ * Return numbered attachment points for a whole-monomer atom. Inline SMILES
+ * monomers are parsed from their atom label; named monomers are looked up using
+ * their PDB residue name and HELM chain type.
+ * @throws std::invalid_argument if a named monomer has no PDB residue info.
+ * @throws std::out_of_range if its polymer ID has no recognized HELM type.
+ * An invalid inline SMILES string also propagates the parser's exception.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<std::pair<int, std::string>>
 get_numbered_attachment_points_for_monomer(const RDKit::Atom* monomer);
 
-// Return the heavy element at one numbered site, if that site exists.
+/**
+ * Return the heavy atom symbol at one numbered attachment point, or
+ * std::nullopt if the point is absent. Propagates the exceptions from
+ * get_numbered_attachment_points_for_monomer().
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::optional<std::string>
 get_attachment_point_element_for_monomer(const RDKit::Atom* monomer,
                                          unsigned int attachment_point_num);

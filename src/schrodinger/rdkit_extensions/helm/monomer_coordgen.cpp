@@ -299,11 +299,20 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
     }
 }
 
-static bool is_nucleic_acid(const RDKit::ROMol& polymer)
+static bool is_nucleic_acid(const RDKit::ROMol& polymer,
+                            const RDKit::ROMol& original_mol)
 {
-    auto polymer_id = polymer.getProp<std::string>(POLYMER_ID);
-    return boost::starts_with(polymer_id, "DNA") ||
-           boost::starts_with(polymer_id, "RNA");
+    // Fallback layout replaces polymer IDs with ring_N/chain_N. The atom's
+    // original index still identifies its source polymer in the HELM model.
+    for (const auto* atom : polymer.atoms()) {
+        const auto original_idx = atom->getProp<unsigned int>(ORIGINAL_INDEX);
+        const auto id =
+            get_polymer_id(original_mol.getAtomWithIdx(original_idx));
+        if (boost::starts_with(id, "DNA") || boost::starts_with(id, "RNA")) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool is_peptide(const RDKit::ROMol& polymer)
@@ -2030,6 +2039,9 @@ static double get_interpolymer_clearance(const RDKit::ROMol& monomer_mol,
         const auto* bond = monomer_mol.getBondBetweenAtoms(
             original_polymer_idx, original_reference_idx);
         if (bond == nullptr) {
+            // The extracted polymers report a connection that is absent from
+            // the original molecule. This is unexpected; keep enough space
+            // for arrowheads rather than assuming the compact bond style.
             return INTERPOLYMER_RESIDUE_CLEARANCE;
         }
         // A bond can carry two linkages; either one may need arrowhead
@@ -2243,6 +2255,10 @@ break_into_topological_units(const RDKit::ROMol& monomer_mol)
 
 enum class PolymerPlacement { BELOW, ABOVE, LEFT, RIGHT };
 
+/**
+ * Return the minimum and maximum center coordinates of a nonempty polymer.
+ * Use x coordinates when x_axis is true, otherwise y coordinates.
+ */
 static std::pair<double, double> get_polymer_bounds(const RDKit::ROMol& polymer,
                                                     bool x_axis)
 {
@@ -2360,11 +2376,12 @@ static void append_polymer_bonds(std::vector<LayoutBond>& bonds,
 
 static void append_connections(std::vector<LayoutBond>& bonds,
                                const RDKit::ROMol& from, const RDKit::ROMol& to,
+                               const BOND_IDX_VEC& connections,
                                double* total_length = nullptr)
 {
     const auto& from_conf = from.getConformer();
     const auto& to_conf = to.getConformer();
-    for (auto [from_idx, to_idx] : get_bonds_between_polymers(from, to)) {
+    for (auto [from_idx, to_idx] : connections) {
         const auto begin = from_conf.getAtomPos(from_idx);
         const auto end = to_conf.getAtomPos(to_idx);
         bonds.push_back(
@@ -2400,12 +2417,14 @@ static bool layout_bonds_are_too_close(const LayoutBond& a, const LayoutBond& b)
 static std::tuple<unsigned int, unsigned int, int, double, int>
 score_polymer_placement(const RDKit::ROMol& polymer, PolymerPlacement side,
                         const std::vector<RDKit::ROMOL_SPTR>& placed_polymers,
-                        const std::vector<double>& placed_clearances)
+                        const std::vector<double>& placed_clearances,
+                        const std::vector<BOND_IDX_VEC>& connections_to_placed,
+                        const std::vector<LayoutBond>& placed_bonds)
 {
     unsigned int residue_clashes = 0;
     for (size_t i = 0; i < placed_polymers.size(); ++i) {
         const auto& placed = placed_polymers[i];
-        const auto connections = get_bonds_between_polymers(polymer, *placed);
+        const auto& connections = connections_to_placed[i];
         const double clearance = placed_clearances[i];
         for (const auto* atom : polymer.atoms()) {
             const auto pos = polymer.getConformer().getAtomPos(atom->getIdx());
@@ -2424,17 +2443,11 @@ score_polymer_placement(const RDKit::ROMol& polymer, PolymerPlacement side,
     }
 
     std::vector<LayoutBond> new_bonds;
-    std::vector<LayoutBond> placed_bonds;
     append_polymer_bonds(new_bonds, polymer);
     double total_length = 0;
     for (size_t i = 0; i < placed_polymers.size(); ++i) {
-        append_polymer_bonds(placed_bonds, *placed_polymers[i]);
         append_connections(new_bonds, polymer, *placed_polymers[i],
-                           &total_length);
-        for (size_t j = 0; j < i; ++j) {
-            append_connections(placed_bonds, *placed_polymers[i],
-                               *placed_polymers[j]);
-        }
+                           connections_to_placed[i], &total_length);
     }
 
     unsigned int crossings = 0;
@@ -2461,7 +2474,15 @@ score_polymer_placement(const RDKit::ROMol& polymer, PolymerPlacement side,
             std::round(total_length / EPSILON), horizontal_side};
 }
 
-/** Try each side and reflection, keeping the least crossed, shortest layout. */
+/**
+ * Try each cardinal side and permitted reflection of polymer_to_orient.
+ * reference_polymer is the connected parent, or the previous polymer when
+ * there is no connection. Score each candidate against placed_polymers.
+ * monomer_mol retains the original HELM chain IDs and bond properties, which
+ * are needed to classify connector spacing and nucleic acid strands.
+ * polymer_was_rotated means the polymer is an antiparallel partner in a
+ * double strand; it has already been rotated and must not be reflected again.
+ */
 static void
 orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
                const RDKit::ROMol& reference_polymer, bool polymer_was_rotated,
@@ -2479,12 +2500,26 @@ orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
     const double preferred_clearance = get_interpolymer_clearance(
         monomer_mol, polymer_to_orient, reference_polymer, parent_bonds);
     std::vector<double> placed_clearances;
+    std::vector<BOND_IDX_VEC> connections_to_placed;
+    std::vector<LayoutBond> placed_bonds;
     placed_clearances.reserve(placed_polymers.size());
-    for (const auto& placed : placed_polymers) {
-        const auto bonds =
-            get_bonds_between_polymers(polymer_to_orient, *placed);
+    connections_to_placed.reserve(placed_polymers.size());
+    for (size_t i = 0; i < placed_polymers.size(); ++i) {
+        const auto& placed = placed_polymers[i];
+        auto bonds =
+            placed.get() == &reference_polymer
+                ? parent_bonds
+                : get_bonds_between_polymers(polymer_to_orient, *placed);
         placed_clearances.push_back(get_interpolymer_clearance(
             monomer_mol, polymer_to_orient, *placed, bonds));
+        connections_to_placed.push_back(std::move(bonds));
+        append_polymer_bonds(placed_bonds, *placed);
+        for (size_t j = 0; j < i; ++j) {
+            const auto connections =
+                get_bonds_between_polymers(*placed, *placed_polymers[j]);
+            append_connections(placed_bonds, *placed, *placed_polymers[j],
+                               connections);
+        }
     }
     // Keep the wider spacing available if a compact connector causes a clash.
     const int clearance_count =
@@ -2492,7 +2527,9 @@ orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
     // Preserve the orientation of bases on unpaired DNA/RNA strands. The
     // 180 degree rotation of a paired nucleic acid is intentional.
     const int reflection_count =
-        polymer_was_rotated ? 1 : (is_nucleic_acid(polymer_to_orient) ? 2 : 4);
+        polymer_was_rotated
+            ? 1
+            : (is_nucleic_acid(polymer_to_orient, monomer_mol) ? 2 : 4);
     for (auto side : sides) {
         for (int reflection = 0; reflection < reflection_count; ++reflection) {
             for (int clearance_idx = 0; clearance_idx < clearance_count;
@@ -2513,9 +2550,9 @@ orient_polymer(RDKit::ROMol& polymer_to_orient, const RDKit::ROMol& monomer_mol,
                 place_polymer_beside_reference(polymer_to_orient,
                                                reference_polymer, parent_bonds,
                                                side, clearance);
-                auto score =
-                    score_polymer_placement(polymer_to_orient, side,
-                                            placed_polymers, placed_clearances);
+                auto score = score_polymer_placement(
+                    polymer_to_orient, side, placed_polymers, placed_clearances,
+                    connections_to_placed, placed_bonds);
                 if (!best_score || score < *best_score) {
                     best_score = score;
                     best_positions = conf.getPositions();
@@ -2638,14 +2675,15 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
+static bool are_double_stranded_nucleic_acid(const RDKit::ROMol& original_mol,
+                                             RDKit::ROMOL_SPTR polymer1,
                                              RDKit::ROMOL_SPTR polymer2)
 {
     // return true if the two polymers are nucleic acids and there are at least
     // two bonds between them.
 
     for (auto polymer : {polymer1, polymer2}) {
-        if (!is_nucleic_acid(*polymer)) {
+        if (!is_nucleic_acid(*polymer, original_mol)) {
             return false;
         }
     }
@@ -2681,8 +2719,9 @@ void lay_out_polymers(
         // For double stranded nucleic acids we want to lay out the first
         // polymer normally and then rotate the other polymer 180° so the
         // strands run anti-parallel to each other
-        bool rotate_polymer = (parent != nullptr) &&
-                              are_double_stranded_nucleic_acid(polymer, parent);
+        bool rotate_polymer =
+            (parent != nullptr) &&
+            are_double_stranded_nucleic_acid(monomer_mol, polymer, parent);
         lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer,
                         render_peptides_linearly);
         if (parent != nullptr) {
@@ -3418,6 +3457,293 @@ RingResizeInfo compute_ring_info_for_resize(RDKit::ROMol& mol)
     return result;
 }
 
+using InterpolymerBonds = std::map<std::pair<std::string, std::string>,
+                                   std::vector<const RDKit::Bond*>>;
+using AlignedConnections =
+    std::map<std::string, std::vector<std::pair<std::string, double>>>;
+
+/** Build a graph of connections that were cardinal before resizing. */
+static AlignedConnections get_aligned_connections(
+    const RDKit::ROMol& mol, const InterpolymerBonds& interpolymer_bonds,
+    const std::vector<RDGeom::Point3D>& positions_after_resize, bool vertical)
+{
+    AlignedConnections aligned_connections;
+    for (const auto& [ids, bonds] : interpolymer_bonds) {
+        double correction_sum = 0;
+        bool all_aligned = true;
+        for (const auto* bond : bonds) {
+            const auto begin_idx = bond->getBeginAtomIdx();
+            const auto end_idx = bond->getEndAtomIdx();
+            const bool begin_is_first =
+                get_polymer_id(bond->getBeginAtom()) == ids.first;
+            const auto first_idx = begin_is_first ? begin_idx : end_idx;
+            const auto second_idx = begin_is_first ? end_idx : begin_idx;
+            const auto& first_pos = mol.getConformer().getAtomPos(first_idx);
+            const auto& second_pos = mol.getConformer().getAtomPos(second_idx);
+            const double original_offset = vertical
+                                               ? first_pos.x - second_pos.x
+                                               : first_pos.y - second_pos.y;
+            if (std::abs(original_offset) > EPSILON) {
+                all_aligned = false;
+                break;
+            }
+            const auto& resized_first = positions_after_resize[first_idx];
+            const auto& resized_second = positions_after_resize[second_idx];
+            correction_sum += vertical ? resized_first.x - resized_second.x
+                                       : resized_first.y - resized_second.y;
+        }
+        if (!all_aligned) {
+            continue;
+        }
+        // One rigid translation affects every bond between these polymers.
+        // Their mean correction minimizes the total remaining tilt.
+        const double correction = correction_sum / bonds.size();
+        aligned_connections[ids.first].emplace_back(ids.second, correction);
+        aligned_connections[ids.second].emplace_back(ids.first, -correction);
+    }
+    return aligned_connections;
+}
+
+struct AlignmentTranslations {
+    std::map<std::string, double> translations;
+    std::map<std::string, std::string> group_for_polymer;
+};
+
+/** Anchor each connected group at its largest polymer. */
+static AlignmentTranslations
+solve_alignment_translations(const std::vector<std::string>& polymer_ids,
+                             const AlignedConnections& aligned_connections)
+{
+    std::map<std::string, double> translations;
+    std::map<std::string, std::string> group_for_polymer;
+    for (const auto& root : polymer_ids) {
+        if (translations.contains(root)) {
+            continue;
+        }
+        translations[root] = 0;
+        group_for_polymer[root] = root;
+        std::queue<std::string> pending;
+        pending.push(root);
+        while (!pending.empty()) {
+            const auto id = pending.front();
+            pending.pop();
+            const auto found = aligned_connections.find(id);
+            if (found == aligned_connections.end()) {
+                continue;
+            }
+            for (const auto& [neighbor, offset] : found->second) {
+                if (!translations.contains(neighbor)) {
+                    translations[neighbor] = translations[id] + offset;
+                    group_for_polymer[neighbor] = root;
+                    pending.push(neighbor);
+                }
+            }
+        }
+    }
+    return {std::move(translations), std::move(group_for_polymer)};
+}
+
+/** Limit each connected group so label clearance survives alignment. */
+static std::map<std::string, double> get_clearance_fractions(
+    const std::vector<std::string>& polymer_ids,
+    const std::vector<std::string>& atom_polymer_ids,
+    const std::vector<RDGeom::Point3D>& positions_after_resize,
+    const std::vector<RDGeom::Point3D>& sizes_after_resize,
+    const AlignmentTranslations& alignment, bool vertical)
+{
+    const auto& translations = alignment.translations;
+    const auto& group_for_polymer = alignment.group_for_polymer;
+    const auto num_atoms = positions_after_resize.size();
+    // Preserve the existing label gap on the translated axis when labels
+    // overlap on the other axis, up to the standard connection gap.
+    const double minimum_label_gap = MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
+    std::map<std::string, double> max_alignment_fraction;
+    for (const auto& root : polymer_ids) {
+        max_alignment_fraction[group_for_polymer.at(root)] = 1.0;
+    }
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        for (unsigned int j = i + 1; j < num_atoms; ++j) {
+            if (atom_polymer_ids[i] == atom_polymer_ids[j]) {
+                continue;
+            }
+            const auto& group_i = group_for_polymer.at(atom_polymer_ids[i]);
+            const auto& group_j = group_for_polymer.at(atom_polymer_ids[j]);
+            const double translation_i = translations.at(atom_polymer_ids[i]);
+            const double translation_j = translations.at(atom_polymer_ids[j]);
+            const double relative_translation = translation_i - translation_j;
+            if (group_i == group_j && relative_translation == 0.0) {
+                continue;
+            }
+            if (group_i != group_j && translation_i == 0.0 &&
+                translation_j == 0.0) {
+                continue;
+            }
+            const auto& pos_i = positions_after_resize[i];
+            const auto& pos_j = positions_after_resize[j];
+            const auto& size_i = sizes_after_resize[i];
+            const auto& size_j = sizes_after_resize[j];
+            const double along =
+                vertical ? pos_i.x - pos_j.x : pos_i.y - pos_j.y;
+            const double across =
+                vertical ? pos_i.y - pos_j.y : pos_i.x - pos_j.x;
+            const double half_along = vertical ? (size_i.x + size_j.x) * 0.5
+                                               : (size_i.y + size_j.y) * 0.5;
+            const double half_across = vertical ? (size_i.y + size_j.y) * 0.5
+                                                : (size_i.x + size_j.x) * 0.5;
+            if (std::abs(across) >= half_across + minimum_label_gap) {
+                continue;
+            }
+            const double existing_gap =
+                std::max(0.0, std::abs(along) - half_along);
+            const double required_separation =
+                half_along + std::min(existing_gap, minimum_label_gap);
+            const double allowance =
+                std::max(0.0, std::abs(along) - required_separation);
+            if (group_i == group_j) {
+                if (along * relative_translation < 0.0) {
+                    max_alignment_fraction[group_i] = std::min(
+                        max_alignment_fraction[group_i],
+                        std::clamp(allowance / std::abs(relative_translation),
+                                   0.0, 1.0));
+                }
+            } else {
+                // Bound each group by its own movement toward the other
+                // label. An unrelated crowded group cannot stop this one.
+                const double direction = std::copysign(1.0, along);
+                const double inward_i =
+                    std::max(0.0, -direction * translation_i);
+                const double inward_j =
+                    std::max(0.0, direction * translation_j);
+                const double inward_total = inward_i + inward_j;
+                if (inward_total > 0.0) {
+                    const double limit =
+                        std::clamp(allowance / inward_total, 0.0, 1.0);
+                    if (inward_i > 0.0) {
+                        max_alignment_fraction[group_i] =
+                            std::min(max_alignment_fraction[group_i], limit);
+                    }
+                    if (inward_j > 0.0) {
+                        max_alignment_fraction[group_j] =
+                            std::min(max_alignment_fraction[group_j], limit);
+                    }
+                }
+            }
+        }
+    }
+
+    return max_alignment_fraction;
+}
+
+struct AlignmentResizeData {
+    InterpolymerBonds interpolymer_bonds;
+    std::map<std::string, std::vector<unsigned int>> polymer_atoms;
+    std::vector<std::string> polymer_ids;
+    std::vector<std::string> atom_polymer_ids;
+    std::vector<RDGeom::Point3D> positions_after_resize;
+    std::vector<RDGeom::Point3D> sizes_after_resize;
+};
+
+/** Collect the polymers, bonds, positions and label sizes used by both axes. */
+static AlignmentResizeData collect_alignment_resize_data(
+    const RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& clamped_monomer_sizes,
+    const std::vector<RDGeom::Point3D>& linear_displacements,
+    const std::vector<RDGeom::Point3D>& ring_displacements)
+{
+    AlignmentResizeData data;
+    auto& interpolymer_bonds = data.interpolymer_bonds;
+    auto& polymer_atoms = data.polymer_atoms;
+    auto& polymer_ids = data.polymer_ids;
+    for (const auto* atom : mol.atoms()) {
+        const auto id = get_polymer_id(atom);
+        if (!polymer_atoms.contains(id)) {
+            polymer_ids.push_back(id);
+        }
+        polymer_atoms[id].push_back(atom->getIdx());
+    }
+    const auto num_atoms = mol.getNumAtoms();
+    data.positions_after_resize.resize(num_atoms);
+    auto& positions_after_resize = data.positions_after_resize;
+    for (const auto* atom : mol.atoms()) {
+        const auto idx = atom->getIdx();
+        positions_after_resize[idx] = mol.getConformer().getAtomPos(idx) +
+                                      linear_displacements[idx] +
+                                      ring_displacements[idx];
+    }
+    for (const auto* bond : mol.bonds()) {
+        const auto begin_id = get_polymer_id(bond->getBeginAtom());
+        const auto end_id = get_polymer_id(bond->getEndAtom());
+        auto ids = std::minmax(begin_id, end_id);
+        if (ids.first != ids.second) {
+            interpolymer_bonds[ids].push_back(bond);
+        }
+    }
+    std::stable_sort(polymer_ids.begin(), polymer_ids.end(),
+                     [&](const auto& a, const auto& b) {
+                         return polymer_atoms[a].size() >
+                                polymer_atoms[b].size();
+                     });
+    data.atom_polymer_ids.resize(num_atoms);
+    auto& atom_polymer_ids = data.atom_polymer_ids;
+    data.sizes_after_resize.resize(num_atoms);
+    auto& sizes_after_resize = data.sizes_after_resize;
+    for (const auto* atom : mol.atoms()) {
+        const auto idx = atom->getIdx();
+        atom_polymer_ids[idx] = get_polymer_id(atom);
+        const auto size_it = clamped_monomer_sizes.find(idx);
+        sizes_after_resize[idx] = size_it == clamped_monomer_sizes.end()
+                                      ? get_monomer_size(mol, idx)
+                                      : size_it->second;
+    }
+    return data;
+}
+
+/** Keep cardinal interpolymer bonds aligned after label resizing. */
+static void align_interpolymer_bonds_after_resize(
+    RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& clamped_monomer_sizes,
+    std::vector<RDGeom::Point3D>& linear_displacements,
+    const std::vector<RDGeom::Point3D>& ring_displacements)
+{
+    // Ring expansion moves attached monomers with the ring, but the separate
+    // linear resize pass can shift connected polymers by different amounts.
+    // Keep cardinal bonds aligned by translating whole polymers on their
+    // perpendicular axis.
+    // Calculate all translations before applying them so fixing one bond cannot
+    // tilt another bond attached to the same polymer.
+    auto data = collect_alignment_resize_data(
+        mol, clamped_monomer_sizes, linear_displacements, ring_displacements);
+    auto& positions_after_resize = data.positions_after_resize;
+    for (const bool vertical : {true, false}) {
+        const auto aligned_connections = get_aligned_connections(
+            mol, data.interpolymer_bonds, positions_after_resize, vertical);
+        const auto alignment =
+            solve_alignment_translations(data.polymer_ids, aligned_connections);
+        if (std::all_of(
+                alignment.translations.begin(), alignment.translations.end(),
+                [](const auto& entry) { return entry.second == 0.0; })) {
+            continue;
+        }
+        const auto max_alignment_fraction = get_clearance_fractions(
+            data.polymer_ids, data.atom_polymer_ids, positions_after_resize,
+            data.sizes_after_resize, alignment, vertical);
+        for (const auto& [id, translation] : alignment.translations) {
+            for (const auto idx : data.polymer_atoms.at(id)) {
+                const double adjustment =
+                    translation * max_alignment_fraction.at(
+                                      alignment.group_for_polymer.at(id));
+                if (vertical) {
+                    linear_displacements[idx].x += adjustment;
+                    positions_after_resize[idx].x += adjustment;
+                } else {
+                    linear_displacements[idx].y += adjustment;
+                    positions_after_resize[idx].y += adjustment;
+                }
+            }
+        }
+    }
+}
+
 /**
  * Resize multiple monomers in a single, batched operation. The
  * operations differ for monomers in rings and in chains:
@@ -3458,162 +3784,8 @@ void resize_monomers(
     auto ring_displacements = compute_ring_expansion_displacements(
         mol, ring_resize_data, ring_resize_info);
 
-    // Ring expansion moves attached monomers with the ring, but the separate
-    // linear resize pass can shift connected polymers by different amounts.
-    // Keep cardinal bonds aligned by translating whole polymers on their
-    // perpendicular axis.
-    // Calculate all translations before applying them so fixing one bond cannot
-    // tilt another bond attached to the same polymer.
-    std::map<std::pair<std::string, std::string>, unsigned int> bond_counts;
-    std::map<std::string, std::vector<unsigned int>> polymer_atoms;
-    std::vector<std::string> polymer_ids;
-    for (const auto* atom : mol.atoms()) {
-        const auto id = get_polymer_id(atom);
-        if (!polymer_atoms.contains(id)) {
-            polymer_ids.push_back(id);
-        }
-        polymer_atoms[id].push_back(atom->getIdx());
-    }
-    const auto num_atoms = mol.getNumAtoms();
-    std::vector<RDGeom::Point3D> positions_after_resize(num_atoms);
-    for (const auto* atom : mol.atoms()) {
-        const auto idx = atom->getIdx();
-        positions_after_resize[idx] = mol.getConformer().getAtomPos(idx) +
-                                      linear_displacements[idx] +
-                                      ring_displacements[idx];
-    }
-    for (const auto* bond : mol.bonds()) {
-        const auto begin_id = get_polymer_id(bond->getBeginAtom());
-        const auto end_id = get_polymer_id(bond->getEndAtom());
-        auto ids = std::minmax(begin_id, end_id);
-        if (ids.first != ids.second) {
-            ++bond_counts[ids];
-        }
-    }
-    std::stable_sort(polymer_ids.begin(), polymer_ids.end(),
-                     [&](const auto& a, const auto& b) {
-                         return polymer_atoms[a].size() >
-                                polymer_atoms[b].size();
-                     });
-    std::vector<std::string> atom_polymer_ids(num_atoms);
-    std::vector<RDGeom::Point3D> sizes_after_resize(num_atoms);
-    for (const auto* atom : mol.atoms()) {
-        const auto idx = atom->getIdx();
-        atom_polymer_ids[idx] = get_polymer_id(atom);
-        const auto size_it = clamped_monomer_sizes.find(idx);
-        sizes_after_resize[idx] = size_it == clamped_monomer_sizes.end()
-                                      ? get_monomer_size(mol, idx)
-                                      : size_it->second;
-    }
-    for (const bool vertical : {true, false}) {
-        std::map<std::string, std::vector<std::pair<std::string, double>>>
-            aligned_connections;
-        for (const auto* bond : mol.bonds()) {
-            const auto begin_idx = bond->getBeginAtomIdx();
-            const auto end_idx = bond->getEndAtomIdx();
-            const auto begin_id = get_polymer_id(bond->getBeginAtom());
-            const auto end_id = get_polymer_id(bond->getEndAtom());
-            if (begin_id == end_id ||
-                bond_counts[std::minmax(begin_id, end_id)] != 1 ||
-                std::abs(vertical
-                             ? mol.getConformer().getAtomPos(begin_idx).x -
-                                   mol.getConformer().getAtomPos(end_idx).x
-                             : mol.getConformer().getAtomPos(begin_idx).y -
-                                   mol.getConformer().getAtomPos(end_idx).y) >
-                    EPSILON) {
-                continue;
-            }
-            const double correction =
-                vertical ? positions_after_resize[begin_idx].x -
-                               positions_after_resize[end_idx].x
-                         : positions_after_resize[begin_idx].y -
-                               positions_after_resize[end_idx].y;
-            aligned_connections[begin_id].emplace_back(end_id, correction);
-            aligned_connections[end_id].emplace_back(begin_id, -correction);
-        }
-        // Anchor the largest polymer in each connected group, then carry its
-        // translation through the other connected polymers.
-        std::map<std::string, double> translations;
-        for (const auto& root : polymer_ids) {
-            if (translations.contains(root)) {
-                continue;
-            }
-            translations[root] = 0;
-            std::queue<std::string> pending;
-            pending.push(root);
-            while (!pending.empty()) {
-                const auto id = pending.front();
-                pending.pop();
-                for (const auto& [neighbor, offset] : aligned_connections[id]) {
-                    if (!translations.contains(neighbor)) {
-                        translations[neighbor] = translations[id] + offset;
-                        pending.push(neighbor);
-                    }
-                }
-            }
-        }
-        // Preserve the existing label gap on the translated axis when labels
-        // overlap on the other axis, up to the standard connection gap.
-        const double minimum_label_gap =
-            MONOMER_BOND_LENGTH - MONOMER_MINIMUM_SIZE;
-        double max_alignment_fraction = 1.0;
-        for (unsigned int i = 0; i < num_atoms; ++i) {
-            for (unsigned int j = i + 1; j < num_atoms; ++j) {
-                if (atom_polymer_ids[i] == atom_polymer_ids[j]) {
-                    continue;
-                }
-                const double relative_translation =
-                    translations[atom_polymer_ids[i]] -
-                    translations[atom_polymer_ids[j]];
-                if (relative_translation == 0.0) {
-                    continue;
-                }
-                const auto& pos_i = positions_after_resize[i];
-                const auto& pos_j = positions_after_resize[j];
-                const auto& size_i = sizes_after_resize[i];
-                const auto& size_j = sizes_after_resize[j];
-                const double along =
-                    vertical ? pos_i.x - pos_j.x : pos_i.y - pos_j.y;
-                const double across =
-                    vertical ? pos_i.y - pos_j.y : pos_i.x - pos_j.x;
-                const double half_along = vertical
-                                              ? (size_i.x + size_j.x) * 0.5
-                                              : (size_i.y + size_j.y) * 0.5;
-                const double half_across = vertical
-                                               ? (size_i.y + size_j.y) * 0.5
-                                               : (size_i.x + size_j.x) * 0.5;
-                if (std::abs(across) >= half_across + minimum_label_gap) {
-                    continue;
-                }
-                const double existing_gap =
-                    std::max(0.0, std::abs(along) - half_along);
-                const double required_separation =
-                    half_along + std::min(existing_gap, minimum_label_gap);
-                if (along * relative_translation >= 0.0) {
-                    continue;
-                }
-                const double allowed_fraction =
-                    (std::abs(along) - required_separation) /
-                    std::abs(relative_translation);
-                max_alignment_fraction =
-                    std::min(max_alignment_fraction,
-                             std::clamp(allowed_fraction, 0.0, 1.0));
-            }
-        }
-
-        for (const auto& [id, translation] : translations) {
-            for (const auto idx : polymer_atoms[id]) {
-                const double adjustment = translation * max_alignment_fraction;
-                if (vertical) {
-                    linear_displacements[idx].x += adjustment;
-                    positions_after_resize[idx].x += adjustment;
-                } else {
-                    linear_displacements[idx].y += adjustment;
-                    positions_after_resize[idx].y += adjustment;
-                }
-            }
-        }
-    }
+    align_interpolymer_bonds_after_resize(
+        mol, clamped_monomer_sizes, linear_displacements, ring_displacements);
 
     // apply movement
     apply_displacements(mol, linear_displacements);

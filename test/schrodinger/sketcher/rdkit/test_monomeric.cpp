@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string_view>
 #include <unordered_set>
 
 #include <rdkit/GraphMol/RWMol.h>
@@ -16,6 +17,8 @@
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_attachment_points.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/local_monomer_db_fixture.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -24,6 +27,8 @@
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
 using namespace boost::unit_test;
+
+BOOST_GLOBAL_FIXTURE(LocalMonomerDbFixture);
 
 namespace schrodinger
 {
@@ -44,6 +49,75 @@ void check_point_close(const QPointF& actual, const QPointF& expected)
 }
 
 } // namespace
+
+/**
+ * A recognized natural analog determines the nucleic acid component type,
+ * even when the custom symbol suggests a different type.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_na_monomers_use_natural_analog_first)
+{
+    struct ResetMonomerDefinitions {
+        ~ResetMonomerDefinitions()
+        {
+            rdkit_extensions::MonomerDatabase::instance()
+                .resetMonomerDefinitions();
+        }
+    } reset_definitions;
+
+    constexpr std::string_view json = R"([{
+        "symbol": "SUGX",
+        "polymer_type": "RNA",
+        "natural_analog": "R",
+        "smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "core_smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "name": "Custom sugar without suffix",
+        "monomer_type": "Backbone",
+        "author": "test",
+        "pdbcode": "SGX"
+    }, {
+        "symbol": "Basr",
+        "polymer_type": "RNA",
+        "natural_analog": "A",
+        "smiles": "Nc1ncnc2c1ncn2[H:1]",
+        "core_smiles": "Nc1ncnc2ncnc12",
+        "name": "Custom base ending in r",
+        "monomer_type": "Branch",
+        "author": "test",
+        "pdbcode": "BSR"
+    }, {
+        "symbol": "Basp",
+        "polymer_type": "RNA",
+        "natural_analog": "C",
+        "smiles": "Nc1ccn([H:1])c(=O)n1",
+        "core_smiles": "Nc1ccnc(=O)n1",
+        "name": "Custom base ending in p",
+        "monomer_type": "Branch",
+        "author": "test",
+        "pdbcode": "BSP"
+    }])";
+    const auto [succeeded, failed] =
+        rdkit_extensions::MonomerDatabase::instance().loadMonomersFromJson(
+            json);
+    BOOST_REQUIRE(failed.empty());
+    BOOST_REQUIRE_EQUAL(succeeded.size(), 3);
+
+    BOOST_CHECK(rdkit_extensions::get_na_monomer_type(
+                    "SUGX", rdkit_extensions::ChainType::RNA) ==
+                rdkit_extensions::NucleicAcidMonomerType::SUGAR);
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[SUGX]}$$$$V2.0");
+    BOOST_CHECK(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                MonomerType::NA_SUGAR);
+
+    for (const auto symbol : {"Basr", "Basp"}) {
+        BOOST_CHECK(rdkit_extensions::get_na_monomer_type(
+                        symbol, rdkit_extensions::ChainType::RNA) ==
+                    rdkit_extensions::NucleicAcidMonomerType::BASE);
+        auto base_mol = rdkit_extensions::to_rdkit(
+            "RNA1{R([" + std::string(symbol) + "])P}$$$$V2.0");
+        BOOST_CHECK(get_monomer_type(base_mol->getAtomWithIdx(1)) ==
+                    MonomerType::NA_BASE);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(test_validate_monomers)
 {

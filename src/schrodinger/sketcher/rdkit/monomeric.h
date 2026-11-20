@@ -46,7 +46,7 @@ using rdkit_extensions::get_connector_type;
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, X_OR_S = rdkit_extensions::PEPTIDE_R3_ATTACHMENT_POINT };
+enum { N = 1, C = 2, X_OR_S = 3 };
 }
 
 namespace NASugarAP
@@ -165,13 +165,6 @@ SKETCHER_API MonomerType get_monomer_type(const RDKit::Atom* atom);
  */
 SKETCHER_API MonomerType get_monomer_type(
     std::string_view res_name, rdkit_extensions::ChainType chain_type);
-
-/**
- * @return the type of nucleic acid monomer that the given residue name
- * represents
- */
-SKETCHER_API MonomerType
-get_na_monomer_type_from_res_name(const std::string_view res_name);
 
 /**
  * Determine the text to use for the name of the given monomer
