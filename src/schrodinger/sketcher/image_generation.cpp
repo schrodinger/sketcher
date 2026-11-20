@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <functional>
+#include <string_view>
 
 #include <QBuffer>
 #include <QByteArray>
@@ -135,16 +136,33 @@ void setHaloHighlightings(MolModel& model, const RenderOptions& opts)
 
 /**
  * @internal
- * Helper function to inject atom labels data from the given RenderOptions into
- * the given MolModel
+ * Helper function to store the given per-atom text as an atom property on the
+ * atoms of the given MolModel
+ * @param model The model containing the atoms to update
+ * @param rdatom_index_to_text A map of atom index to the text to store
+ * @param prop_name The name of the atom property to set
  */
-void setAtomLabels(MolModel& model, const RenderOptions& opts)
+void setAtomStringProps(MolModel& model,
+                        const QHash<int, std::string>& rdatom_index_to_text,
+                        const std::string_view prop_name)
 {
     auto mol = model.getMol();
-    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_label)) {
+    for (auto [index, text] : asKeyValue(rdatom_index_to_text)) {
         auto atom = mol->getAtomWithIdx(index);
-        atom->setProp(RDKit::common_properties::_displayLabel, text);
+        atom->setProp(prop_name, text);
     }
+}
+
+/**
+ * @internal
+ * Helper function to inject atom labels and annotations from the given
+ * RenderOptions into the given MolModel
+ */
+void setAtomLabelsAndAnnotations(MolModel& model, const RenderOptions& opts)
+{
+    setAtomStringProps(model, opts.rdatom_index_to_label,
+                       RDKit::common_properties::_displayLabel);
+    setAtomStringProps(model, opts.rdatom_index_to_annotation, USER_ANNOTATION);
 }
 
 ImageFormat get_format(const QString& filename)
@@ -293,7 +311,7 @@ void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
     add_to_mol_model(mol_model, input, opts);
     setLineColors(mol_model, opts);
     setHaloHighlightings(mol_model, opts);
-    setAtomLabels(mol_model, opts);
+    setAtomLabelsAndAnnotations(mol_model, opts);
     sketcher_model.loadRenderOptions(opts);
 }
 

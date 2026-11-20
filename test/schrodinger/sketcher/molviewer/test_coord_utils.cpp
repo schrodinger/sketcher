@@ -139,5 +139,22 @@ BOOST_AUTO_TEST_CASE(test_best_placing_around_origin_prefers_horizontal,
     BOOST_TEST(line.angle() == 90.0);
 } // namespace sketcher
 
+BOOST_AUTO_TEST_CASE(test_get_distance_to_rect,
+                     *boost::unit_test::tolerance(1e-6))
+{
+    const QRectF rect(0, 0, 10, 10);
+    // points inside of and on the edge of the rect
+    BOOST_TEST(get_distance_to_rect(QPointF(5, 5), rect) == 0.0);
+    BOOST_TEST(get_distance_to_rect(QPointF(10, 3), rect) == 0.0);
+    // points to the side of, above, and below the rect
+    BOOST_TEST(get_distance_to_rect(QPointF(13, 2), rect) == 3.0);
+    BOOST_TEST(get_distance_to_rect(QPointF(-2, 7), rect) == 2.0);
+    BOOST_TEST(get_distance_to_rect(QPointF(2, -4), rect) == 4.0);
+    BOOST_TEST(get_distance_to_rect(QPointF(8, 11), rect) == 1.0);
+    // points diagonally off of the corners of the rect
+    BOOST_TEST(get_distance_to_rect(QPointF(13, 14), rect) == 5.0);
+    BOOST_TEST(get_distance_to_rect(QPointF(-3, -4), rect) == 5.0);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

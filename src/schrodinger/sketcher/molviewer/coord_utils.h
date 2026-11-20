@@ -263,6 +263,13 @@ SKETCHER_API bool intersection_of_line_and_rect(const QLineF& line,
                                                 const QRectF& rect, QPointF& i);
 
 /**
+ * @return the distance between the given point and the nearest point of the
+ * given rectangle, or zero if the point is inside the rectangle
+ */
+SKETCHER_API qreal get_distance_to_rect(const QPointF& point,
+                                        const QRectF& rect);
+
+/**
  * Update the coordinates of a molecule so that it's directly to the right of
  * another molecule.
  * @param[in,out] mol_to_move The molecule to move

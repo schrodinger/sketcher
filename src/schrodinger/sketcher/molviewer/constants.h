@@ -45,6 +45,11 @@ constexpr int MAX_UNPAIRED_E = 4;
 // bonds
 const std::string USER_COLOR = "USER_COLOR";
 
+// the name of the rdkit property that holds user-defined annotation text for
+// atoms. Unlike _displayLabel, which replaces the atom's main label, this text
+// is drawn as a small, additional label next to the atom.
+const std::string USER_ANNOTATION = "USER_ANNOTATION";
+
 // The default bond length as defined by RDKit
 const float BOND_LENGTH = RDDepict::BOND_LEN;
 
@@ -240,6 +245,30 @@ const qreal FRAGMENT_CURSOR_HINT_BOND_SPACING = 12.0;
 // the distance between the (circle circumscribed to the) stereo annotation and
 // the atom in bond length units.
 const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.10;
+
+// The minimum empty space (in scene units) to leave between an atom annotation
+// label (see USER_ANNOTATION) and any labels, bonds, or highlighting
+const qreal ANNOTATION_LABEL_PADDING = 2.0;
+
+// The maximum distance between an atom annotation label and its atom, in bond
+// length units
+const qreal ANNOTATION_LABEL_MAX_DISTANCE_RATIO = 1.0;
+
+// The step size (in scene units) used when moving an atom annotation label away
+// from its atom in search of empty space
+const qreal ANNOTATION_LABEL_DISTANCE_STEP = 2.0;
+
+// The step size (in degrees) used when rotating an atom annotation label around
+// its atom in search of empty space. Must evenly divide 360.
+const int ANNOTATION_LABEL_ANGLE_STEP = 15;
+
+// When searching for empty space for an atom annotation label, how costly each
+// ANNOTATION_LABEL_ANGLE_STEP of rotation away from the preferred (i.e. most
+// open) direction is, expressed as an equivalent distance (in scene units)
+// between the annotation and the atom's label. This is kept small since it's
+// only intended as a tie-breaker; the annotation's distance from the atom's
+// label matters much more.
+const qreal ANNOTATION_LABEL_ANGLE_STEP_PENALTY = 0.5;
 
 // the distance between the stereo annotation and the bond in bond length units
 const qreal BOND_STEREO_LABEL_DISTANCE_RATIO = 0.20;

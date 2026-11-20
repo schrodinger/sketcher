@@ -165,6 +165,8 @@ RenderOptions render_options_from_js(const emscripten::val& options)
     }
     read_string_hash_option(options, "rdatom_index_to_label",
                             opts.rdatom_index_to_label);
+    read_string_hash_option(options, "rdatom_index_to_annotation",
+                            opts.rdatom_index_to_annotation);
     read_color_hash_option(options, "rdatom_index_to_halo_color",
                            opts.rdatom_index_to_halo_color);
     read_color_hash_option(options, "rdbond_index_to_halo_color",
