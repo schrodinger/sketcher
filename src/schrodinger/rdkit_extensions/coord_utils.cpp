@@ -119,7 +119,7 @@ using PeptideLinks = std::map<ResidueKey, PeptideLink>;
 //                O
 //                ||
 // C(prev)       C
-//        \      / \
+//        \      / ╲
 //         N----CA   N(next)
 //              |
 //              R
@@ -132,7 +132,7 @@ using PeptideLinks = std::map<ResidueKey, PeptideLink>;
 //             C
 //             |
 // C(prev)     CA
-//       \    /  \
+//       \    /  ╲
 //        N       R
 //
 // CIS_CA_CO: reflect after CA-C. With the same incoming bond, the backbone
