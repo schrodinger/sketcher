@@ -9,6 +9,7 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <ranges>
 #include <unordered_map>
@@ -23,6 +24,41 @@
 
 namespace schrodinger::rdkit_extensions
 {
+
+NucleicAcidMonomerType get_na_monomer_type(std::string_view residue_name,
+                                           ChainType chain_type)
+{
+    const auto named_type =
+        [](std::string_view name) -> std::optional<NucleicAcidMonomerType> {
+        if (name.empty()) {
+            return std::nullopt;
+        }
+        if (name == "A" || name == "C" || name == "G" || name == "T" ||
+            name == "U" || name == "N") {
+            return NucleicAcidMonomerType::BASE;
+        }
+        const auto suffix =
+            std::tolower(static_cast<unsigned char>(name.back()));
+        if (suffix == 'p') {
+            return NucleicAcidMonomerType::PHOSPHATE;
+        }
+        if (suffix == 'r') {
+            return NucleicAcidMonomerType::SUGAR;
+        }
+        return std::nullopt;
+    };
+    const auto analog = MonomerDatabase::instance().getNaturalAnalog(
+        std::string(residue_name), chain_type);
+    if (analog) {
+        if (const auto type = named_type(*analog)) {
+            return *type;
+        }
+    }
+    if (const auto type = named_type(residue_name)) {
+        return *type;
+    }
+    return NucleicAcidMonomerType::BASE;
+}
 
 namespace
 {
