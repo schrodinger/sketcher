@@ -35,12 +35,6 @@ QString NucleicAcidSymbolPopup::getSymbolForId(int id) const
     return QString::fromStdString(it->second.symbol);
 }
 
-rdkit_extensions::MonomerID
-NucleicAcidSymbolPopup::getMonomerForId(int id) const
-{
-    return m_id_to_monomer.at(id);
-}
-
 void NucleicAcidSymbolPopup::generateButtonPackets()
 {
     auto buttons = m_group->buttons();

@@ -455,6 +455,7 @@ void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
 void SketcherWidget::setLoadMonomerDatabaseVisible(const bool visible)
 {
     m_ui->top_bar_wdg->setLoadMonomerDatabaseVisible(visible);
+    m_ui->side_bar_wdg->setLoadMonomerDatabaseVisible(visible);
 }
 
 static std::unordered_set<const RDKit::Atom*>

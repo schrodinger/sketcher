@@ -89,6 +89,11 @@ int SketcherSideBar::getInterfaceToggleHeight() const
     return ui->atomistic_or_monomeric_widget->sizeHint().height();
 }
 
+void SketcherSideBar::setLoadMonomerDatabaseVisible(const bool visible)
+{
+    ui->monomeric_wdg->setLoadMonomerDatabaseVisible(visible);
+}
+
 void SketcherSideBar::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);

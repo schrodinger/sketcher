@@ -5,7 +5,6 @@
 #include <QBuffer>
 #include <QFontMetricsF>
 #include <QGraphicsScene>
-#include <QLinearGradient>
 #include <QPainter>
 #include <QSvgGenerator>
 
@@ -160,44 +159,13 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->setFont(m_main_label_font);
 
     if (m_main_label_is_truncated) {
-        QPainterPath text_path;
-        text_path.addText(m_main_label_left_baseline, m_main_label_font,
-                          m_main_label_fade_text);
-
-        // Start the gradient at the last character used to size the label.
-        // Subtracting its advance from the shortened label's advance preserves
-        // the kerning Qt applies before that character.
-        const QFontMetricsF metrics(m_main_label_font, painter->device());
-        const auto fade_start_character = m_main_label_text.right(1);
-        const auto fade_start_character_x =
-            m_main_label_left_baseline.x() +
-            metrics.horizontalAdvance(m_main_label_text) -
-            metrics.horizontalAdvance(fade_start_character);
-        QPainterPath fade_start_character_path;
-        fade_start_character_path.addText(
-            QPointF(fade_start_character_x, m_main_label_left_baseline.y()),
-            m_main_label_font, fade_start_character);
-        const auto fade_start_x =
-            fade_start_character_path.boundingRect().left();
-
-        // Intersect the glyph outlines explicitly rather than relying only on
-        // the painter clip. This ensures that SVG output also truncates the
-        // additional character at the monomer boundary.
-        const auto clipped_text_path = text_path.intersected(m_border_path);
-        const auto fade_end_x = clipped_text_path.boundingRect().right();
-
-        const auto color = m_main_label_pen.color();
-        auto faded_color = color;
-        faded_color.setAlpha(0);
-
-        QLinearGradient gradient(fade_start_x, 0.0, fade_end_x, 0.0);
-        gradient.setColorAt(0.0, color);
-        gradient.setColorAt(1.0, faded_color);
-
         // The item is sized and the text is centered using the shortened
-        // label, so the explicitly intersected path makes the extra character
-        // visibly truncated in the right-side padding.
-        painter->fillPath(clipped_text_path, QBrush(gradient));
+        // label, so the clipped path makes the extra character visibly
+        // truncated in the right-side padding.
+        paint_text_with_fade_out(*painter, m_main_label_text,
+                                 m_main_label_fade_text,
+                                 m_main_label_left_baseline, m_main_label_font,
+                                 m_main_label_pen.color(), m_border_path);
 
         // Ensure that the clipped glyph never paints over the border.
         painter->setPen(m_border_pen);
@@ -252,23 +220,7 @@ void AbstractMonomerItem::setMainLabelText(const std::string& text)
     const auto full_text = QString::fromStdString(text);
     m_main_label_text = elide_text(text);
     m_main_label_is_truncated = m_main_label_text != full_text;
-    m_main_label_fade_text = m_main_label_is_truncated
-                                 ? full_text.left(MAX_MONOMER_LABEL_LENGTH + 1)
-                                 : m_main_label_text;
-}
-
-QString elide_text(const std::string& text)
-{
-    auto qtext = QString::fromStdString(text);
-    // A label with one character beyond MAX_MONOMER_LABEL_LENGTH fits without
-    // suggesting that more text follows. For longer labels, crop at
-    // MAX_MONOMER_LABEL_LENGTH so the additional character can provide the
-    // fade-out at the monomer boundary.
-    if (qtext.length() > MAX_MONOMER_LABEL_LENGTH + 1) {
-        return qtext.left(MAX_MONOMER_LABEL_LENGTH);
-    } else {
-        return qtext;
-    }
+    m_main_label_fade_text = get_fade_out_text(full_text);
 }
 
 bool is_standard_nucleotide(const std::string& res_name)
@@ -433,15 +385,6 @@ QColor get_color_for_monomer(
     }
 
     return default_color;
-}
-
-QPointF center_text_in_rect(const QString& text, const QFontMetricsF& fm,
-                            const QRectF& rect)
-{
-    auto text_rect = fm.tightBoundingRect(text);
-    auto text_rect_origin_loc = -text_rect.bottomLeft();
-    text_rect.moveCenter(rect.center());
-    return text_rect.bottomLeft() + text_rect_origin_loc;
 }
 
 } // namespace sketcher

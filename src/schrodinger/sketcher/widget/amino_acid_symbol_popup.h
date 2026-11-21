@@ -38,8 +38,6 @@ class SKETCHER_API AminoAcidSymbolPopup : public ModularPopup
      */
     QString getSymbolForId(int id) const;
 
-    rdkit_extensions::MonomerID getMonomerForId(int id) const;
-
   protected:
     void generateButtonPackets() override;
     int getButtonIDToCheck() override;

@@ -76,9 +76,33 @@ SKETCHER_API QPoint calc_popup_position(const QSize& popup_size,
                                         const QRect& bounds);
 
 /**
+ * Calculate the largest height that a popup can have while still fitting
+ * either below or above an anchor, i.e. the room on whichever side of the
+ * anchor has more room. A popup that is no taller than this is placed without
+ * overlapping the anchor by calc_popup_position().
+ *
+ * @param anchor_rect The anchor's geometry, in the same coordinates as bounds
+ * @param bounds The area that the popup should fit inside
+ * @return The maximum popup height
+ */
+SKETCHER_API int calc_max_popup_height(const QRect& anchor_rect,
+                                       const QRect& bounds);
+
+/**
+ * @return The widget's geometry in global coordinates
+ */
+SKETCHER_API QRect get_global_geometry(const QWidget* widget);
+
+/**
+ * @return The area that a popup anchored to the given widget should fit
+ * inside, which is the available geometry of the anchor's screen. (On WASM
+ * builds, each canvas is its own screen.)
+ */
+SKETCHER_API QRect get_popup_bounds(const QWidget* anchor);
+
+/**
  * Show a popup next to an anchor widget, positioned using
- * calc_popup_position() within the available geometry of the anchor's screen.
- * (On WASM builds, each canvas is its own screen.) This only positions the
+ * calc_popup_position() within get_popup_bounds(). This only positions the
  * popup; it never resizes it.
  *
  * @param popup The popup to show, which must be a top-level widget (e.g. a

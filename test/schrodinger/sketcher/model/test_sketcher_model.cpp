@@ -587,28 +587,34 @@ BOOST_AUTO_TEST_CASE(monomer_db_repair_keeps_standard_tool)
 }
 
 /**
- * Unloading a custom override of a core monomer that has a natural analog
- * removes the monomer from the Monomer Database table, so the page's last-used
- * database monomer is cleared even though the core monomer can still be drawn
+ * A core monomer that has a natural analog is never in the Monomer Database
+ * table, even while a custom monomer overrides it, so a page's last-used
+ * database monomer holding it is cleared on the next database change even
+ * though the monomer can still be drawn. The core monomer's natural analog is
+ * what matters, so this holds even if the override has no natural analog.
  */
-BOOST_AUTO_TEST_CASE(monomer_db_repair_unloaded_override)
+BOOST_AUTO_TEST_CASE(monomer_db_repair_shadowed_core_monomer)
 {
     ResetDatabase reset_database;
     auto& db = rdkit_extensions::MonomerDatabase::instance();
     db.resetMonomerDefinitions();
-    auto core_meg =
-        db.getMonomerInfo("meG", rdkit_extensions::ChainType::PEPTIDE);
+    const rdkit_extensions::MonomerID meg{"meG",
+                                          rdkit_extensions::ChainType::PEPTIDE};
+    auto core_meg = db.getMonomerInfo(meg.symbol, meg.chain_type);
     BOOST_REQUIRE(core_meg.natural_analog == std::string("G"));
+    SketcherModel model;
+    activate_db_monomer(model, MonomerToolType::AMINO_ACID, meg);
+
     auto result = db.loadMonomersFromJson(
         R"([{"symbol":"meG","polymer_type":"PEPTIDE","natural_analog":"X",
              "smiles":"CC","name":"Custom meG","monomer_type":"backbone",
              "author":"test"}])");
     BOOST_REQUIRE(result.second.empty());
-    SketcherModel model;
-    const rdkit_extensions::MonomerID meg{"meG",
-                                          rdkit_extensions::ChainType::PEPTIDE};
-    activate_db_monomer(model, MonomerToolType::AMINO_ACID, meg);
-    db.resetMonomerDefinitions();
+    // the override is drawable...
+    BOOST_TEST(
+        db.getMonomerInfo(meg.symbol, meg.chain_type).name.value_or("") ==
+        "Custom meG");
+    // ...but isn't in the table
     BOOST_TEST(model.getMonomerDbMonomer().symbol.empty());
     BOOST_CHECK(model.getAminoAcidTool() == AminoAcidTool::ALA);
     BOOST_CHECK(model.getDrawTool() == DrawTool::MONOMER);

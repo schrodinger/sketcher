@@ -39,8 +39,10 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <QAbstractButton>
+#include <QAbstractItemModel>
 #include <QAbstractSpinBox>
 #include <QAction>
 #include <QApplication>
@@ -54,6 +56,8 @@
 #include <QGraphicsScene>
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsView>
+#include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -72,6 +76,7 @@
 #include <QRectF>
 #include <QSize>
 #include <QString>
+#include <QTableView>
 #include <QTextEdit>
 #include <QWidget>
 
@@ -316,6 +321,54 @@ QGraphicsItem* find_visible_item(const QGraphicsView& view,
 }
 
 /**
+ * @return the logical indices of the table's visible columns, in display order
+ */
+std::vector<int> get_visible_columns(const QTableView& table)
+{
+    std::vector<int> columns;
+    const auto* header = table.horizontalHeader();
+    for (int visual = 0; visual < header->count(); ++visual) {
+        const int logical = header->logicalIndex(visual);
+        if (!table.isColumnHidden(logical)) {
+            columns.push_back(logical);
+        }
+    }
+    return columns;
+}
+
+/**
+ * Add a table's state to a widget's JSON: its "rowCount", the labels of its
+ * visible column "headers" in display order, and its "selectedRow" and
+ * "currentRow" (-1 if there isn't one). Individual rows are reached with a
+ * "table_row:" selector, since a table may have thousands of rows.
+ */
+void add_table_state(const QTableView& table, QJsonObject& result)
+{
+    const auto* model = table.model();
+    if (model == nullptr) {
+        return;
+    }
+    result["rowCount"] = model->rowCount();
+    QJsonArray headers;
+    for (const int column : get_visible_columns(table)) {
+        headers.append(
+            model->headerData(column, Qt::Horizontal, Qt::DisplayRole)
+                .toString());
+    }
+    result["headers"] = headers;
+    int selected_row = -1;
+    if (const auto* selection_model = table.selectionModel()) {
+        const auto selected = selection_model->selectedRows();
+        if (!selected.isEmpty()) {
+            selected_row = selected.front().row();
+        }
+    }
+    result["selectedRow"] = selected_row;
+    result["currentRow"] =
+        table.currentIndex().isValid() ? table.currentIndex().row() : -1;
+}
+
+/**
  * Find a child widget by objectName and report its geometry and state as JSON.
  *
  * @param sketcher the widget tree to search
@@ -365,7 +418,74 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
         result["text"] = text_edit->toPlainText();
     } else if (auto* plain_text_edit = qobject_cast<QPlainTextEdit*>(widget)) {
         result["text"] = plain_text_edit->toPlainText();
+    } else if (auto* table = qobject_cast<QTableView*>(widget)) {
+        add_table_state(*table, result);
     }
+    return to_json(result);
+}
+
+/**
+ * Find a visible table by objectName, or nullptr if there isn't one
+ */
+QTableView* find_visible_table(SketcherWidget& sketcher, const QString& name)
+{
+    return qobject_cast<QTableView*>(find_visible_widget(sketcher, name));
+}
+
+/**
+ * Resolve a "table_row:<objectName>:<row>" selector: scroll the row of the
+ * named visible table into view and report the visible part of the row, plus
+ * the row's "cells" (the text of its visible columns, in display order),
+ * whether it is "selected" and whether it is "current".
+ *
+ * Scrolling is the one state change a selector makes, and only because a test
+ * cannot otherwise click a row that is out of sight; Playwright's mouse wheel
+ * would scroll by an unpredictable number of rows.
+ *
+ * @return the JSON object described by sketcher_get_rect(), or "{}" if no such
+ * visible table or row exists
+ * @throw std::runtime_error if the selector value is malformed
+ */
+std::string table_row_rect(SketcherWidget& sketcher, const std::string& value)
+{
+    const auto separator = value.rfind(':');
+    bool is_number = false;
+    const int row = separator == std::string::npos
+                        ? -1
+                        : QString::fromStdString(value.substr(separator + 1))
+                              .toInt(&is_number);
+    if (!is_number) {
+        throw std::runtime_error("playwright test bridge: malformed table row "
+                                 "selector '" +
+                                 value + "' (expected \"<objectName>:<row>\")");
+    }
+    auto* table = find_visible_table(
+        sketcher, QString::fromStdString(value.substr(0, separator)));
+    if (table == nullptr || table->model() == nullptr || row < 0 ||
+        row >= table->model()->rowCount()) {
+        return "{}";
+    }
+    const auto* model = table->model();
+    table->scrollTo(model->index(row, 0));
+    QRect row_rect;
+    QJsonArray cells;
+    for (const int column : get_visible_columns(*table)) {
+        const auto index = model->index(row, column);
+        row_rect = row_rect.united(table->visualRect(index));
+        cells.append(index.data().toString());
+    }
+    row_rect = row_rect.intersected(table->viewport()->rect());
+    if (row_rect.isEmpty()) {
+        return "{}";
+    }
+    auto result = rect_json(
+        map_to_sketcher(*table->viewport(), sketcher, row_rect.topLeft()),
+        row_rect.size(), table->isEnabled());
+    result["cells"] = cells;
+    result["selected"] = table->selectionModel() != nullptr &&
+                         table->selectionModel()->isRowSelected(row);
+    result["current"] =
+        table->currentIndex().isValid() && table->currentIndex().row() == row;
     return to_json(result);
 }
 
@@ -577,6 +697,9 @@ std::string dialog_rect(SketcherWidget& sketcher, const std::string& value)
  *   "menu:<name or text>"  a row of an open context menu, by objectName or text
  *   "dialog:title"         foreground modal geometry and displayed title
  *   "dialog:OK/Cancel"     a visible standard button in the foreground modal
+ *   "table_row:<objectName>:<row>"
+ *                          a row of a visible table, scrolled into view, with
+ *                          its "cells", "selected" and "current" state
  *
  * Use "widget:" to find something to click, since only a visible widget can be
  * clicked. Use "state:" to ask whether a control is checked or enabled when it
@@ -597,7 +720,8 @@ std::string dialog_rect(SketcherWidget& sketcher, const std::string& value)
  * whitespace removed, while a value the user typed or chose is reported
  * verbatim. Every widget reports its Qt "styleSheet" so a test can verify a
  * user-visible state conveyed by styling; a button additionally reports
- * "checked" and "toolTip".
+ * "checked" and "toolTip", and a table reports "rowCount", "headers",
+ * "selectedRow" and "currentRow".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
  * menu first. It does not reach a QToolButton's menu, which cannot be open and
@@ -642,9 +766,13 @@ std::string sketcher_get_rect(const std::string& selector)
     if (kind == "dialog") {
         return dialog_rect(sketcher, value);
     }
+    if (kind == "table_row") {
+        return table_row_rect(sketcher, value);
+    }
     throw std::runtime_error(
         "playwright test bridge: unrecognized selector kind '" + kind +
-        "' (expected 'widget', 'state', 'atom', 'bond', 'menu', or 'dialog')");
+        "' (expected 'widget', 'state', 'atom', 'bond', 'menu', 'dialog', or "
+        "'table_row')");
 }
 
 /**
