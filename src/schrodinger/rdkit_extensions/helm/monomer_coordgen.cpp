@@ -2431,7 +2431,9 @@ score_polymer_placement(const RDKit::ROMol& polymer, PolymerPlacement side,
             for (const auto* other : placed->atoms()) {
                 const auto other_pos =
                     placed->getConformer().getAtomPos(other->getIdx());
-                if ((pos - other_pos).length() < clearance &&
+                // Placement can put residues exactly at the clearance limit.
+                // Ignore rounding differences at that boundary when scoring.
+                if ((pos - other_pos).length() < clearance - EPSILON &&
                     std::find(
                         connections.begin(), connections.end(),
                         std::make_pair(atom->getIdx(), other->getIdx())) ==
