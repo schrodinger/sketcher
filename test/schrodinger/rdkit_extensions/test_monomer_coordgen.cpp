@@ -241,15 +241,15 @@ BOOST_DATA_TEST_CASE(
         {"PEPTIDE1{A.Y.V.[Orn].L.[dF].P.F.[dF].N}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$"
          "$$",
          {{2.427051, 0},
-          {1.963525, -1.426585},
-          {0.75, -2.308263},
-          {-0.75, -2.308263},
-          {-1.963525, -1.426585},
-          {-2.427051, 0},
-          {-1.963525, 1.426585},
-          {-0.75, 2.308263},
+          {1.963525, 1.426585},
           {0.75, 2.308263},
-          {1.963525, 1.426585}}},
+          {-0.75, 2.308263},
+          {-1.963525, 1.426585},
+          {-2.427051, 0},
+          {-1.963525, -1.426585},
+          {-0.75, -2.308263},
+          {0.75, -2.308263},
+          {1.963525, -1.426585}}},
 
         // Interlocking disulfides can use two turns: C1 is on the top strand,
         // C6-C7 are together on the middle strand, and C12 is on the bottom.
@@ -337,31 +337,23 @@ BOOST_DATA_TEST_CASE(
          "PEPTIDE2,3:R1-8:R2|PEPTIDE2,PEPTIDE2,1:R3-15:R3|PEPTIDE2,PEPTIDE2,1:"
          "R1-16:R2|PEPTIDE2,PEPTIDE3,11:R3-14:R3|PEPTIDE3,PEPTIDE3,1:R3-15:R3|"
          "PEPTIDE3,PEPTIDE3,1:R1-17:R2$$$",
-         {{3.295433, 1.467221},   {3.607301, 0},
-          {3.295433, -1.467221},  {2.413755, -2.680747},
-          {1.114717, -3.430747},  {-0.377066, -3.58754},
-          {-1.80365, -3.124014},  {-2.918368, -2.120318},
-          {-3.528473, -0.75},     {-3.528473, 0.75},
-          {-2.918368, 2.120318},  {-1.80365, 3.124014},
-          {-0.377066, 3.58754},   {1.114717, 3.430747},
-          {2.413755, 2.680747},   {3.905538, 2.83754},
-          {11.009234, -5.054761}, {11.321102, -3.58754},
-          {11.009234, -2.120318}, {10.127556, -0.906793},
-          {8.828518, -0.156793},  {7.336735, -0},
-          {5.91015, -0.463525},   {4.795433, -1.467221},
-          {4.185328, -2.83754},   {4.185328, -4.33754},
-          {4.795433, -5.707858},  {5.91015, -6.711554},
-          {7.336735, -7.175079},  {8.828518, -7.018286},
-          {10.127556, -6.268286}, {11.619339, -6.425079},
-          {6.976149, -11.570103}, {7.288017, -13.037324},
-          {6.976149, -14.504546}, {6.094471, -15.718071},
-          {4.795433, -16.468071}, {3.30365, -16.624864},
-          {1.877066, -16.161338}, {0.762348, -15.157643},
-          {0.152243, -13.787324}, {0.152243, -12.287324},
-          {0.762348, -10.917006}, {1.877066, -9.91331},
-          {3.30365, -9.449785},   {4.795433, -9.606578},
-          {6.094471, -10.356578}, {7.307997, -9.4749},
-          {8.189675, -10.688425}}},
+         {{3.607301, 0},          {3.295433, 1.467221},   {2.413755, 2.680747},
+          {1.114717, 3.430747},   {-0.377066, 3.58754},   {-1.80365, 3.124014},
+          {-2.918368, 2.120318},  {-3.528473, 0.75},      {-3.528473, -0.75},
+          {-2.918368, -2.120318}, {-1.80365, -3.124014},  {-0.377066, -3.58754},
+          {1.114717, -3.430747},  {2.413755, -2.680747},  {3.295433, -1.467221},
+          {4.722018, -1.003696},  {11.312884, 3.430747},  {11.001017, 1.963525},
+          {10.119339, 0.75},      {8.820301, 0},          {7.328518, -0.156793},
+          {5.901933, 0.306733},   {4.787216, 1.310429},   {4.177111, 2.680747},
+          {4.177111, 4.180747},   {4.787216, 5.551065},   {5.901933, 6.554761},
+          {7.328518, 7.018286},   {8.820301, 6.861494},   {10.119339, 6.111494},
+          {11.001017, 4.897968},  {12.427602, 4.434443},  {7.095479, 11.883533},
+          {6.783611, 13.350755},  {5.901933, 14.56428},   {4.602895, 15.31428},
+          {3.111112, 15.471073},  {1.684528, 15.007547},  {0.56981, 14.003851},
+          {-0.040295, 12.633533}, {-0.040295, 11.133533}, {0.56981, 9.763215},
+          {1.684528, 8.759519},   {3.111112, 8.295994},   {4.602895, 8.452786},
+          {5.901933, 9.202786},   {6.783611, 10.416312},  {8.250833, 10.104444},
+          {8.5627, 11.571666}}},
 
         // CHEM polymers
         {"CHEM1{[SMCC]}|PEPTIDE1{L.M}|RNA1{R(C)P.R(A)P}$RNA1,PEPTIDE1,6:R2-1:"
@@ -846,7 +838,7 @@ BOOST_AUTO_TEST_CASE(FindAllConnectedMonomersOutsideRing)
     // number of monomers attached to each ring monomer. This counts all atoms
     // that are encountered when walking the tree starting from each ring atom
     // and avoiding other atoms in the same ring.
-    std::vector<std::vector<unsigned int>> ring_attachment_sizes = {
+    const std::vector<std::vector<unsigned int>> ring_attachment_sizes = {
         {0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
          16u}, // first ring
         {0u, 0u, 0u, 0u, 0u, 0u, 0u, 17u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
@@ -855,15 +847,21 @@ BOOST_AUTO_TEST_CASE(FindAllConnectedMonomersOutsideRing)
     for (size_t ring_idx = 0; ring_idx < rings.size(); ++ring_idx) {
         const std::vector<int>& ring = rings[ring_idx];
         BOOST_REQUIRE(ring.size() == ring_attachment_sizes[ring_idx].size());
-        for (size_t pos = 0; pos < ring.size(); ++pos) {
-            int ring_atom_idx = ring[pos];
+        std::vector<unsigned int> actual_sizes;
+        for (int ring_atom_idx : ring) {
             // Find all connected monomers outside the ring.
             auto attached_monomers = schrodinger::rdkit_extensions::
                 find_all_connected_monomers_outside_ring(*mol, ring_atom_idx,
                                                          ring);
-            BOOST_CHECK_EQUAL(attached_monomers.size(),
-                              ring_attachment_sizes[ring_idx][pos]);
+            actual_sizes.push_back(attached_monomers.size());
         }
+        // RDKit can start enumerating the same ring at different atoms.
+        auto expected_sizes = ring_attachment_sizes[ring_idx];
+        std::sort(actual_sizes.begin(), actual_sizes.end());
+        std::sort(expected_sizes.begin(), expected_sizes.end());
+        BOOST_CHECK_EQUAL_COLLECTIONS(actual_sizes.begin(), actual_sizes.end(),
+                                      expected_sizes.begin(),
+                                      expected_sizes.end());
     }
 }
 
