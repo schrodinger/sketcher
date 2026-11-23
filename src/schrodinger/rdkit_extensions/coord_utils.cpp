@@ -522,6 +522,7 @@ bool place_n_terminal_carbonyl_cap(const RDKit::ROMol& mol,
                                    const ResidueGeometry& residue,
                                    const RDGeom::Point3D& target_carbonyl,
                                    const RDGeom::Point3D& target_oxygen,
+                                   const RDGeom::Point3D& first_nitrogen,
                                    RDKit::Conformer& output)
 {
     // [ac] has a carbonyl C but no N-CA pair. Anchor its C=O at the
@@ -532,8 +533,35 @@ bool place_n_terminal_carbonyl_cap(const RDKit::ROMol& mol,
         named_atom(mol, residue, "CA")) {
         return false;
     }
-    return place_residue_by_bond(residue, *carbonyl, *oxygen, target_carbonyl,
-                                 target_oxygen, output);
+    if (!place_residue_by_bond(residue, *carbonyl, *oxygen, target_carbonyl,
+                               target_oxygen, output)) {
+        return false;
+    }
+    // The carbon substituent and peptide N belong on opposite sides of C=O.
+    // Aligning C=O alone can put the substituent toward N in one phase.
+    const auto oxygen_bond = target_oxygen - target_carbonyl;
+    const auto nitrogen_bond = first_nitrogen - target_carbonyl;
+    const auto cross = [&](const RDGeom::Point3D& bond) {
+        return oxygen_bond.x * bond.y - oxygen_bond.y * bond.x;
+    };
+    for (const auto* neighbor :
+         mol.atomNeighbors(mol.getAtomWithIdx(*carbonyl))) {
+        if (neighbor->getAtomicNum() != 6 ||
+            !std::ranges::binary_search(residue.atom_ids, neighbor->getIdx())) {
+            continue;
+        }
+        const auto branch =
+            output.getAtomPos(neighbor->getIdx()) - target_carbonyl;
+        if (cross(branch) * cross(nitrogen_bond) > 0) {
+            for (auto id : residue.atom_ids) {
+                output.setAtomPos(id, reflect_across_bond(output.getAtomPos(id),
+                                                          target_carbonyl,
+                                                          target_oxygen));
+            }
+        }
+        break;
+    }
+    return true;
 }
 
 void clear_molfile_bond_stereo(RDKit::ROMol& mol)
@@ -823,6 +851,41 @@ PeptideTopology find_peptide_links(const RDKit::ROMol& mol,
     }
 
     return {std::move(peptide_links), std::move(incoming_peptide_links)};
+}
+
+bool supports_guided_peptide_layout(const RDKit::ROMol& monomer_mol,
+                                    const PeptideTopology& topology)
+{
+    // The backbone placer walks paths from residues without incoming links.
+    // Cyclic backbones have no such start, and other polymer types need their
+    // own atomistic layout rules.
+    if (topology.links.empty() ||
+        std::ranges::any_of(monomer_mol.atoms(), [](const auto* monomer) {
+            return getChainType(*monomer) != ChainType::PEPTIDE;
+        })) {
+        return false;
+    }
+    ResidueKeys destinations;
+    for (const auto& entry : topology.links) {
+        if (!destinations.insert(entry.second.next).second) {
+            return false;
+        }
+    }
+    ResidueKeys visited;
+    for (const auto& entry : topology.links) {
+        const auto& start = entry.first;
+        if (topology.incoming.contains(start)) {
+            continue;
+        }
+        auto found = topology.links.find(start);
+        while (found != topology.links.end()) {
+            if (!visited.insert(found->first).second) {
+                return false;
+            }
+            found = topology.links.find(found->second.next);
+        }
+    }
+    return visited.size() == topology.links.size();
 }
 
 struct PeptideTurn {
@@ -1144,10 +1207,17 @@ bool place_peptide_n_terminal_cap(
     const auto cap_rise = first_linear_cis_n_ca ? run : rise;
     const auto carbonyl_position =
         first_nitrogen - along * cap_run + normal * (first_side * cap_rise);
+    // The cis N-CA shape changes the cap's C-N direction. Turn C=O with it
+    // so the O-C-N angle remains 120 degrees.
+    const auto oxygen_direction =
+        first_linear_cis_n_ca ? along * (rise / bond_length) +
+                                    normal * (first_side * run / bond_length)
+                              : normal * first_side;
     const auto oxygen_position =
-        carbonyl_position + normal * (first_side * small_bond_length);
-    return place_n_terminal_carbonyl_cap(
-        mol, residues.at(cap), carbonyl_position, oxygen_position, output);
+        carbonyl_position + oxygen_direction * small_bond_length;
+    return place_n_terminal_carbonyl_cap(mol, residues.at(cap),
+                                         carbonyl_position, oxygen_position,
+                                         first_nitrogen, output);
 }
 
 struct PeptideBackbonePositions {
@@ -1565,7 +1635,8 @@ void place_remaining_residues(const RDKit::ROMol& mol,
                         continue;
                     }
                     const auto direction =
-                        monomer_conf.getAtomPos(*neighbor_residue.monomer_idx) -
+                        monomer_conf.getAtomPos(*neighbor_residue.monomer_idx) *
+                            layout_scale -
                         target;
                     if (direction.x == 0 && direction.y == 0) {
                         continue;
@@ -2566,10 +2637,9 @@ ResidueKeys place_peptide_chains_with_best_phase(
     return placed_peptides;
 }
 
-unsigned int compute_atomistic_coords_using_monomer_layout(RDKit::ROMol& mol)
+std::optional<unsigned int>
+compute_atomistic_coords_using_monomer_layout(RDKit::ROMol& mol)
 {
-    // note: this assumes the polymer is peptidic. support for non-peptidic
-    // chains is not implemented yet.
     // Build the monomer layout that will guide the atomistic coordinates.
     auto residues = get_residue_geometry(mol);
     if (residues.empty()) {
@@ -2586,6 +2656,9 @@ unsigned int compute_atomistic_coords_using_monomer_layout(RDKit::ROMol& mol)
     const auto atom_residue = map_atoms_to_residues(residues);
     const auto topology = find_peptide_links(mol, *monomer_mol, monomer_conf,
                                              residues, atom_residue);
+    if (!supports_guided_peptide_layout(*monomer_mol, topology)) {
+        return std::nullopt;
+    }
     const auto disulfide_partners = find_disulfide_partners(mol, atom_residue);
     auto output = std::make_unique<RDKit::Conformer>(mol.getNumAtoms());
     output->set3D(false);
@@ -2637,7 +2710,10 @@ unsigned int compute2DCoords(RDKit::ROMol& mol,
     // then lay out its atoms to follow that monomer layout.
     if (use_monomer_layout && frozen_ids.empty() &&
         has_complete_residue_info(mol)) {
-        return compute_atomistic_coords_using_monomer_layout(mol);
+        if (const auto conformer =
+                compute_atomistic_coords_using_monomer_layout(mol)) {
+            return *conformer;
+        }
     }
 
     // Atomistic input: let RDKit lay it out, honoring any frozen atoms.

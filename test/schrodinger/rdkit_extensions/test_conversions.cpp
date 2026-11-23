@@ -255,6 +255,32 @@ BOOST_AUTO_TEST_CASE(TestDefaultCoordinateLayoutWithoutResidueInfo)
     BOOST_TEST(mol->getNumConformers() == 1);
 }
 
+BOOST_AUTO_TEST_CASE(TestUnsupportedPolymersUseRdkitCoordinates)
+{
+    // Cyclic peptide backbones have no starting residue for the guided walk;
+    // RNA has no peptide backbone. Both use RDKit's complete graph layout.
+    for (const auto& helm :
+         {"PEPTIDE1{A.A.A.A.A.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
+          "RNA1{P.[dR](A)P.[dR](C)}$$$$V2.0"}) {
+        auto monomers = helm::helm_to_rdkit(helm);
+        auto actual = toAtomistic(*monomers);
+        auto expected = toAtomistic(*monomers);
+        compute2DCoords(*actual);
+        compute2DCoords(*expected, {}, false);
+        const auto& actual_conf = actual->getConformer();
+        const auto& expected_conf = expected->getConformer();
+        BOOST_REQUIRE(actual->getNumAtoms() == expected->getNumAtoms());
+        for (unsigned int i = 0; i < actual->getNumAtoms(); ++i) {
+            const auto delta =
+                actual_conf.getAtomPos(i) - expected_conf.getAtomPos(i);
+            BOOST_TEST_CONTEXT(helm)
+            {
+                BOOST_TEST(std::hypot(delta.x, delta.y) < 1e-5);
+            }
+        }
+    }
+}
+
 static boost::shared_ptr<RDKit::RWMol>
 file_to_rdkit(const std::string& filename)
 {
@@ -528,6 +554,61 @@ BOOST_AUTO_TEST_CASE(TestAcetylCapAndTerminalCysteineKeepBackboneAngles)
     BOOST_TEST(checked_disulfide);
 }
 
+BOOST_AUTO_TEST_CASE(TestAcetylCapGeometryWithProline)
+{
+    // A cis N-CA proline changes the cap's C-N direction. Keep the O-C-N
+    // angle trigonal and the methyl opposite N across the C=O bond.
+    for (const auto* helm :
+         {"PEPTIDE1{[ac].P.A}$$$$V2.0", "PEPTIDE1{[ac].A.P}$$$$V2.0"}) {
+        auto monomers = helm::helm_to_rdkit(helm);
+        auto mol = toAtomistic(*monomers);
+        compute2DCoords(*mol);
+        const auto positions = residue_atom_positions(*mol);
+        const auto& cap = positions.at(1);
+        const auto& first = positions.at(2);
+        const auto c_o = cap.at("O") - cap.at("C");
+        const auto c_n = first.at("N") - cap.at("C");
+        const auto cosine =
+            (c_o.x * c_n.x + c_o.y * c_n.y) /
+            (std::hypot(c_o.x, c_o.y) * std::hypot(c_n.x, c_n.y));
+        BOOST_TEST_CONTEXT(helm)
+        {
+            BOOST_TEST(std::abs(cosine + 0.5) < 1e-5);
+        }
+        bool checked_methyl = false;
+        for (const auto* carbonyl : mol->atoms()) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                carbonyl->getMonomerInfo());
+            if (!info || info->getResidueNumber() != 1) {
+                continue;
+            }
+            auto name = info->getName();
+            name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+            if (name != "C") {
+                continue;
+            }
+            for (const auto* methyl : mol->atomNeighbors(carbonyl)) {
+                const auto* methyl_info =
+                    dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                        methyl->getMonomerInfo());
+                if (methyl->getAtomicNum() != 6 || !methyl_info ||
+                    methyl_info->getResidueNumber() != 1) {
+                    continue;
+                }
+                const auto c_methyl =
+                    mol->getConformer().getAtomPos(methyl->getIdx()) -
+                    cap.at("C");
+                const auto cross = [&](const RDGeom::Point3D& v) {
+                    return c_o.x * v.y - c_o.y * v.x;
+                };
+                BOOST_TEST(cross(c_methyl) * cross(c_n) < 0);
+                checked_methyl = true;
+            }
+        }
+        BOOST_TEST(checked_methyl);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(TestInlinePeptideBackboneUsesR1AndR2)
 {
     // Inline SMILES residues with R1 and R2 belong to the peptide path;
@@ -653,6 +734,28 @@ BOOST_AUTO_TEST_CASE(TestTerminalInlinePeptideWithoutR2)
     const auto peptide = positions.at(9).at("N") - positions.at(8).at("C");
     BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) - RDDepict::BOND_LEN) <
                1e-5);
+    // The unnamed acid oxygen must move with the terminal carbonyl carbon.
+    bool checked_acid_oxygen = false;
+    for (const auto* bond : mol->bonds()) {
+        for (const auto& [carbonyl, oxygen] :
+             {std::pair{bond->getBeginAtom(), bond->getEndAtom()},
+              std::pair{bond->getEndAtom(), bond->getBeginAtom()}}) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                oxygen->getMonomerInfo());
+            if (carbonyl->getAtomicNum() != 6 || oxygen->getAtomicNum() != 8 ||
+                bond->getBondType() != RDKit::Bond::SINGLE || !info ||
+                info->getResidueNumber() != 9 || !info->getName().empty()) {
+                continue;
+            }
+            const auto delta =
+                mol->getConformer().getAtomPos(oxygen->getIdx()) -
+                mol->getConformer().getAtomPos(carbonyl->getIdx());
+            BOOST_TEST(std::abs(std::hypot(delta.x, delta.y) -
+                                RDDepict::BOND_LEN * 0.7) < 1e-5);
+            checked_acid_oxygen = true;
+        }
+    }
+    BOOST_TEST(checked_acid_oxygen);
 }
 
 BOOST_AUTO_TEST_CASE(TestTerminalInlinePeptideAmideFollowsTurn)
