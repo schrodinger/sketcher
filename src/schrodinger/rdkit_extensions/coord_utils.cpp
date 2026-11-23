@@ -152,6 +152,54 @@ enum class ResidueShape {
     CIS_CA_CO,
 };
 
+struct PeptideSidechain {
+    std::optional<unsigned int> anchor;
+    std::set<unsigned int> atoms;
+    bool closes_to_nitrogen = false;
+};
+
+PeptideSidechain get_peptide_sidechain(const RDKit::ROMol& mol,
+                                       const ResidueGeometry& residue,
+                                       unsigned int nitrogen,
+                                       unsigned int alpha,
+                                       unsigned int carbonyl)
+{
+    PeptideSidechain sidechain;
+    sidechain.anchor = named_atom(mol, residue, "CB");
+    const auto in_residue = [&](unsigned int id) {
+        return std::ranges::binary_search(residue.atom_ids, id);
+    };
+    std::vector<unsigned int> pending;
+    for (const auto* neighbor : mol.atomNeighbors(mol.getAtomWithIdx(alpha))) {
+        const auto id = neighbor->getIdx();
+        if (neighbor->getAtomicNum() == 1 || id == nitrogen || id == carbonyl ||
+            !in_residue(id)) {
+            continue;
+        }
+        pending.push_back(id);
+        if (!sidechain.anchor) {
+            sidechain.anchor = id;
+        }
+    }
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        if (!sidechain.atoms.insert(id).second) {
+            continue;
+        }
+        for (const auto* neighbor : mol.atomNeighbors(mol.getAtomWithIdx(id))) {
+            const auto neighbor_id = neighbor->getIdx();
+            if (neighbor_id == nitrogen) {
+                sidechain.closes_to_nitrogen = true;
+            } else if (neighbor_id != alpha && neighbor_id != carbonyl &&
+                       in_residue(neighbor_id)) {
+                pending.push_back(neighbor_id);
+            }
+        }
+    }
+    return sidechain;
+}
+
 ResidueShape initial_residue_shape(const RDKit::ROMol& mol,
                                    const ResidueGeometry& residue)
 {
@@ -162,8 +210,14 @@ ResidueShape initial_residue_shape(const RDKit::ROMol& mol,
         nitrogen ? dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
                        mol.getAtomWithIdx(*nitrogen)->getMonomerInfo())
                  : nullptr;
-    const auto proline = info && (info->getResidueName() == "PRO" ||
-                                  info->getResidueName() == "DPR");
+    const auto alpha = named_atom(mol, residue, "CA");
+    const auto carbonyl = named_atom(mol, residue, "C");
+    const auto proline =
+        (info && (info->getResidueName() == "PRO" ||
+                  info->getResidueName() == "DPR")) ||
+        (nitrogen && alpha && carbonyl &&
+         get_peptide_sidechain(mol, residue, *nitrogen, *alpha, *carbonyl)
+             .closes_to_nitrogen);
     return proline ? ResidueShape::LINEAR_CIS_N_CA : ResidueShape::ALL_TRANS;
 }
 
@@ -201,48 +255,11 @@ void orient_peptide_sidechain(const RDKit::ROMol& mol,
     // Otherwise, rotate them toward outward and scale their bond lengths.
     const auto nitrogen_position = output.getAtomPos(nitrogen);
     const auto alpha_position = output.getAtomPos(alpha);
-    const auto in_residue = [&](unsigned int atom_id) {
-        return std::ranges::binary_search(residue.atom_ids, atom_id);
-    };
-    std::vector<unsigned int> pending;
-    std::optional<unsigned int> sidechain_anchor =
-        named_atom(mol, residue, "CB");
-    for (const auto* neighbor : mol.atomNeighbors(mol.getAtomWithIdx(alpha))) {
-        const auto atom_id = neighbor->getIdx();
-        if (neighbor->getAtomicNum() == 1) {
-            continue;
-        }
-        if (atom_id == nitrogen || atom_id == carbonyl ||
-            !in_residue(atom_id)) {
-            continue;
-        }
-        pending.push_back(atom_id);
-        if (!sidechain_anchor) {
-            sidechain_anchor = atom_id;
-        }
-    }
-    std::set<unsigned int> sidechain_atoms;
-    bool closes_to_nitrogen = false;
-    while (!pending.empty()) {
-        const auto atom_id = pending.back();
-        pending.pop_back();
-        if (!sidechain_atoms.insert(atom_id).second) {
-            continue;
-        }
-        for (const auto* neighbor :
-             mol.atomNeighbors(mol.getAtomWithIdx(atom_id))) {
-            const auto neighbor_id = neighbor->getIdx();
-            if (neighbor_id == nitrogen) {
-                closes_to_nitrogen = true;
-            } else if (neighbor_id != alpha && neighbor_id != carbonyl &&
-                       in_residue(neighbor_id)) {
-                pending.push_back(neighbor_id);
-            }
-        }
-    }
-    if (sidechain_anchor && sidechain_atoms.contains(*sidechain_anchor)) {
-        const auto anchor = output.getAtomPos(*sidechain_anchor);
-        if (closes_to_nitrogen) {
+    const auto sidechain =
+        get_peptide_sidechain(mol, residue, nitrogen, alpha, carbonyl);
+    if (sidechain.anchor && sidechain.atoms.contains(*sidechain.anchor)) {
+        const auto anchor = output.getAtomPos(*sidechain.anchor);
+        if (sidechain.closes_to_nitrogen) {
             const auto reflected =
                 reflect_across_bond(anchor, nitrogen_position, alpha_position);
             const auto original_score =
@@ -252,7 +269,7 @@ void orient_peptide_sidechain(const RDKit::ROMol& mol,
                 (reflected.x - alpha_position.x) * outward.x +
                 (reflected.y - alpha_position.y) * outward.y;
             if (reflected_score > original_score) {
-                for (auto atom_id : sidechain_atoms) {
+                for (auto atom_id : sidechain.atoms) {
                     output.setAtomPos(
                         atom_id,
                         reflect_across_bond(output.getAtomPos(atom_id),
@@ -263,7 +280,7 @@ void orient_peptide_sidechain(const RDKit::ROMol& mol,
             const auto direction = anchor - alpha_position;
             const auto sidechain_angle = std::atan2(outward.y, outward.x) -
                                          std::atan2(direction.y, direction.x);
-            for (auto atom_id : sidechain_atoms) {
+            for (auto atom_id : sidechain.atoms) {
                 const auto rotated =
                     rotate_around(output.getAtomPos(atom_id), alpha_position,
                                   sidechain_angle);
@@ -412,6 +429,12 @@ void place_alpha_hydrogen(const RDKit::ROMol& mol,
                                                     SIDECHAIN_BOND_SCALE));
 }
 
+std::optional<RDGeom::Point3D>
+free_trigonal_direction(const RDGeom::Point3D& center,
+                        const RDGeom::Point3D& first_neighbor,
+                        std::optional<RDGeom::Point3D> second_neighbor,
+                        std::optional<RDGeom::Point3D> avoid);
+
 bool place_peptide_backbone_residue(const RDKit::ROMol& mol,
                                     const ResidueGeometry& residue,
                                     const RDGeom::Point3D& target_nitrogen,
@@ -470,9 +493,14 @@ bool place_peptide_backbone_residue(const RDKit::ROMol& mol,
         }
     }
     if (oxygen_terminal) {
+        const auto direction = free_trigonal_direction(
+            target_carbonyl, target_alpha, target_oxygen, std::nullopt);
+        if (!direction) {
+            return false;
+        }
         const auto target =
-            target_carbonyl + (target_alpha - target_nitrogen) *
-                                  (SIDECHAIN_BOND_SCALE / BACKBONE_BOND_SCALE);
+            target_carbonyl +
+            *direction * (RDDepict::BOND_LEN * SIDECHAIN_BOND_SCALE);
         const auto displacement = target - output.getAtomPos(*oxygen_terminal);
         output.setAtomPos(*oxygen_terminal, target);
         for (const auto* attached :
@@ -853,7 +881,39 @@ PeptideTopology find_peptide_links(const RDKit::ROMol& mol,
     return {std::move(peptide_links), std::move(incoming_peptide_links)};
 }
 
-bool supports_guided_peptide_layout(const RDKit::ROMol& monomer_mol,
+bool has_substituted_terminal_group(const RDKit::ROMol& mol,
+                                    const ResidueGeometry& residue)
+{
+    const auto carbonyl = named_atom(mol, residue, "C");
+    if (!carbonyl) {
+        return false;
+    }
+    for (const auto* substituent :
+         mol.atomNeighbors(mol.getAtomWithIdx(*carbonyl))) {
+        if ((substituent->getAtomicNum() != 7 &&
+             substituent->getAtomicNum() != 8) ||
+            !std::ranges::binary_search(residue.atom_ids,
+                                        substituent->getIdx()) ||
+            mol.getBondBetweenAtoms(*carbonyl, substituent->getIdx())
+                    ->getBondType() != RDKit::Bond::SINGLE) {
+            continue;
+        }
+        // The placement helpers can move terminal OH or NH2, but do not
+        // transform an ester or substituted amide with the carbonyl.
+        if (std::ranges::any_of(mol.atomNeighbors(substituent),
+                                [&](const auto* attached) {
+                                    return attached->getIdx() != *carbonyl &&
+                                           attached->getAtomicNum() != 1;
+                                })) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool supports_guided_peptide_layout(const RDKit::ROMol& mol,
+                                    const RDKit::ROMol& monomer_mol,
+                                    const ResidueMap& residues,
                                     const PeptideTopology& topology)
 {
     // The backbone placer walks paths from residues without incoming links.
@@ -863,6 +923,38 @@ bool supports_guided_peptide_layout(const RDKit::ROMol& monomer_mol,
         std::ranges::any_of(monomer_mol.atoms(), [](const auto* monomer) {
             return getChainType(*monomer) != ChainType::PEPTIDE;
         })) {
+        return false;
+    }
+    // Every adjacent pair in a peptide polymer must have a recognized
+    // backbone link. Otherwise separate recognized runs would be drawn as
+    // independent chains around the unsupported residue.
+    std::map<unsigned int, ResidueKey> by_monomer;
+    for (const auto& [key, residue] : residues) {
+        if (residue.monomer_idx) {
+            by_monomer.emplace(*residue.monomer_idx, key);
+        }
+        if (has_substituted_terminal_group(mol, residue)) {
+            return false;
+        }
+    }
+    size_t expected_links = 0;
+    for (const auto& polymer_id : get_polymer_ids(monomer_mol)) {
+        const auto chain = get_polymer(monomer_mol, polymer_id);
+        for (size_t i = 1; i < chain.atoms.size(); ++i) {
+            const auto first = by_monomer.find(chain.atoms[i - 1]);
+            const auto second = by_monomer.find(chain.atoms[i]);
+            if (first == by_monomer.end() || second == by_monomer.end()) {
+                return false;
+            }
+            const auto link = topology.links.find(first->second);
+            if (link == topology.links.end() ||
+                link->second.next != second->second) {
+                return false;
+            }
+            ++expected_links;
+        }
+    }
+    if (topology.links.size() != expected_links) {
         return false;
     }
     ResidueKeys destinations;
@@ -1121,6 +1213,38 @@ PeptideChain find_peptide_chain(const RDKit::ROMol& mol,
         chain.residues.erase(chain.residues.begin());
     }
     return chain;
+}
+
+bool supports_monomer_turns(const RDKit::ROMol& mol, const ResidueMap& residues,
+                            const PeptideTopology& topology)
+{
+    // The backbone drawer can follow straight links and the bends recognized
+    // by find_peptide_turns. Other changes of direction need RDKit depiction
+    // until their atomistic geometry is supported.
+    for (const auto& entry : topology.links) {
+        const auto& start = entry.first;
+        if (topology.incoming.contains(start)) {
+            continue;
+        }
+        const auto chain =
+            find_peptide_chain(mol, residues, topology.links, start).residues;
+        const auto turns = find_peptide_turns(chain, topology.links);
+        for (size_t i = 1; i + 1 < chain.size(); ++i) {
+            const auto& before = topology.links.at(chain[i - 1]).axis;
+            const auto& after = topology.links.at(chain[i]).axis;
+            const auto aligned = before.x * after.x + before.y * after.y >=
+                                 std::cos(std::numbers::pi / 8);
+            const auto within_turn =
+                std::ranges::any_of(turns, [&](const auto& turn) {
+                    return i >= turn.first_residue &&
+                           i < turn.first_residue + turn.residue_count;
+                });
+            if (!aligned && !within_turn) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 struct PeptideShapeState {
@@ -2656,7 +2780,9 @@ compute_atomistic_coords_using_monomer_layout(RDKit::ROMol& mol)
     const auto atom_residue = map_atoms_to_residues(residues);
     const auto topology = find_peptide_links(mol, *monomer_mol, monomer_conf,
                                              residues, atom_residue);
-    if (!supports_guided_peptide_layout(*monomer_mol, topology)) {
+    if (!supports_guided_peptide_layout(mol, *monomer_mol, residues,
+                                        topology) ||
+        !supports_monomer_turns(mol, residues, topology)) {
         return std::nullopt;
     }
     const auto disulfide_partners = find_disulfide_partners(mol, atom_residue);
@@ -2665,6 +2791,12 @@ compute_atomistic_coords_using_monomer_layout(RDKit::ROMol& mol)
     const auto placed_peptides = place_peptide_chains_with_best_phase(
         mol, monomer_conf, residues, topology, disulfide_partners, layout_scale,
         output);
+    for (const auto& [source, link] : topology.links) {
+        if (!placed_peptides.contains(source) ||
+            !placed_peptides.contains(link.next)) {
+            return std::nullopt;
+        }
+    }
 
     // Place everything outside the peptide backbone, correct explicit
     // backbone hydrogens, and resolve side-chain clashes last.

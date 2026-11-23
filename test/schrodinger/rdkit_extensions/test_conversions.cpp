@@ -257,11 +257,16 @@ BOOST_AUTO_TEST_CASE(TestDefaultCoordinateLayoutWithoutResidueInfo)
 
 BOOST_AUTO_TEST_CASE(TestUnsupportedPolymersUseRdkitCoordinates)
 {
-    // Cyclic peptide backbones have no starting residue for the guided walk;
-    // RNA has no peptide backbone. Both use RDKit's complete graph layout.
+    // Use the complete RDKit graph layout when the guided backbone walker
+    // cannot cover every peptide link or reproduce the monomer's bend.
     for (const auto& helm :
          {"PEPTIDE1{A.A.A.A.A.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
-          "RNA1{P.[dR](A)P.[dR](C)}$$$$V2.0"}) {
+          "RNA1{P.[dR](A)P.[dR](C)}$$$$V2.0",
+          "PEPTIDE1{A.A.[[*:1]NCCC(=O)[*:2]].G.G}$$$$V2.0",
+          "PEPTIDE1{A.[[*:1]N[C@H](C(=O)OC)C]}$$$$V2.0",
+          "PEPTIDE1{A.[[*:1]N[C@H](C(=O)NC)C]}$$$$V2.0",
+          "PEPTIDE1{C.A.C.C.A.C}$PEPTIDE1,PEPTIDE1,1:R3-3:R3|"
+          "PEPTIDE1,PEPTIDE1,4:R3-6:R3$$$"}) {
         auto monomers = helm::helm_to_rdkit(helm);
         auto actual = toAtomistic(*monomers);
         auto expected = toAtomistic(*monomers);
@@ -504,6 +509,55 @@ residue_atom_positions(const RDKit::ROMol& mol)
             mol.getConformer().getAtomPos(atom->getIdx());
     }
     return positions;
+}
+
+BOOST_AUTO_TEST_CASE(TestInlineProlineUsesRingBackboneShape)
+{
+    // This inline proline has residue name UNK, but its side chain closes
+    // onto N and therefore needs the same N-CA shape as named proline.
+    auto monomers = helm::helm_to_rdkit(
+        "PEPTIDE1{A.[[*:1]N1CCC[C@H]1C(=O)[*:2]].A}$$$$V2.0");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& proline = positions.at(2);
+    const auto n_ca = proline.at("CA") - proline.at("N");
+    BOOST_TEST(std::abs(n_ca.y) < 1e-5);
+    BOOST_TEST(n_ca.x > 0);
+    for (const auto& [first, second] :
+         {std::pair{"CA", "CB"}, std::pair{"CB", "CG"}, std::pair{"CG", "CD"},
+          std::pair{"CD", "N"}}) {
+        if (!proline.contains(first) || !proline.contains(second)) {
+            continue;
+        }
+        const auto bond = proline.at(second) - proline.at(first);
+        BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - RDDepict::BOND_LEN) <
+                   1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestTerminalProlineCarbonylIsTrigonal)
+{
+    // The terminal OXT must use the third carbonyl direction even when
+    // proline's N-CA bond is horizontal.
+    auto monomers = helm::helm_to_rdkit("PEPTIDE1{A.P}$$$$V2.0");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& proline = positions.at(2);
+    const auto c_o = proline.at("O") - proline.at("C");
+    const auto c_oxt = proline.at("OXT") - proline.at("C");
+    const auto c_ca = proline.at("CA") - proline.at("C");
+    const auto cosine =
+        (c_o.x * c_oxt.x + c_o.y * c_oxt.y) /
+        (std::hypot(c_o.x, c_o.y) * std::hypot(c_oxt.x, c_oxt.y));
+    BOOST_TEST(std::abs(cosine + 0.5) < 1e-5);
+    const auto ca_cosine =
+        (c_ca.x * c_oxt.x + c_ca.y * c_oxt.y) /
+        (std::hypot(c_ca.x, c_ca.y) * std::hypot(c_oxt.x, c_oxt.y));
+    BOOST_TEST(std::abs(ca_cosine + 0.5) < 1e-5);
+    BOOST_TEST(std::abs(std::hypot(c_oxt.x, c_oxt.y) -
+                        RDDepict::BOND_LEN * 0.7) < 1e-5);
 }
 
 BOOST_AUTO_TEST_CASE(TestAcetylCapAndTerminalCysteineKeepBackboneAngles)
@@ -1699,6 +1753,29 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomer)
             auto atomistic_mol = toAtomistic(*monomer_mol);
             BOOST_REQUIRE(atomistic_mol != nullptr);
             BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+
+            if (helm_str.find("TestMon") != std::string::npos) {
+                // Registered monomers without pdbName fields still need an
+                // identified N-CA-C(=O) path for guided placement.
+                compute2DCoords(*atomistic_mol);
+                const auto positions = residue_atom_positions(*atomistic_mol);
+                const int custom_residue =
+                    helm_str.find("[TestMon].A") != std::string::npos ? 1 : 3;
+                BOOST_REQUIRE_MESSAGE(positions.contains(custom_residue),
+                                      "Missing residue " << custom_residue
+                                                         << " for "
+                                                         << helm_str);
+                for (const auto* name : {"N", "CA", "C", "O"}) {
+                    BOOST_REQUIRE_MESSAGE(
+                        positions.at(custom_residue).contains(name),
+                        "Missing " << name << " in residue " << custom_residue
+                                   << " for " << helm_str);
+                }
+                const auto bond = positions.at(custom_residue + 1).at("N") -
+                                  positions.at(custom_residue).at("C");
+                BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) -
+                                    RDDepict::BOND_LEN) < 1e-5);
+            }
 
             // Roundtrip back to HELM
             auto roundtrip_monomer = toMonomeric(*atomistic_mol);

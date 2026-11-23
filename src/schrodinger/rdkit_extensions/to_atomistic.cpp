@@ -481,13 +481,12 @@ findInlinePeptideBackbone(RDKit::RWMol& monomer,
     return match;
 }
 
-void nameInlinePeptideBackbone(RDKit::RWMol& monomer,
-                               const AttachmentMap& attachment_points,
-                               unsigned int residue_num,
-                               unsigned int atom_offset)
+void namePeptideBackbone(RDKit::RWMol& monomer,
+                         const AttachmentMap& attachment_points,
+                         unsigned int residue_num, unsigned int atom_offset)
 {
-    // CXSMILES often lacks pdbName fields. R1 and either R2 or a terminal
-    // acid/amide identify the N-CA-C(=O) path for atomistic layout.
+    // Inline and registered peptide monomers may lack pdbName fields. R1 and
+    // either R2 or a terminal acid/amide identify the N-CA-C(=O) path.
     const auto backbone = findInlinePeptideBackbone(monomer, attachment_points,
                                                     residue_num, atom_offset);
     if (!backbone)
@@ -675,10 +674,9 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
             *new_monomer,
             monomer->getProp<bool>(SMILES_MONOMER) ? nullptr : &monomer_info,
             attachment_point_map, residue_number, atom_offset);
-        if (chain_type == ChainType::PEPTIDE &&
-            monomer->getProp<bool>(SMILES_MONOMER))
-            nameInlinePeptideBackbone(*new_monomer, attachment_point_map,
-                                      residue_number, atom_offset);
+        if (chain_type == ChainType::PEPTIDE)
+            namePeptideBackbone(*new_monomer, attachment_point_map,
+                                residue_number, atom_offset);
         setResidueInfo(*new_monomer, monomer_label, residue_number, chain_id,
                        chain_type, total_residue_count, db);
         ++total_residue_count;
