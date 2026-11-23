@@ -448,11 +448,41 @@ bool place_peptide_backbone_residue(const RDKit::ROMol& mol,
     place_terminal_amide_nitrogen(mol, residue, *nitrogen, *carbonyl,
                                   target_alpha, target_carbonyl, target_oxygen,
                                   output);
-    if (const auto oxygen_terminal = named_atom(mol, residue, "OXT")) {
-        output.setAtomPos(*oxygen_terminal,
-                          target_carbonyl +
-                              (target_alpha - target_nitrogen) *
-                                  (SIDECHAIN_BOND_SCALE / BACKBONE_BOND_SCALE));
+    auto oxygen_terminal = named_atom(mol, residue, "OXT");
+    if (!oxygen_terminal) {
+        for (const auto* neighbor :
+             mol.atomNeighbors(mol.getAtomWithIdx(*carbonyl))) {
+            const auto id = neighbor->getIdx();
+            if (neighbor->getAtomicNum() != 8 ||
+                !std::ranges::binary_search(residue.atom_ids, id) ||
+                mol.getBondBetweenAtoms(*carbonyl, id)->getBondType() !=
+                    RDKit::Bond::SINGLE) {
+                continue;
+            }
+            if (std::ranges::all_of(
+                    mol.atomNeighbors(neighbor), [&](const auto* attached) {
+                        return attached->getIdx() == *carbonyl ||
+                               attached->getAtomicNum() == 1;
+                    })) {
+                oxygen_terminal = id;
+                break;
+            }
+        }
+    }
+    if (oxygen_terminal) {
+        const auto target =
+            target_carbonyl + (target_alpha - target_nitrogen) *
+                                  (SIDECHAIN_BOND_SCALE / BACKBONE_BOND_SCALE);
+        const auto displacement = target - output.getAtomPos(*oxygen_terminal);
+        output.setAtomPos(*oxygen_terminal, target);
+        for (const auto* attached :
+             mol.atomNeighbors(mol.getAtomWithIdx(*oxygen_terminal))) {
+            if (attached->getAtomicNum() == 1) {
+                output.setAtomPos(attached->getIdx(),
+                                  output.getAtomPos(attached->getIdx()) +
+                                      displacement);
+            }
+        }
     }
 
     return true;
