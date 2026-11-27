@@ -1,7 +1,14 @@
 #define BOOST_TEST_MODULE test_rdkit_extensions_conversions
 
+#include <algorithm>
 #include <fstream>
+#include <cmath>
 #include <iterator>
+#include <limits>
+#include <map>
+#include <memory>
+#include <numbers>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -10,6 +17,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/shared_ptr.hpp>
 #include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/Depictor/DepictUtils.h>
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
@@ -20,6 +28,7 @@
 #include "test_common.h"
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
@@ -74,6 +83,209 @@ static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
     "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
 };
 
+BOOST_AUTO_TEST_CASE(TestAtomisticCoordinatesUsingMonomerLayout)
+{
+    // A-G-S checks that atomistic layout preserves the graph, follows the
+    // monomer order, and still accepts the explicit coord-map API.
+    auto monomer_mol = helm::helm_to_rdkit("PEPTIDE1{A.G.S}$$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    const auto num_atoms = atomistic_mol->getNumAtoms();
+    const auto num_bonds = atomistic_mol->getNumBonds();
+
+    compute2DCoords(*atomistic_mol);
+    BOOST_TEST(atomistic_mol->getNumConformers() == 1);
+    BOOST_TEST(atomistic_mol->getNumAtoms() == num_atoms);
+    BOOST_TEST(atomistic_mol->getNumBonds() == num_bonds);
+
+    std::map<int, std::vector<RDGeom::Point3D>> residue_positions;
+    const auto& conf = atomistic_mol->getConformer();
+    for (const auto* atom : atomistic_mol->atoms()) {
+        const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        BOOST_REQUIRE(info != nullptr);
+        const auto p = conf.getAtomPos(atom->getIdx());
+        BOOST_TEST(std::isfinite(p.x));
+        BOOST_TEST(std::isfinite(p.y));
+        residue_positions[info->getResidueNumber()].push_back(p);
+    }
+    BOOST_REQUIRE(residue_positions.size() == 3);
+    // The monomer layout is a left-to-right chain. The atomistic residues
+    // must follow that order, even though zigzag bounds can overlap in x.
+    double previous_center_x = -std::numeric_limits<double>::infinity();
+    for (const auto& [number, positions] : residue_positions) {
+        double min_x = std::numeric_limits<double>::infinity();
+        double max_x = -min_x;
+        for (const auto& p : positions) {
+            min_x = std::min(min_x, p.x);
+            max_x = std::max(max_x, p.x);
+        }
+        const auto center_x = (min_x + max_x) / 2;
+        BOOST_TEST(center_x > previous_center_x);
+        previous_center_x = center_x;
+    }
+
+    BOOST_CHECK_NO_THROW(compute2DCoords(*atomistic_mol, {0}));
+}
+
+BOOST_AUTO_TEST_CASE(TestPeptideBackboneZigzag)
+{
+    // Four alanines isolate the straight zigzag: regular backbone bonds,
+    // shorter C=O and side-chain bonds, and alternating side-chain sides.
+    auto monomer_mol = helm::helm_to_rdkit("PEPTIDE1{A.A.A.A}$$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    compute2DCoords(*atomistic_mol);
+
+    struct BackbonePositions {
+        RDGeom::Point3D nitrogen, alpha, carbonyl, oxygen, beta;
+    };
+    std::map<int, BackbonePositions> positions;
+    const auto& conf = atomistic_mol->getConformer();
+    for (const auto* atom : atomistic_mol->atoms()) {
+        const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        BOOST_REQUIRE(info != nullptr);
+        auto name = info->getName();
+        name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+        const auto p = conf.getAtomPos(atom->getIdx());
+        auto& backbone = positions[info->getResidueNumber()];
+        if (name == "N")
+            backbone.nitrogen = p;
+        else if (name == "CA")
+            backbone.alpha = p;
+        else if (name == "C")
+            backbone.carbonyl = p;
+        else if (name == "O")
+            backbone.oxygen = p;
+        else if (name == "CB")
+            backbone.beta = p;
+    }
+    BOOST_REQUIRE(positions.size() == 4);
+    const auto bond_length = RDDepict::BOND_LEN;
+    const auto sidechain_bond_length = RDDepict::BOND_LEN * 0.7;
+    double previous_sidechain_dy = 0;
+    for (int residue_number = 1; residue_number <= 4; ++residue_number) {
+        const auto& current = positions.at(residue_number);
+        const auto n_ca = current.alpha - current.nitrogen;
+        const auto ca_c = current.carbonyl - current.alpha;
+        const auto c_o = current.oxygen - current.carbonyl;
+        const auto ca_cb = current.beta - current.alpha;
+        for (const auto& bond : {n_ca, ca_c})
+            BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - bond_length) <
+                       1e-5);
+        BOOST_TEST(std::abs(std::hypot(c_o.x, c_o.y) - sidechain_bond_length) <
+                   1e-5);
+        BOOST_TEST(std::abs(std::hypot(ca_cb.x, ca_cb.y) -
+                            sidechain_bond_length) < 1e-5);
+        BOOST_TEST(n_ca.x > 0);
+        BOOST_TEST(ca_c.x > 0);
+        BOOST_TEST(std::abs(std::atan2(std::abs(n_ca.y), n_ca.x) -
+                            std::numbers::pi / 6) < 1e-5);
+        BOOST_TEST(std::abs(std::atan2(std::abs(ca_c.y), ca_c.x) -
+                            std::numbers::pi / 6) < 1e-5);
+        BOOST_TEST(n_ca.y * ca_c.y < 0);
+        const auto ca_n = current.nitrogen - current.alpha;
+        const auto cosine_at_alpha =
+            (ca_n.x * ca_c.x + ca_n.y * ca_c.y) / (bond_length * bond_length);
+        BOOST_TEST(std::abs(cosine_at_alpha + 0.5) < 1e-5);
+        BOOST_TEST(std::abs(c_o.x) < 1e-5);
+        BOOST_TEST(c_o.y * n_ca.y < 0);
+        BOOST_TEST(std::abs(ca_cb.x) < 1e-5);
+        BOOST_TEST(ca_cb.y * n_ca.y > 0);
+        if (residue_number > 1)
+            BOOST_TEST(ca_cb.y * previous_sidechain_dy < 0);
+        previous_sidechain_dy = ca_cb.y;
+        if (residue_number < 4) {
+            const auto peptide =
+                positions.at(residue_number + 1).nitrogen - current.carbonyl;
+            BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                                bond_length) < 1e-5);
+            BOOST_TEST(peptide.x > 0);
+            BOOST_TEST(std::abs(std::atan2(std::abs(peptide.y), peptide.x) -
+                                std::numbers::pi / 6) < 1e-5);
+            BOOST_TEST(peptide.y * n_ca.y > 0);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestStraightChainProlineGeometry)
+{
+    // Check P and dP separately: N-CA opens horizontally while the incoming
+    // peptide link stays trans and the ring faces the preceding side chain.
+    for (const auto* helm :
+         {"PEPTIDE1{A.P.A}$$$$V2.0", "PEPTIDE1{A.[dP].A}$$$$V2.0"}) {
+        auto monomer_mol = helm::helm_to_rdkit(helm);
+        auto mol = toAtomistic(*monomer_mol);
+        compute2DCoords(*mol);
+        std::map<int, std::map<std::string, RDGeom::Point3D>> positions;
+        for (const auto* atom : mol->atoms()) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            if (!info)
+                continue;
+            auto name = info->getName();
+            name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+            positions[info->getResidueNumber()][name] =
+                mol->getConformer().getAtomPos(atom->getIdx());
+        }
+        const auto& before = positions.at(1);
+        const auto& proline = positions.at(2);
+        BOOST_TEST_CONTEXT(helm)
+        {
+            BOOST_TEST(std::abs(proline.at("N").y - proline.at("CA").y) < 1e-5);
+            BOOST_TEST(proline.at("CA").x > proline.at("N").x);
+            BOOST_TEST((before.at("CB").y - before.at("CA").y) *
+                           (proline.at("CB").y - proline.at("CA").y) >
+                       0);
+            const auto peptide_bond = proline.at("N") - before.at("C");
+            const auto before_alpha = before.at("CA") - before.at("C");
+            const auto proline_alpha = proline.at("CA") - proline.at("N");
+            const auto cross = [&](const RDGeom::Point3D& p) {
+                return peptide_bond.x * p.y - peptide_bond.y * p.x;
+            };
+            BOOST_TEST(cross(before_alpha) * cross(proline_alpha) < 0);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestDefaultCoordinateLayoutWithoutResidueInfo)
+{
+    // A small molecule without residue metadata must use ordinary 2D layout.
+    std::unique_ptr<RDKit::RWMol> mol(RDKit::SmilesToMol("CCO"));
+    compute2DCoords(*mol);
+    BOOST_TEST(mol->getNumConformers() == 1);
+}
+
+BOOST_AUTO_TEST_CASE(TestUnsupportedPolymersUseRdkitCoordinates)
+{
+    // Use the complete RDKit graph layout when the guided backbone walker
+    // cannot cover every peptide link or reproduce the monomer's bend.
+    for (const auto& helm :
+         {"PEPTIDE1{A.A.A.A.A.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
+          "RNA1{P.[dR](A)P.[dR](C)}$$$$V2.0",
+          "PEPTIDE1{A.A.[[*:1]NCCC(=O)[*:2]].G.G}$$$$V2.0",
+          "PEPTIDE1{A.[[*:1]N[C@H](C(=O)OC)C]}$$$$V2.0",
+          "PEPTIDE1{A.[[*:1]N[C@H](C(=O)NC)C]}$$$$V2.0",
+          "PEPTIDE1{C.A.C.C.A.C}$PEPTIDE1,PEPTIDE1,1:R3-3:R3|"
+          "PEPTIDE1,PEPTIDE1,4:R3-6:R3$$$"}) {
+        auto monomers = helm::helm_to_rdkit(helm);
+        auto actual = toAtomistic(*monomers);
+        auto expected = toAtomistic(*monomers);
+        compute2DCoords(*actual);
+        compute2DCoords(*expected, {}, false);
+        const auto& actual_conf = actual->getConformer();
+        const auto& expected_conf = expected->getConformer();
+        BOOST_REQUIRE(actual->getNumAtoms() == expected->getNumAtoms());
+        for (unsigned int i = 0; i < actual->getNumAtoms(); ++i) {
+            const auto delta =
+                actual_conf.getAtomPos(i) - expected_conf.getAtomPos(i);
+            BOOST_TEST_CONTEXT(helm)
+            {
+                BOOST_TEST(std::hypot(delta.x, delta.y) < 1e-5);
+            }
+        }
+    }
+}
+
 static boost::shared_ptr<RDKit::RWMol>
 file_to_rdkit(const std::string& filename)
 {
@@ -86,6 +298,868 @@ file_to_rdkit(const std::string& filename)
                         std::istreambuf_iterator<char>());
     file.close();
     return to_rdkit(content);
+}
+
+BOOST_AUTO_TEST_CASE(TestMonomerLayoutFromPdb)
+{
+    // 1dng has explicit H, proline, straight arms, and a turn. Check their
+    // bond scales and orientations after atomistic placement from PDB data.
+    std::ifstream file(testfile_path("1dng.pdb"));
+    BOOST_REQUIRE(file.is_open());
+    const std::string pdb((std::istreambuf_iterator<char>(file)),
+                          std::istreambuf_iterator<char>());
+    auto mol = to_rdkit(pdb, Format::PDB);
+    const auto num_atoms = mol->getNumAtoms();
+    compute2DCoords(*mol);
+    BOOST_TEST(mol->getNumAtoms() == num_atoms);
+    BOOST_TEST(mol->getNumConformers() == 1);
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        const auto p = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(std::isfinite(p.x));
+        BOOST_TEST(std::isfinite(p.y));
+    }
+    std::map<int, std::map<std::string, RDGeom::Point3D>> named_positions;
+    for (const auto* atom : mol->atoms()) {
+        const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (!info)
+            continue;
+        auto name = info->getName();
+        name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+        named_positions[info->getResidueNumber()][name] =
+            mol->getConformer().getAtomPos(atom->getIdx());
+    }
+    const auto bond_length = RDDepict::BOND_LEN;
+    const auto sidechain_bond_length = RDDepict::BOND_LEN * 0.7;
+    unsigned int horizontal_residues = 0;
+    unsigned int checked_amide_hydrogens = 0;
+    for (const auto& [number, atoms] : named_positions) {
+        if (!atoms.contains("N") || !atoms.contains("CA") ||
+            !atoms.contains("C") || !atoms.contains("O"))
+            continue;
+        const auto n_ca = atoms.at("CA") - atoms.at("N");
+        const auto ca_c = atoms.at("C") - atoms.at("CA");
+        const auto c_o = atoms.at("O") - atoms.at("C");
+        for (const auto& bond : {n_ca, ca_c})
+            BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - bond_length) <
+                       1e-5);
+        BOOST_TEST(std::abs(std::hypot(c_o.x, c_o.y) - sidechain_bond_length) <
+                   1e-5);
+        if (atoms.contains("OXT")) {
+            const auto c_oxt = atoms.at("OXT") - atoms.at("C");
+            BOOST_TEST(std::abs(std::hypot(c_oxt.x, c_oxt.y) -
+                                sidechain_bond_length) < 1e-5);
+        }
+        if (atoms.contains("CB")) {
+            const auto ca_cb = atoms.at("CB") - atoms.at("CA");
+            BOOST_TEST(std::abs(std::hypot(ca_cb.x, ca_cb.y) -
+                                (number == 3 ? bond_length
+                                             : sidechain_bond_length)) < 1e-5);
+        }
+        const auto backbone = atoms.at("C") - atoms.at("N");
+        if (atoms.contains("HA") && atoms.contains("CB")) {
+            const auto ca_ha = atoms.at("HA") - atoms.at("CA");
+            const auto ca_cb = atoms.at("CB") - atoms.at("CA");
+            BOOST_TEST(std::abs(std::hypot(ca_ha.x, ca_ha.y) -
+                                sidechain_bond_length) < 1e-5);
+            BOOST_TEST(std::abs(ca_ha.x * backbone.x + ca_ha.y * backbone.y) <
+                       1e-5);
+            BOOST_TEST(ca_ha.x * ca_cb.x + ca_ha.y * ca_cb.y < 0);
+        }
+        const auto previous = named_positions.find(number - 1);
+        if (atoms.contains("H") && previous != named_positions.end() &&
+            previous->second.contains("C")) {
+            const auto n_h = atoms.at("H") - atoms.at("N");
+            const auto n_c = previous->second.at("C") - atoms.at("N");
+            const auto n_ca_length = std::hypot(n_ca.x, n_ca.y);
+            const auto n_c_length = std::hypot(n_c.x, n_c.y);
+            const auto bisector = n_ca / n_ca_length + n_c / n_c_length;
+            const auto bisector_length = std::hypot(bisector.x, bisector.y);
+            const auto expected =
+                bisector * (-sidechain_bond_length / bisector_length);
+            BOOST_TEST(std::hypot(n_h.x - expected.x, n_h.y - expected.y) <
+                       1e-5);
+            ++checked_amide_hydrogens;
+        }
+        if (std::abs(backbone.y) < 1e-5) {
+            ++horizontal_residues;
+            BOOST_TEST(std::abs(c_o.x) < 1e-5);
+            BOOST_TEST(std::abs(std::atan2(std::abs(n_ca.y), std::abs(n_ca.x)) -
+                                std::numbers::pi / 6) < 1e-5);
+            BOOST_TEST(std::abs(std::atan2(std::abs(ca_c.y), std::abs(ca_c.x)) -
+                                std::numbers::pi / 6) < 1e-5);
+        }
+        const auto following = named_positions.find(number + 1);
+        if (following != named_positions.end() &&
+            following->second.contains("N")) {
+            const auto peptide = following->second.at("N") - atoms.at("C");
+            BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                                bond_length) < 1e-5);
+        }
+    }
+    BOOST_TEST(horizontal_residues >= 8);
+    BOOST_TEST(checked_amide_hydrogens >= 8);
+    BOOST_TEST(named_positions.at(3).at("N").x >
+               named_positions.at(1).at("N").x);
+    BOOST_TEST(named_positions.at(13).at("N").x >
+               named_positions.at(15).at("N").x);
+    const auto peptide_side = [&](int previous, int next) {
+        const auto& before = named_positions.at(previous);
+        const auto& after = named_positions.at(next);
+        const auto bond = after.at("N") - before.at("C");
+        const auto before_alpha = before.at("CA") - before.at("C");
+        const auto after_alpha = after.at("CA") - after.at("N");
+        const auto cross = [&](const RDGeom::Point3D& vector) {
+            return bond.x * vector.y - bond.y * vector.x;
+        };
+        return cross(before_alpha) * cross(after_alpha);
+    };
+    BOOST_TEST(peptide_side(1, 2) < 0); // trans
+    BOOST_TEST(peptide_side(2, 3) < 0); // proline stays trans on a straight run
+    BOOST_TEST(peptide_side(3, 4) < 0);
+    int cis_bonds = 0;
+    for (int number = 1; number < 15; ++number)
+        cis_bonds += peptide_side(number, number + 1) > 0;
+    BOOST_TEST(cis_bonds == 0);
+    // At the outside of the turn, CA-CB points to the right.
+    BOOST_TEST(named_positions.at(7).at("CB").x >
+               named_positions.at(7).at("CA").x);
+    BOOST_TEST(named_positions.at(8).at("CB").x >
+               named_positions.at(8).at("CA").x);
+    const auto& proline = named_positions.at(3);
+    const auto& preceding = named_positions.at(2);
+    BOOST_TEST(std::abs(proline.at("CA").y - proline.at("N").y) < 1e-5);
+    BOOST_TEST(proline.at("CA").x > proline.at("N").x);
+    BOOST_TEST((proline.at("CB").y - proline.at("CA").y) *
+                   (preceding.at("CB").y - preceding.at("CA").y) >
+               0);
+    for (const auto& [first, second] :
+         {std::pair{"CA", "CB"}, {"CB", "CG"}, {"CG", "CD"}, {"CD", "N"}}) {
+        const auto bond = proline.at(second) - proline.at(first);
+        BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - bond_length) < 1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestMonomerLayoutKeepsUnrecognizedResidues)
+{
+    // An inline SMILES monomer has no database template but must retain
+    // every atom with finite coordinates in the guided layout.
+    auto monomer_mol = helm::helm_to_rdkit(
+        "PEPTIDE1{A.[CC(O)[C@H](N[*:1])C(=O)[*:2]].G}$$$$V2.0");
+    auto mol = toAtomistic(*monomer_mol);
+    const auto num_atoms = mol->getNumAtoms();
+    compute2DCoords(*mol);
+    BOOST_TEST(mol->getNumAtoms() == num_atoms);
+    BOOST_TEST(mol->getConformer().getNumAtoms() == num_atoms);
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        const auto p = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(std::isfinite(p.x));
+        BOOST_TEST(std::isfinite(p.y));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestTerminalAmineFollowsPeptideBackbone)
+{
+    // Check an [am] cap after both a short straight chain and a turned
+    // chain; its attachment must keep a normal peptide bond length.
+    for (const auto& helm_string :
+         {"PEPTIDE1{A.M.[am]}$$$$",
+          "PEPTIDE1{[dR].P.[dK].[dP].Q.Q.F.[dF].G.L.M.[am]}$$$$"}) {
+        auto monomer_mol = helm::helm_to_rdkit(helm_string);
+        auto atomistic_mol = toAtomistic(*monomer_mol);
+        compute2DCoords(*atomistic_mol);
+        const auto& conf = atomistic_mol->getConformer();
+        std::optional<RDGeom::Point3D> carbonyl, terminal_nitrogen;
+        for (const auto* atom : atomistic_mol->atoms()) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            if (!info)
+                continue;
+            auto name = info->getName();
+            name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+            if (info->getResidueNumber() ==
+                    static_cast<int>(monomer_mol->getNumAtoms()) - 1 &&
+                name == "C")
+                carbonyl = conf.getAtomPos(atom->getIdx());
+            if (info->getResidueNumber() ==
+                    static_cast<int>(monomer_mol->getNumAtoms()) &&
+                name == "N")
+                terminal_nitrogen = conf.getAtomPos(atom->getIdx());
+        }
+        BOOST_REQUIRE(carbonyl.has_value());
+        BOOST_REQUIRE(terminal_nitrogen.has_value());
+        const auto bond = *terminal_nitrogen - *carbonyl;
+        BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - RDDepict::BOND_LEN) <
+                   1e-5);
+    }
+}
+
+std::map<int, std::map<std::string, RDGeom::Point3D>>
+residue_atom_positions(const RDKit::ROMol& mol)
+{
+    std::map<int, std::map<std::string, RDGeom::Point3D>> positions;
+    for (const auto* atom : mol.atoms()) {
+        const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (!info)
+            continue;
+        auto name = info->getName();
+        name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+        positions[info->getResidueNumber()][name] =
+            mol.getConformer().getAtomPos(atom->getIdx());
+    }
+    return positions;
+}
+
+BOOST_AUTO_TEST_CASE(TestInlineProlineUsesRingBackboneShape)
+{
+    // This inline proline has residue name UNK, but its side chain closes
+    // onto N and therefore needs the same N-CA shape as named proline.
+    auto monomers = helm::helm_to_rdkit(
+        "PEPTIDE1{A.[[*:1]N1CCC[C@H]1C(=O)[*:2]].A}$$$$V2.0");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& proline = positions.at(2);
+    const auto n_ca = proline.at("CA") - proline.at("N");
+    BOOST_TEST(std::abs(n_ca.y) < 1e-5);
+    BOOST_TEST(n_ca.x > 0);
+    for (const auto& [first, second] :
+         {std::pair{"CA", "CB"}, std::pair{"CB", "CG"}, std::pair{"CG", "CD"},
+          std::pair{"CD", "N"}}) {
+        if (!proline.contains(first) || !proline.contains(second)) {
+            continue;
+        }
+        const auto bond = proline.at(second) - proline.at(first);
+        BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - RDDepict::BOND_LEN) <
+                   1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestTerminalProlineCarbonylIsTrigonal)
+{
+    // The terminal OXT must use the third carbonyl direction even when
+    // proline's N-CA bond is horizontal.
+    auto monomers = helm::helm_to_rdkit("PEPTIDE1{A.P}$$$$V2.0");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& proline = positions.at(2);
+    const auto c_o = proline.at("O") - proline.at("C");
+    const auto c_oxt = proline.at("OXT") - proline.at("C");
+    const auto c_ca = proline.at("CA") - proline.at("C");
+    const auto cosine =
+        (c_o.x * c_oxt.x + c_o.y * c_oxt.y) /
+        (std::hypot(c_o.x, c_o.y) * std::hypot(c_oxt.x, c_oxt.y));
+    BOOST_TEST(std::abs(cosine + 0.5) < 1e-5);
+    const auto ca_cosine =
+        (c_ca.x * c_oxt.x + c_ca.y * c_oxt.y) /
+        (std::hypot(c_ca.x, c_ca.y) * std::hypot(c_oxt.x, c_oxt.y));
+    BOOST_TEST(std::abs(ca_cosine + 0.5) < 1e-5);
+    BOOST_TEST(std::abs(std::hypot(c_oxt.x, c_oxt.y) -
+                        RDDepict::BOND_LEN * 0.7) < 1e-5);
+}
+
+BOOST_AUTO_TEST_CASE(TestAcetylCapAndTerminalCysteineKeepBackboneAngles)
+{
+    // The acetyl cap and terminal disulfide-linked Cys must keep their
+    // peptide angles while side-chain selection shortens the S-S bridge.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{[ac].[*N[C@@H](C(=O)*)S* |$_R1;;;;;_R2;;_R3$|].F.F.[dW].K.T.F.C}$PEPTIDE1,PEPTIDE1,2:R3-9:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto cosine = [](const RDGeom::Point3D& a, const RDGeom::Point3D& b) {
+        return (a.x * b.x + a.y * b.y) /
+               (std::hypot(a.x, a.y) * std::hypot(b.x, b.y));
+    };
+    const auto& cap = positions.at(1);
+    const auto& first = positions.at(2);
+    const auto cap_bond = cap.at("C") - first.at("N");
+    const auto first_n_ca = first.at("CA") - first.at("N");
+    BOOST_TEST(std::abs(cosine(cap_bond, first_n_ca) + 0.5) < 1e-5);
+    BOOST_TEST(std::abs(std::hypot(cap_bond.x, cap_bond.y) -
+                        RDDepict::BOND_LEN) < 1e-5);
+    // With this starting phase, acetyl O points below the backbone and the
+    // methyl occupies the opposite side of its carbonyl.
+    BOOST_TEST(cap.at("O").y < cap.at("C").y);
+
+    const auto& terminal = positions.at(9);
+    const auto ca_n = terminal.at("N") - terminal.at("CA");
+    const auto ca_c = terminal.at("C") - terminal.at("CA");
+    // Without a following peptide bond, C9 can use a regular 120-degree
+    // N-CA-C angle instead of opening the terminal residue into linear cis.
+    BOOST_TEST(std::abs(cosine(ca_n, ca_c) + 0.5) < 1e-5);
+    bool checked_disulfide = false;
+    for (const auto* bond : mol->bonds()) {
+        if (bond->getBeginAtom()->getAtomicNum() != 16 ||
+            bond->getEndAtom()->getAtomicNum() != 16)
+            continue;
+        const auto disulfide =
+            mol->getConformer().getAtomPos(bond->getBeginAtomIdx()) -
+            mol->getConformer().getAtomPos(bond->getEndAtomIdx());
+        // Joint side-chain selection shortens this bridge while retaining
+        // the already checked 120-degree backbone geometry.
+        BOOST_TEST(std::hypot(disulfide.x, disulfide.y) <
+                   RDDepict::BOND_LEN * 4.75);
+        checked_disulfide = true;
+    }
+    BOOST_TEST(checked_disulfide);
+}
+
+BOOST_AUTO_TEST_CASE(TestAcetylCapGeometryWithProline)
+{
+    // A cis N-CA proline changes the cap's C-N direction. Keep the O-C-N
+    // angle trigonal and the methyl opposite N across the C=O bond.
+    for (const auto* helm :
+         {"PEPTIDE1{[ac].P.A}$$$$V2.0", "PEPTIDE1{[ac].A.P}$$$$V2.0"}) {
+        auto monomers = helm::helm_to_rdkit(helm);
+        auto mol = toAtomistic(*monomers);
+        compute2DCoords(*mol);
+        const auto positions = residue_atom_positions(*mol);
+        const auto& cap = positions.at(1);
+        const auto& first = positions.at(2);
+        const auto c_o = cap.at("O") - cap.at("C");
+        const auto c_n = first.at("N") - cap.at("C");
+        const auto cosine =
+            (c_o.x * c_n.x + c_o.y * c_n.y) /
+            (std::hypot(c_o.x, c_o.y) * std::hypot(c_n.x, c_n.y));
+        BOOST_TEST_CONTEXT(helm)
+        {
+            BOOST_TEST(std::abs(cosine + 0.5) < 1e-5);
+        }
+        bool checked_methyl = false;
+        for (const auto* carbonyl : mol->atoms()) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                carbonyl->getMonomerInfo());
+            if (!info || info->getResidueNumber() != 1) {
+                continue;
+            }
+            auto name = info->getName();
+            name.erase(std::remove(name.begin(), name.end(), ' '), name.end());
+            if (name != "C") {
+                continue;
+            }
+            for (const auto* methyl : mol->atomNeighbors(carbonyl)) {
+                const auto* methyl_info =
+                    dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                        methyl->getMonomerInfo());
+                if (methyl->getAtomicNum() != 6 || !methyl_info ||
+                    methyl_info->getResidueNumber() != 1) {
+                    continue;
+                }
+                const auto c_methyl =
+                    mol->getConformer().getAtomPos(methyl->getIdx()) -
+                    cap.at("C");
+                const auto cross = [&](const RDGeom::Point3D& v) {
+                    return c_o.x * v.y - c_o.y * v.x;
+                };
+                BOOST_TEST(cross(c_methyl) * cross(c_n) < 0);
+                checked_methyl = true;
+            }
+        }
+        BOOST_TEST(checked_methyl);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestInlinePeptideBackboneUsesR1AndR2)
+{
+    // Inline SMILES residues with R1 and R2 belong to the peptide path;
+    // their named backbone atoms and neighboring bond lengths must survive.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{[ac].[*N[C@@H](C(=O)*)C(C)(C)S* |$_R1;;;;;_R2;;;;;_R3$|].[*N[C@@H](C(=O)*)[C@@H](C)CC |$_R1;;;;;_R2;;;;$|].P.[dR].G.[dD].[*N[C@H](C(=O)*)Cc1ccc(cc1)OC |$_R1;;;;;_R2;;;;;;;;;$|].[dR].[dC].[am]}$PEPTIDE1,PEPTIDE1,2:R3-10:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    for (int number : {2, 3, 8}) {
+        for (const auto* name : {"N", "CA", "C", "O", "CB"})
+            BOOST_TEST(positions.at(number).contains(name));
+    }
+    BOOST_TEST(positions.at(2).at("C").x > positions.at(2).at("N").x);
+    BOOST_TEST(positions.at(3).at("C").x > positions.at(3).at("N").x);
+    BOOST_TEST(positions.at(8).at("C").x < positions.at(8).at("N").x);
+
+    for (const auto& [first, second] :
+         {std::pair{1, 2}, std::pair{2, 3}, std::pair{3, 4}, std::pair{7, 8},
+          std::pair{8, 9}}) {
+        const auto bond =
+            positions.at(second).at("N") - positions.at(first).at("C");
+        BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) - RDDepict::BOND_LEN) <
+                   1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestTurnStartingAtSecondResidue)
+{
+    // With only one link before the bend, the chain must still find the
+    // returning arm and maintain all peptide bond lengths.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{C.[*N[C@H](C(=O)*)C(c1ccccc1)c2ccccc2 |$_R1;;;;;_R2;;;;;;;;;;;;;$|].F.V.N.C.P.R.G.[am]}$PEPTIDE1,PEPTIDE1,1:R3-6:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    for (int number = 1; number <= 9; ++number) {
+        const auto peptide =
+            positions.at(number + 1).at("N") - positions.at(number).at("C");
+        BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                            RDDepict::BOND_LEN) < 1e-5);
+    }
+    // The monomer layout turns immediately after C1. The lower arm must
+    // return leftward, even though only one link precedes the bend.
+    BOOST_TEST(positions.at(3).at("CA").x > positions.at(1).at("CA").x);
+    BOOST_TEST(positions.at(6).at("CA").x < positions.at(4).at("CA").x);
+    BOOST_TEST(positions.at(8).at("CA").x < positions.at(6).at("CA").x);
+}
+
+BOOST_AUTO_TEST_CASE(TestUnnamedInlinePeptideCarbonylFollowsBackbone)
+{
+    // Two chains begin with an unnamed SMILES carbonyl. Both attachments
+    // must have a normal C-N length and keep the carbon branch behind it.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}|PEPTIDE2{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}$PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto& conf = mol->getConformer();
+    int attached_custom_residues = 0;
+    for (const auto* bond : mol->bonds()) {
+        const auto* first = bond->getBeginAtom();
+        const auto* second = bond->getEndAtom();
+        const auto* first_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            first->getMonomerInfo());
+        const auto* second_info =
+            dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                second->getMonomerInfo());
+        if (!first_info || !second_info ||
+            first_info->getChainId() != second_info->getChainId())
+            continue;
+        const RDKit::Atom* carbonyl = nullptr;
+        const RDKit::Atom* nitrogen = nullptr;
+        if (first_info->getResidueNumber() == 1 &&
+            second_info->getResidueNumber() == 2) {
+            carbonyl = first;
+            nitrogen = second;
+        } else if (second_info->getResidueNumber() == 1 &&
+                   first_info->getResidueNumber() == 2) {
+            carbonyl = second;
+            nitrogen = first;
+        } else {
+            continue;
+        }
+        BOOST_REQUIRE(carbonyl->getAtomicNum() == 6);
+        BOOST_REQUIRE(nitrogen->getAtomicNum() == 7);
+        const auto peptide = conf.getAtomPos(nitrogen->getIdx()) -
+                             conf.getAtomPos(carbonyl->getIdx());
+        BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                            RDDepict::BOND_LEN) < 1e-5);
+        const RDKit::Atom* preceding_carbon = nullptr;
+        for (const auto* neighbor : mol->atomNeighbors(carbonyl)) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                neighbor->getMonomerInfo());
+            if (neighbor->getAtomicNum() == 6 && info &&
+                info->getChainId() == first_info->getChainId() &&
+                info->getResidueNumber() == 1)
+                preceding_carbon = neighbor;
+        }
+        BOOST_REQUIRE(preceding_carbon);
+        const auto branch = conf.getAtomPos(preceding_carbon->getIdx()) -
+                            conf.getAtomPos(carbonyl->getIdx());
+        BOOST_TEST(branch.x * peptide.x + branch.y * peptide.y < 0);
+        ++attached_custom_residues;
+    }
+    BOOST_TEST(attached_custom_residues == 2);
+}
+
+BOOST_AUTO_TEST_CASE(TestTerminalInlinePeptideWithoutR2)
+{
+    // A final SMILES residue lacking R2 remains part of the backbone,
+    // including its carbonyl and the incoming peptide bond.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{[ac].C.F.F.[dW].K.T.F.[*N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$|]}$PEPTIDE1,PEPTIDE1,2:R3-9:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    for (const auto* name : {"N", "CA", "C", "O", "CB"})
+        BOOST_TEST(positions.at(9).contains(name));
+    const auto peptide = positions.at(9).at("N") - positions.at(8).at("C");
+    BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) - RDDepict::BOND_LEN) <
+               1e-5);
+    // The unnamed acid oxygen must move with the terminal carbonyl carbon.
+    bool checked_acid_oxygen = false;
+    for (const auto* bond : mol->bonds()) {
+        for (const auto& [carbonyl, oxygen] :
+             {std::pair{bond->getBeginAtom(), bond->getEndAtom()},
+              std::pair{bond->getEndAtom(), bond->getBeginAtom()}}) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                oxygen->getMonomerInfo());
+            if (carbonyl->getAtomicNum() != 6 || oxygen->getAtomicNum() != 8 ||
+                bond->getBondType() != RDKit::Bond::SINGLE || !info ||
+                info->getResidueNumber() != 9 || !info->getName().empty()) {
+                continue;
+            }
+            const auto delta =
+                mol->getConformer().getAtomPos(oxygen->getIdx()) -
+                mol->getConformer().getAtomPos(carbonyl->getIdx());
+            BOOST_TEST(std::abs(std::hypot(delta.x, delta.y) -
+                                RDDepict::BOND_LEN * 0.7) < 1e-5);
+            checked_acid_oxygen = true;
+        }
+    }
+    BOOST_TEST(checked_acid_oxygen);
+}
+
+BOOST_AUTO_TEST_CASE(TestTerminalInlinePeptideAmideFollowsTurn)
+{
+    // A final SMILES residue can contain its own amide N and lack R2;
+    // check its backbone, return arm, and terminal C-N length.
+    const auto helm_string =
+        R"HELM(PEPTIDE1{[ac].[dC].G.[*N(C)[C@@H](C(=O)*)CCCN=C(N)N |$_R1;;;;;;_R2;;;;;;;$|].G.[dD].[*N[C@@H](C(=O)N)C(C)(C)S* |$_R1;;;;;;;;;;_R3$|]}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$)HELM";
+    auto monomers = helm::helm_to_rdkit(helm_string);
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+
+    // The terminal amide has no R2. Its N-CA-C(=O) backbone still belongs
+    // to the peptide chain, so every peptide bond keeps a normal length.
+    for (int number : {4, 7})
+        for (const auto* name : {"N", "CA", "C", "O"})
+            BOOST_TEST(positions.at(number).contains(name));
+    for (int number = 1; number < 7; ++number) {
+        const auto peptide =
+            positions.at(number + 1).at("N") - positions.at(number).at("C");
+        BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                            RDDepict::BOND_LEN) < 1e-5);
+    }
+    BOOST_TEST(positions.at(7).at("CA").x < positions.at(4).at("CA").x);
+    bool checked_amide = false;
+    const auto& conf = mol->getConformer();
+    for (const auto* bond : mol->bonds()) {
+        const auto* first = bond->getBeginAtom();
+        const auto* second = bond->getEndAtom();
+        for (const auto& [carbonyl, amide] :
+             {std::pair{first, second}, std::pair{second, first}}) {
+            const auto* info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                amide->getMonomerInfo());
+            if (carbonyl->getAtomicNum() != 6 || amide->getAtomicNum() != 7 ||
+                !info || info->getResidueNumber() != 7 ||
+                !info->getName().empty())
+                continue;
+            const auto delta = conf.getAtomPos(amide->getIdx()) -
+                               conf.getAtomPos(carbonyl->getIdx());
+            BOOST_TEST(std::abs(std::hypot(delta.x, delta.y) -
+                                RDDepict::BOND_LEN * 0.7) < 1e-5);
+            checked_amide = true;
+        }
+    }
+    BOOST_TEST(checked_amide);
+}
+
+BOOST_AUTO_TEST_CASE(TestDisulfideCysteineFacesItsPartner)
+{
+    // Starting phase should face both linked Cys side chains toward the
+    // bridge without opening an extra residue on the straight arm.
+    // Flipping the starting phase faces both sides of this bridge without
+    // opening C7 into LINEAR_CIS_N_CA.
+    auto monomers =
+        helm::helm_to_rdkit("PEPTIDE1{R.G.G.R.L.C.C.C.R.R.R.F.C.V.C.V.G.R}"
+                            "$PEPTIDE1,PEPTIDE1,7:R3-13:R3$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto faces_partner = [&](int number, int partner) {
+        const auto& residue = positions.at(number);
+        const auto backbone = residue.at("C") - residue.at("N");
+        const auto sidechain = residue.at("CB") - residue.at("CA");
+        const auto toward_partner =
+            positions.at(partner).at("CA") - residue.at("CA");
+        const auto cross = [&](const RDGeom::Point3D& direction) {
+            return backbone.x * direction.y - backbone.y * direction.x;
+        };
+        return cross(sidechain) * cross(toward_partner) > 0;
+    };
+    BOOST_TEST(faces_partner(7, 13));
+    BOOST_TEST(faces_partner(13, 7));
+    BOOST_TEST(std::abs(positions.at(7).at("CA").y -
+                        positions.at(7).at("N").y) > RDDepict::BOND_LEN / 4);
+    BOOST_TEST(std::abs(positions.at(8).at("CA").y -
+                        positions.at(8).at("N").y) > RDDepict::BOND_LEN / 4);
+    const auto side = [&](int number) {
+        return positions.at(number).at("CB").y -
+               positions.at(number).at("CA").y;
+    };
+    BOOST_TEST(side(6) * side(7) < 0); // C7 stays ALL_TRANS
+    BOOST_TEST(side(7) * side(8) < 0); // C8 remains ALL_TRANS
+    const auto upper = positions.at(4).at("C") - positions.at(4).at("N");
+    const auto lower = positions.at(16).at("C") - positions.at(16).at("N");
+    BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+    for (int number = 6; number <= 8; ++number) {
+        const auto peptide =
+            positions.at(number + 1).at("N") - positions.at(number).at("C");
+        BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                            RDDepict::BOND_LEN) < 1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestDProlineInMixedPeptide)
+{
+    // dProline in a mixed sequence needs the same straight-chain ring
+    // geometry and preceding-side-chain direction as ordinary proline.
+    auto monomers = helm::helm_to_rdkit(
+        "PEPTIDE1{[dR].P.[dK].[dP].Q.Q.F.[dF].G.L.M.[am]}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& preceding = positions.at(3);
+    const auto& dproline = positions.at(4);
+    BOOST_TEST(std::abs(dproline.at("N").y - dproline.at("CA").y) < 1e-5);
+    BOOST_TEST(dproline.at("CA").x > dproline.at("N").x);
+    BOOST_TEST((preceding.at("CB").y - preceding.at("CA").y) *
+                   (dproline.at("CB").y - dproline.at("CA").y) >
+               0);
+}
+
+BOOST_AUTO_TEST_CASE(TestFourResidueTurnSpreadsAngles)
+{
+    // A four-residue D-peptide bend must preserve each turn direction while
+    // spreading its angle correction and keeping peptide links trans.
+    auto monomers =
+        helm::helm_to_rdkit("PEPTIDE1{[dK].[dF].[dA].[dK].[dF].[dA].[dK].[dK].["
+                            "dF].[dA].[dK].[dF].[dA].[dK]}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    BOOST_REQUIRE(positions.size() == 14);
+    const auto tangent = [&](int number) {
+        return positions.at(number).at("C") - positions.at(number).at("N");
+    };
+    const auto signed_turn = [&](int number) {
+        const auto a = tangent(number), b = tangent(number + 1);
+        return std::atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y);
+    };
+    // The four residues around the bend retain the original direction of
+    // each backbone turn. Opening the bend changes each local angle only
+    // slightly, so the two straight arms become antiparallel.
+    for (int number = 5; number <= 8; ++number) {
+        BOOST_TEST(signed_turn(number) < 0);
+        BOOST_TEST(std::abs(signed_turn(number)) < std::numbers::pi / 3);
+    }
+    BOOST_TEST((positions.at(6).at("C") - positions.at(6).at("CA")).x > 0);
+    const auto upper = tangent(3), lower = tangent(12);
+    BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+
+    std::vector<int> cis_links;
+    for (int number = 1; number < 14; ++number) {
+        const auto& current = positions.at(number);
+        const auto& next = positions.at(number + 1);
+        const auto peptide = next.at("N") - current.at("C");
+        BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                            RDDepict::BOND_LEN) < 1e-5);
+        const auto before_alpha = current.at("CA") - current.at("C");
+        const auto after_alpha = next.at("CA") - next.at("N");
+        const auto cross = [&](const RDGeom::Point3D& direction) {
+            return peptide.x * direction.y - peptide.y * direction.x;
+        };
+        if (cross(before_alpha) * cross(after_alpha) > 0)
+            cis_links.push_back(number);
+    }
+    BOOST_TEST(cis_links.empty());
+}
+
+BOOST_AUTO_TEST_CASE(TestTurnsKeepArmsAntiparallel)
+{
+    // Both an early proline and S-S bridges can complicate turn detection.
+    // In each chain, the straight arms must remain antiparallel and every
+    // peptide bond must retain its normal length.
+    struct TurnCase {
+        const char* helm;
+        int upper_residue;
+        int lower_residue;
+        int last_peptide_residue;
+    };
+    const TurnCase cases[] = {
+        {"PEPTIDE1{L.P.N.Y.N.W.N.S.F.G.I.R.F.[am]}$$$$", 5, 10, 13},
+        {"PEPTIDE1{R.G.G.R.L.C.Y.C.R.R.R.F.C.V.C.V.G.R}"
+         "$PEPTIDE1,PEPTIDE1,8:R3-13:R3|PEPTIDE1,PEPTIDE1,6:R3-15:R3$$$",
+         4, 16, 17},
+    };
+    for (const auto& test_case : cases) {
+        BOOST_TEST_CONTEXT(test_case.helm)
+        {
+            auto monomers = helm::helm_to_rdkit(test_case.helm);
+            auto mol = toAtomistic(*monomers);
+            compute2DCoords(*mol);
+            const auto positions = residue_atom_positions(*mol);
+            const auto direction = [&](int number) {
+                const auto& residue = positions.at(number);
+                return residue.at("C") - residue.at("N");
+            };
+            const auto upper = direction(test_case.upper_residue);
+            const auto lower = direction(test_case.lower_residue);
+            BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+            BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+            for (int number = 1; number <= test_case.last_peptide_residue;
+                 ++number) {
+                const auto peptide = positions.at(number + 1).at("N") -
+                                     positions.at(number).at("C");
+                BOOST_TEST(std::abs(std::hypot(peptide.x, peptide.y) -
+                                    RDDepict::BOND_LEN) < 1e-5);
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestProlineInTurnPrefersFlippedPhase)
+{
+    // The opposite starting phase avoids an unnecessary linear cis residue
+    // before a proline turn while preserving the returning arm.
+    auto monomers =
+        helm::helm_to_rdkit("PEPTIDE1{[ac].S.N.W.K.W.W.P.G.I.F.D.[am]}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto direction = [&](int number) {
+        const auto& residue = positions.at(number);
+        return residue.at("C") - residue.at("N");
+    };
+    const auto& lysine = positions.at(5);
+    // The opposite starting phase keeps K trans, avoiding the linear cis
+    // correction before the W-W-P bend. The bend still turns at N-CA.
+    BOOST_TEST(std::abs(lysine.at("CA").y - lysine.at("N").y) >
+               RDDepict::BOND_LEN / 4);
+    BOOST_TEST(std::abs(lysine.at("C").y - lysine.at("CA").y) >
+               RDDepict::BOND_LEN / 4);
+    const auto upper = direction(4), lower = direction(10);
+    BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+    for (int number = 6; number <= 7; ++number) {
+        const auto a = direction(number), b = direction(number + 1);
+        const auto turn =
+            std::atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y);
+        BOOST_TEST(std::abs(turn + std::numbers::pi / 3) < 1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestThreeResidueTurnNeedsNoAngleCorrection)
+{
+    // An eleven-alanine chain makes a three-residue bend that should keep
+    // its regular 60-degree turns without angle spreading.
+    auto monomers = helm::helm_to_rdkit("PEPTIDE1{A.A.A.A.A.A.A.A.A.A.A}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto direction = [&](int number) {
+        const auto& residue = positions.at(number);
+        return residue.at("C") - residue.at("N");
+    };
+    const auto upper = direction(4), lower = direction(8);
+    BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+    for (int number = 5; number <= 7; ++number) {
+        const auto a = direction(number), b = direction(number + 1);
+        const auto turn =
+            std::atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y);
+        BOOST_TEST(std::abs(turn + std::numbers::pi / 3) < 1e-5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestDisulfidePrefersFlippedStartingPhase)
+{
+    // The flipped start lets the first dC and a later Cys face their S-S
+    // partners without changing the straight backbone geometry.
+    auto monomers = helm::helm_to_rdkit(
+        "PEPTIDE1{[dC].[dS].C.[dS].S.[dL].M.[dD].K.[dE].C.[dV].Y.[dF].[dC].H.A."
+        "D.I.I.W}"
+        "$PEPTIDE1,PEPTIDE1,3:R3-11:R3|PEPTIDE1,PEPTIDE1,1:R3-15:R3$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto& first = positions.at(1);
+    const auto& cysteine = positions.at(3);
+    const auto& partner = positions.at(11);
+    BOOST_TEST(std::abs(first.at("CA").y - first.at("N").y) >
+               RDDepict::BOND_LEN / 4);
+    BOOST_TEST(first.at("CB").y < first.at("CA").y);
+    BOOST_TEST(std::abs(cysteine.at("CA").y - cysteine.at("N").y) >
+               RDDepict::BOND_LEN / 4);
+    BOOST_TEST(cysteine.at("SG").x > cysteine.at("CA").x);
+    const auto backbone = cysteine.at("C") - cysteine.at("N");
+    const auto sidechain = cysteine.at("SG") - cysteine.at("CA");
+    const auto toward_partner = partner.at("CA") - cysteine.at("CA");
+    const auto cross = [&](const RDGeom::Point3D& direction) {
+        return backbone.x * direction.y - backbone.y * direction.x;
+    };
+    BOOST_TEST(cross(sidechain) * cross(toward_partner) > 0);
+}
+
+BOOST_AUTO_TEST_CASE(TestTurnKeepsArmsApart)
+{
+    // In this Arg-rich turn, angle spreading should separate the two arms
+    // while retaining the direction of the local backbone turns.
+    auto monomers =
+        helm::helm_to_rdkit("PEPTIDE1{T.P.Q.R.A.R.R.R.K.K.R.F}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto direction = [&](int number) {
+        const auto& residue = positions.at(number);
+        return residue.at("C") - residue.at("N");
+    };
+    const auto upper = direction(4), lower = direction(9);
+    BOOST_TEST(std::abs(upper.x * lower.y - upper.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * lower.x + upper.y * lower.y < 0);
+    // A5, R6, R7 and R8 form the bend. Both arms must remain separated,
+    // with the backbone continuing to turn in the same direction.
+    BOOST_TEST(positions.at(9).at("N").y <
+               positions.at(4).at("N").y - 2 * RDDepict::BOND_LEN);
+    for (int number = 6; number <= 7; ++number) {
+        const auto a = direction(number), b = direction(number + 1);
+        const auto turn =
+            std::atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y);
+        BOOST_TEST(turn < 0);
+        BOOST_TEST(std::abs(turn + std::numbers::pi / 4) <
+                   std::numbers::pi / 12);
+    }
+    const auto last_loop = direction(8), first_lower = direction(9);
+    BOOST_TEST(std::abs(last_loop.x * first_lower.y -
+                        last_loop.y * first_lower.x) < 1e-5);
+}
+
+BOOST_AUTO_TEST_CASE(TestTwoTurnsKeepMiddleArmStraight)
+{
+    // Two bends in one chain should leave the intervening arm straight
+    // rather than creating an extra turn in its middle.
+    auto monomers = helm::helm_to_rdkit("PEPTIDE1{H.S.D.G.I.A.T.D.S.Y.S.R.Y.R."
+                                        "K.Q.M.A.V.K.K.Y.L.A.A.V.L.[am]}$$$$");
+    auto mol = toAtomistic(*monomers);
+    compute2DCoords(*mol);
+    const auto positions = residue_atom_positions(*mol);
+    const auto direction = [&](int number) {
+        const auto& residue = positions.at(number);
+        return residue.at("C") - residue.at("N");
+    };
+    const auto upper = direction(5);
+    const auto middle = direction(14);
+    const auto lower = direction(24);
+    BOOST_TEST(std::abs(upper.x * middle.y - upper.y * middle.x) < 1e-5);
+    BOOST_TEST(std::abs(middle.x * lower.y - middle.y * lower.x) < 1e-5);
+    BOOST_TEST(upper.x * middle.x + upper.y * middle.y < 0);
+    BOOST_TEST(middle.x * lower.x + middle.y * lower.y < 0);
+    for (int number = 12; number <= 17; ++number) {
+        const auto current = direction(number);
+        BOOST_TEST(std::abs(current.x * middle.y - current.y * middle.x) <
+                   1e-5);
+        BOOST_TEST(current.x * middle.x + current.y * middle.y > 0);
+    }
+    BOOST_TEST(positions.at(5).at("N").y >
+               positions.at(14).at("N").y + 2 * RDDepict::BOND_LEN);
+    BOOST_TEST(positions.at(14).at("N").y >
+               positions.at(24).at("N").y + 2 * RDDepict::BOND_LEN);
 }
 
 bool has_atom_map_numbers(const RDKit::ROMol& mol)
@@ -679,6 +1753,29 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomer)
             auto atomistic_mol = toAtomistic(*monomer_mol);
             BOOST_REQUIRE(atomistic_mol != nullptr);
             BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+
+            if (helm_str.find("TestMon") != std::string::npos) {
+                // Registered monomers without pdbName fields still need an
+                // identified N-CA-C(=O) path for guided placement.
+                compute2DCoords(*atomistic_mol);
+                const auto positions = residue_atom_positions(*atomistic_mol);
+                const int custom_residue =
+                    helm_str.find("[TestMon].A") != std::string::npos ? 1 : 3;
+                BOOST_REQUIRE_MESSAGE(positions.contains(custom_residue),
+                                      "Missing residue " << custom_residue
+                                                         << " for "
+                                                         << helm_str);
+                for (const auto* name : {"N", "CA", "C", "O"}) {
+                    BOOST_REQUIRE_MESSAGE(
+                        positions.at(custom_residue).contains(name),
+                        "Missing " << name << " in residue " << custom_residue
+                                   << " for " << helm_str);
+                }
+                const auto bond = positions.at(custom_residue + 1).at("N") -
+                                  positions.at(custom_residue).at("C");
+                BOOST_TEST(std::abs(std::hypot(bond.x, bond.y) -
+                                    RDDepict::BOND_LEN) < 1e-5);
+            }
 
             // Roundtrip back to HELM
             auto roundtrip_monomer = toMonomeric(*atomistic_mol);
