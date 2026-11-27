@@ -7,6 +7,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
+#include <GraphMol/MolDraw2D/MolDraw2DDetails.h>
 #include <GraphMol/ROMol.h>
 #include <QMarginsF>
 #include <QPainter>
@@ -25,20 +26,6 @@ SGroupItem::SGroupItem(const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
     setZValue(static_cast<qreal>(ZOrder::SGROUP));
     updateCachedData();
     show();
-}
-
-std::pair<QPointF, bool> SGroupItem::getFieldDataDisplayInfo() const
-{
-    std::string fieldDisp;
-    if (m_sgroup.getPropIfPresent("FIELDDISP", fieldDisp)) {
-        QString displacement = QString::fromStdString(fieldDisp);
-        auto disp_x = displacement.sliced(0, 10).toFloat();
-        auto disp_y = displacement.sliced(10, 10).toFloat();
-        // if the string was not a valid float, the toFloat() function will
-        // return 0, which is what we want, so no need to check for errors
-        return {QPointF(disp_x, disp_y), displacement[26] == 'R'};
-    }
-    return {QPointF(), false};
 }
 
 /**
@@ -80,26 +67,6 @@ static QString get_repeat_label_text(const RDKit::SubstanceGroup& sgroup)
     return text;
 }
 
-/**
- * @return The FIELDDATA text for the SGroup, if any. This text is displayed
- * next to the SGroup atoms.
- */
-static QString get_field_data_text(const RDKit::SubstanceGroup& sgroup)
-{
-    QString text;
-    std::string typ;
-    if (sgroup.getPropIfPresent("TYPE", typ) && typ == "DAT") {
-        if (sgroup.hasProp("DATAFIELDS")) {
-            auto dfs = sgroup.getProp<std::vector<std::string>>("DATAFIELDS");
-            for (const auto& df : dfs) {
-                text += df + "|";
-            }
-            text.chop(1);
-        }
-    }
-    return text;
-}
-
 const RDKit::SubstanceGroup* SGroupItem::getSubstanceGroup() const
 {
     return &m_sgroup;
@@ -136,20 +103,31 @@ void SGroupItem::updateCachedData()
 
     m_repeat = get_repeat_connect_text(m_sgroup);
     m_label = get_repeat_label_text(m_sgroup);
-    m_field_data_text = get_field_data_text(m_sgroup);
+    m_field_data_text.clear();
+    m_field_data_text_rect = QRectF();
 
-    // until https://github.com/rdkit/rdkit/issues/7829 is resolved, we need to
-    // place the field data text manually
-    auto [field_data_coords, field_data_coords_are_relative] =
-        getFieldDataDisplayInfo();
-    m_field_data_text_rect =
-        m_fonts.m_sgroup_fm.tightBoundingRect(m_field_data_text);
-    // for now we ignore the relative flag and always place the field data text
-    // relative to the first atom in the sgroup
-    Q_UNUSED(field_data_coords_are_relative);
-    auto center = m_sgroup.getOwningMol().getConformer().getAtomPos(
-        m_sgroup.getAtoms()[0]);
-    m_field_data_text_rect.moveCenter(to_scene_xy(center) + field_data_coords);
+    int our_atom = m_sgroup.getAtoms().empty()
+                       ? -1
+                       : static_cast<int>(m_sgroup.getAtoms()[0]);
+    for (const auto& lbl : RDKit::MolDraw2D_detail::getSGroupDataLabels(
+             m_sgroup.getOwningMol())) {
+        if (lbl.atomIdx != our_atom) {
+            continue;
+        }
+        m_field_data_text = QString::fromStdString(lbl.text);
+        m_field_data_text_rect =
+            m_fonts.m_sgroup_fm.tightBoundingRect(m_field_data_text);
+        if (lbl.positioned) {
+            // pos is in Y-inverted drawing coords; scale to scene coords
+            m_field_data_text_rect.moveCenter(
+                QPointF(lbl.pos.x * VIEW_SCALE, lbl.pos.y * VIEW_SCALE));
+        } else {
+            // pos is in conformer coords; convert to scene coords
+            m_field_data_text_rect.moveCenter(
+                to_scene_xy(RDGeom::Point3D(lbl.pos.x, lbl.pos.y, 0)));
+        }
+        break;
+    }
     auto [positions, displacement] = getPositionsForLabels();
     auto brackets_half_height = positions.length() * 0.5;
     auto translation_offset = (positions.p1() + positions.p2()) * 0.5;
