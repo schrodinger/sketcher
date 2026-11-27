@@ -391,6 +391,15 @@ void trim_line_to_rect(QLineF& line, const QRectF& rect, qreal min_length)
     }
 }
 
+qreal get_distance_to_rect(const QPointF& point, const QRectF& rect)
+{
+    const qreal dx =
+        std::max({0.0, rect.left() - point.x(), point.x() - rect.right()});
+    const qreal dy =
+        std::max({0.0, rect.top() - point.y(), point.y() - rect.bottom()});
+    return std::hypot(dx, dy);
+}
+
 bool intersection_of_line_and_rect(const QLineF& line, const QRectF& rect,
                                    QPointF& inter_point)
 {

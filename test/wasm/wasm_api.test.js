@@ -168,6 +168,7 @@ test.describe('WASM Sketcher API', () => {
         bond_width_scale: 1.5,
         render_peptides_linearly: false,
         rdatom_index_to_label: { 0: 'AtomZero' },
+        rdatom_index_to_annotation: { 1: 'AnnotationOne' },
         rdatom_index_to_halo_color: { 0: '#ff0000' },
         rdbond_index_to_halo_color: { 0: '#00ff00' },
         rdatom_index_to_line_color: { 0: '#0000ff' },
@@ -185,6 +186,7 @@ test.describe('WASM Sketcher API', () => {
 
     expect(svg).toContain('svg width="222px" height="111px"');
     expect(svg).toContain('AtomZero');
+    expect(svg).toContain('AnnotationOne');
   });
 
   test('Import CDXML from ketcher file', async ({ page }) => {

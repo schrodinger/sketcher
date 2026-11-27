@@ -140,6 +140,11 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
     QRectF m_isotope_label_rect;
     QRectF m_query_label_rect;
     QString m_query_label_text;
+    // user-specified annotation text (see USER_ANNOTATION).  Note that, unlike
+    // the other labels, this label isn't included in getSubrects() since it
+    // shouldn't be covered by halos or selection/predictive highlighting.
+    QString m_annotation_label_text;
+    QRectF m_annotation_label_rect;
     QPainterPath m_squiggle_path; // used for attachment point squiggle
 
     const Fonts& m_fonts;
@@ -165,6 +170,14 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
      * used to calculate subrects with the visible rectangles
      */
     std::vector<QRectF> getLabelRects() const;
+
+    /**
+     * @return pointers to all label rect data members that make up the atom
+     * label, in the order returned by getLabelRects (i.e. starting from the
+     * center of the atom and working outwards).  Note that the annotation label
+     * rect is not included, since it shouldn't be covered by highlighting.
+     */
+    static const std::vector<QRectF AtomItem::*>& getLabelRectMembers();
 
     /**
      * Determine what type of label we should display for this atom
@@ -269,6 +282,32 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
      * on this atom
      */
     void updateChiralityLabel();
+
+    /**
+     * Create and position the label for the user-specified annotation (see
+     * USER_ANNOTATION), if present.  The label is placed as close to the atom
+     * as possible without overlapping any of this atom's other labels, its
+     * highlighting, nearby bonds, or nearby atoms.  This method must be called
+     * after all other labels and the highlighting paths have been updated.
+     */
+    void updateAnnotationLabel();
+
+    /**
+     * @return the points that the annotation label should be placed as close
+     * as possible to: the centers of the components of the label that visually
+     * represent the atom itself (the main label, isotope, charge, mapping, and
+     * Hs labels, but not stereo or query labels).  If the atom's label isn't
+     * visible, this will be the atom's position.
+     */
+    std::vector<QPointF> getAnnotationAnchorPoints() const;
+
+    /**
+     * @return a path covering everything near this atom that an annotation
+     * label should not overlap, in local coordinates
+     * @param search_radius Only atoms and bonds within this distance of this
+     * atom will be considered
+     */
+    QPainterPath calcAnnotationObstacles(qreal search_radius) const;
 };
 
 } // namespace sketcher

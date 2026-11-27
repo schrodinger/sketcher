@@ -84,7 +84,14 @@ struct RenderOptions {
     // specified. Bonds lines between atoms will have split color based
     // on the line color of connected atoms, unless bond line coloring is
     // separately specified.
+    // rdatom_index_to_label replaces each specified atom's label (e.g. the
+    // element symbol, hydrogens, and charge) with the given text.
     QHash<int, std::string> rdatom_index_to_label;
+    // rdatom_index_to_annotation leaves each specified atom's label intact and
+    // instead draws the given text as a small, additional label (e.g. a pKa
+    // value) next to the atom, placed so that it doesn't overlap the atom's
+    // label or bonds.
+    QHash<int, std::string> rdatom_index_to_annotation;
     QHash<int, QColor> rdatom_index_to_halo_color;
     QHash<int, QColor> rdbond_index_to_halo_color;
     QHash<int, QColor> rdatom_index_to_line_color;
