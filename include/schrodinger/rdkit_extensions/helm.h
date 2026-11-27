@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -16,6 +17,8 @@ const std::string ATOM_LABEL{"atomLabel"};
 const std::string SUPPLEMENTARY_INFORMATION{"SUPPLEMENTARY_INFORMATION"};
 const std::string BRANCH_LINKAGE{"R3-R1"};
 const std::string BACKBONE_LINKAGE{"R2-R1"};
+const std::string PEPTIDE_SIDE_CHAIN_LINKAGE{"R3-R3"};
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
@@ -69,8 +72,11 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-// acts as a view to a polymer chain, and is only valid as long as the owning
-// mol is valid.
+/**
+ * Atom and bond indices for one HELM polymer in its owning molecule, together
+ * with its optional annotation. The indices are valid only while that molecule
+ * exists and its atom and bond order is unchanged.
+ */
 struct Chain {
     std::vector<unsigned int> atoms;
     std::vector<unsigned int> bonds;
@@ -80,39 +86,96 @@ struct Chain {
 
 using PolymerConnections = std::map<std::string, std::set<std::string>>;
 
+/** Return whether mol carries the HELM_MODEL marker. */
 [[nodiscard]] RDKIT_EXTENSIONS_API bool isMonomeric(const RDKit::ROMol& mol);
 
-// Helper apis to get atom indices belonging to the inputs polymers
+/**
+ * Return atom indices belonging to polymer_id, including repetition dummy
+ * atoms assigned to that polymer. Indices follow molecule atom order.
+ * @throws std::invalid_argument if mol is not a HELM monomer molecule.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
                            const std::string& polymer_id);
 
-// NOTE: Duplicate polymer ids will be ignored
+/**
+ * Return atom indices belonging to any of polymer_ids, including their
+ * repetition dummy atoms. Indices follow molecule atom order; duplicate
+ * polymer IDs do not duplicate atoms in the result.
+ * @throws std::invalid_argument if mol is not a HELM monomer molecule.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
                             const std::vector<std::string>& polymer_ids);
 
-// Extracts polymers with the provided ids from a monomer mol. Polymer
-// information that span across non-selected polymers will be deleted.
-//
-// NOTE: Polymer groups and extended annotations are dropped from the extracted
-// polymers.
+/**
+ * Copy the selected polymers into a new HELM monomer molecule. Bonds to
+ * unselected polymers are omitted. HELM supplementary information, including
+ * polymer groups and extended annotations, is removed from the copy; other
+ * substance groups are preserved.
+ * @throws std::invalid_argument if mol is not a HELM monomer molecule.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
 extract_helm_polymers(const RDKit::ROMol& mol,
                       const std::vector<std::string>& polymer_ids);
 
-// Extract a single polymer by ID.
-// NOTE: Polymer groups and extended annotations are dropped from the extracted
-// polymer.
+/** Extract one polymer using the same rules as extract_helm_polymers(). */
 [[nodiscard]] RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
 extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 
+/**
+ * Return a monomer atom's HELM polymer ID from its PDB residue chain ID.
+ * @throws std::runtime_error if the atom has no monomer information.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
 
+enum class ConnectorType {
+    CHEM,
+    PEPTIDE_LINEAR,
+    PEPTIDE_BRANCHING,
+    PEPTIDE_DISULFIDE,
+    PEPTIDE_SIDE_CHAIN,
+    H_BOND,
+    NA_BACKBONE,
+    NA_BACKBONE_TO_BASE
+};
+
+/**
+ * Classify a monomer connection. A bond can carry two separate monomer
+ * connections: in that scenario, LINKAGE describes the primary one, and
+ * CUSTOM_BOND describes the secondary one. CHEM takes precedence over peptide
+ * connections, while peptide takes precedence over nucleic acid connections.
+ * @param is_secondary_connection select CUSTOM_BOND when the bond represents
+ * two connections; otherwise classify its primary LINKAGE.
+ * @throws std::runtime_error if a non-hydrogen-bond endpoint has no monomer
+ * information.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API ConnectorType
+get_connector_type(const ::RDKit::Bond* bond, bool is_secondary_connection);
+
+/**
+ * Return whether each end of a monomer connection needs an arrowhead. The
+ * secondary flag selects CUSTOM_BOND instead of LINKAGE when one RDKit bond
+ * represents two HELM connections.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               bool is_secondary_connection);
+
+/** Return arrowhead placement when the connector type is already known. */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::pair<bool, bool>
+does_connector_have_arrowheads(const ::RDKit::Bond* bond,
+                               ConnectorType connector_type);
+
+/**
+ * Return the monomer's PDB residue number.
+ * @throws std::runtime_error if the atom has no monomer information.
+ */
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);
 
+/** Return whether atom is a repetition dummy in a HELM monomer molecule. */
 [[nodiscard]] RDKIT_EXTENSIONS_API bool
 is_dummy_atom(const ::RDKit::Atom* atom);
 
@@ -147,9 +210,18 @@ get_connections(const ::RDKit::ROMol& monomer_mol);
 [[nodiscard]] RDKIT_EXTENSIONS_API PolymerConnections
 get_interpolymer_connections(const ::RDKit::ROMol& monomer_mol);
 
+/**
+ * Return unique polymer IDs in first-appearance order, excluding repetition
+ * dummy atoms.
+ */
 std::vector<std::string>
     RDKIT_EXTENSIONS_API get_polymer_ids(const RDKit::ROMol& monomer_mol);
 
+/**
+ * Return one polymer's atom indices in residue-number order, its internal bond
+ * indices, and its annotation. Repetition dummy atoms and their bonds are
+ * excluded. The annotation is empty when no matching S-group exists.
+ */
 Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& monomer_mol,
                                        std::string_view polymer_id);
 

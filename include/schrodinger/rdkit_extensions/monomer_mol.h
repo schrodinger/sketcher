@@ -42,6 +42,8 @@ class MonomerDatabase;
 using Monomer = RDKit::Atom;
 
 enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
+enum class NucleicAcidMonomerType { BASE, SUGAR, PHOSPHATE };
+
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 enum class ConnectionAdded {
@@ -49,6 +51,13 @@ enum class ConnectionAdded {
     CUSTOM_CONNECTION_ADDED_TO_EXISTING_BOND,
     STANDARD_CONNECTION_ADDED_TO_EXISTING_BOND
 };
+
+/** Classify a named nucleic acid monomer by a recognized natural analog first,
+ * then by a sugar or phosphate suffix on its residue name. Otherwise it is a
+ * base.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API NucleicAcidMonomerType
+get_na_monomer_type(std::string_view residue_name, ChainType chain_type);
 
 RDKIT_EXTENSIONS_API ChainType toChainType(std::string_view chain_type);
 
