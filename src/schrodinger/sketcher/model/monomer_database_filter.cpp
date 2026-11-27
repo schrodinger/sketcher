@@ -531,21 +531,39 @@ std::string get_natural_analog_display_text(const MonomerInfo& info)
     return *info.natural_analog;
 }
 
+/**
+ * The (symbol, polymer type) of a monomer, used to determine whether a custom
+ * monomer shadows a core monomer
+ */
+using ShadowingKey = std::pair<std::string, std::string>;
+
+static ShadowingKey get_shadowing_key(const MonomerInfo& info)
+{
+    return {info.symbol.value_or(""), info.polymer_type.value_or("")};
+}
+
 std::vector<MonomerInfo> get_monomer_database_table_monomers(
     std::vector<MonomerInfo> custom_monomers,
     const std::vector<MonomerInfo>& core_monomers)
 {
-    // (symbol, polymer type) for each custom monomer
-    std::set<std::pair<std::string, std::string>> custom_ids;
-    for (const auto& info : custom_monomers) {
-        custom_ids.emplace(info.symbol.value_or(""),
-                           info.polymer_type.value_or(""));
+    std::set<ShadowingKey> core_keys_with_analog;
+    for (const auto& info : core_monomers) {
+        if (!has_no_natural_analog(info)) {
+            core_keys_with_analog.insert(get_shadowing_key(info));
+        }
     }
-    auto table_monomers = std::move(custom_monomers);
+    std::vector<MonomerInfo> table_monomers;
+    std::set<ShadowingKey> custom_keys;
+    for (auto& info : custom_monomers) {
+        auto key = get_shadowing_key(info);
+        if (!core_keys_with_analog.contains(key)) {
+            table_monomers.push_back(std::move(info));
+        }
+        custom_keys.insert(std::move(key));
+    }
     for (const auto& info : core_monomers) {
         if (has_no_natural_analog(info) &&
-            !custom_ids.contains(
-                {info.symbol.value_or(""), info.polymer_type.value_or("")})) {
+            !custom_keys.contains(get_shadowing_key(info))) {
             table_monomers.push_back(info);
         }
     }

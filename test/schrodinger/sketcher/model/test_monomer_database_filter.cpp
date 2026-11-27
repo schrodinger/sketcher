@@ -139,6 +139,15 @@ BOOST_AUTO_TEST_CASE(test_get_monomer_database_table_monomers)
         make_monomer("ac", "PEPTIDE", "C", std::nullopt, "custom ac"),
         // doesn't replace the core "am" because the polymer type differs
         make_monomer("am", "RNA", "A"),
+        // excluded because it shadows the core "A", which has a natural
+        // analog
+        make_monomer("A", "PEPTIDE", "A", std::nullopt, "custom A"),
+        // excluded because it shadows the core "rX", which has a natural
+        // analog, even though this custom monomer doesn't have one
+        make_monomer("rX", "RNA", "N"),
+        // included because the core "R" with a natural analog is RNA, so this
+        // doesn't shadow it
+        make_monomer("R", "PEPTIDE", "R"),
     };
     std::vector<MonomerInfo> core{
         make_monomer("A", "PEPTIDE", "A"),
@@ -158,32 +167,37 @@ BOOST_AUTO_TEST_CASE(test_get_monomer_database_table_monomers)
 
     auto table_monomers = get_monomer_database_table_monomers(custom, core);
     std::vector<std::string> expected{
-        "dC/PEPTIDE",
-        "5mC/RNA",
-        "Eth/CHEM",
-        "ac/PEPTIDE",
-        "am/RNA",
-        "am/PEPTIDE",
-        "noAnalog/PEPTIDE",
-        "missingAnalog/PEPTIDE",
-        "N/RNA",
-        "coreChem/CHEM",
+        "dC/PEPTIDE", "5mC/RNA",          "Eth/CHEM",
+        "ac/PEPTIDE", "am/RNA",           "R/PEPTIDE",
+        "am/PEPTIDE", "noAnalog/PEPTIDE", "missingAnalog/PEPTIDE",
+        "N/RNA",      "coreChem/CHEM",
     };
     BOOST_TEST(get_symbols(table_monomers) == expected,
                boost::test_tools::per_element());
     // the custom "ac" is kept, not the core one
     BOOST_TEST(table_monomers[3].name.value_or("") == "custom ac");
 
+    // with only the shadowing custom monomers, the table is the same as with
+    // no custom monomers
+    std::vector<MonomerInfo> shadowing_custom{
+        make_monomer("A", "PEPTIDE", "A"),
+        make_monomer("rX", "RNA", "N"),
+    };
+    auto core_only_expected = std::vector<std::string>{"ac/PEPTIDE",
+                                                       "am/PEPTIDE",
+                                                       "noAnalog/PEPTIDE",
+                                                       "missingAnalog/PEPTIDE",
+                                                       "N/RNA",
+                                                       "coreChem/CHEM"};
+    table_monomers =
+        get_monomer_database_table_monomers(shadowing_custom, core);
+    BOOST_TEST(get_symbols(table_monomers) == core_only_expected,
+               boost::test_tools::per_element());
+
     // with no custom monomers, only the core monomers with no natural analog
     // are included
     table_monomers = get_monomer_database_table_monomers({}, core);
-    expected = {"ac/PEPTIDE",
-                "am/PEPTIDE",
-                "noAnalog/PEPTIDE",
-                "missingAnalog/PEPTIDE",
-                "N/RNA",
-                "coreChem/CHEM"};
-    BOOST_TEST(get_symbols(table_monomers) == expected,
+    BOOST_TEST(get_symbols(table_monomers) == core_only_expected,
                boost::test_tools::per_element());
 }
 

@@ -45,6 +45,12 @@ class SKETCHER_API SketcherSideBar : public SketcherView
     int getInterfaceToggleHeight() const;
 
     /**
+     * Set whether the Monomer Database popup's Load Database... (or Update
+     * Database...) link is visible
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
+
+    /**
      * Disconnect signals from each widget's updateWidgetsEnabled()
      * slot; called when selection-only mode is enabled in SketcherWidget.
      */

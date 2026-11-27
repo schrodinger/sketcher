@@ -3,7 +3,6 @@
 #include <QButtonGroup>
 #include <QDesktopServices>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QRegularExpression>
 #include <QToolButton>
 #include <QWidget>
@@ -11,7 +10,6 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
-#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
@@ -264,33 +262,7 @@ void SketcherTopBar::onImportFromFileClicked()
 
 void SketcherTopBar::onLoadMonomerDatabaseClicked()
 {
-    auto file_open_completed = [this](const QString& file_path,
-                                      const QByteArray& content) {
-        if (file_path.isEmpty()) {
-            return;
-        }
-        try {
-            auto& db = rdkit_extensions::MonomerDatabase::instance();
-            auto result = db.loadMonomersFromJson(content.toStdString());
-            if (!result.second.empty()) {
-                QStringList failures;
-                for (const auto& failure : result.second) {
-                    failures.append(QString::fromStdString(failure));
-                }
-                show_error_dialog("Monomer Database Error", failures.join("\n"),
-                                  this);
-            } else {
-                show_information_dialog("Monomer Database",
-                                        QFileInfo(file_path).fileName() +
-                                            " read successfully.",
-                                        this);
-            }
-        } catch (const std::exception& exc) {
-            show_error_dialog("Monomer Database Error", exc.what(), this);
-        }
-    };
-    QFileDialog::getOpenFileContent("JSON files (*.json)", file_open_completed,
-                                    this);
+    load_monomer_database_from_file(this);
 }
 
 void SketcherTopBar::onPasteInTextClicked()

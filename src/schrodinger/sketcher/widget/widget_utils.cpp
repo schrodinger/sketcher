@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -83,11 +84,28 @@ QPoint clamp_position_to_bounds(const QRect& rect, const QRect& bounds)
     return {x, y};
 }
 
+/**
+ * @return The room available for a popup below and above an anchor
+ */
+static std::pair<int, int> calc_room_below_and_above(const QRect& anchor_rect,
+                                                     const QRect& bounds)
+{
+    return {bounds.bottom() - anchor_rect.bottom(),
+            anchor_rect.top() - bounds.top()};
+}
+
+int calc_max_popup_height(const QRect& anchor_rect, const QRect& bounds)
+{
+    const auto [room_below, room_above] =
+        calc_room_below_and_above(anchor_rect, bounds);
+    return std::max(room_below, room_above);
+}
+
 QPoint calc_popup_position(const QSize& popup_size, const QRect& anchor_rect,
                            const QRect& bounds)
 {
-    const int room_below = bounds.bottom() - anchor_rect.bottom();
-    const int room_above = anchor_rect.top() - bounds.top();
+    const auto [room_below, room_above] =
+        calc_room_below_and_above(anchor_rect, bounds);
     const int below_y = anchor_rect.bottom() + 1;
     const int above_y = anchor_rect.top() - popup_size.height();
     int y;
@@ -111,10 +129,19 @@ void show_popup_next_to_widget(QWidget* popup, QWidget* anchor)
         popup->adjustSize();
         popup->setAttribute(Qt::WA_Resized, false);
     }
-    const QRect anchor_rect(anchor->mapToGlobal(QPoint(0, 0)), anchor->size());
-    const auto bounds = anchor->screen()->availableGeometry();
-    popup->move(calc_popup_position(popup->size(), anchor_rect, bounds));
+    popup->move(calc_popup_position(popup->size(), get_global_geometry(anchor),
+                                    get_popup_bounds(anchor)));
     popup->show();
+}
+
+QRect get_global_geometry(const QWidget* widget)
+{
+    return QRect(widget->mapToGlobal(QPoint(0, 0)), widget->size());
+}
+
+QRect get_popup_bounds(const QWidget* anchor)
+{
+    return anchor->screen()->availableGeometry();
 }
 
 /**

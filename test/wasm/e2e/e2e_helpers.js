@@ -116,9 +116,14 @@ async function callBridge(page, name, arg) {
  *   "atom:<index>"         an atom, by 0-based index into the molecule
  *   "bond:<index>"         a bond, by 0-based index into the molecule
  *   "menu:<name or text>"  a row of an already-open context menu
+ *   "table_row:<objectName>:<row>"
+ *                          a row of a visible table, scrolled into view, with
+ *                          its "cells" (visible columns' text), "selected"
+ *                          and "current" state
  *   A widget whose text the user can read also reports "text" — a caption, a
  *   combo box's current item, or a line edit's or spin box's contents — and a
- *   button also reports "checked" and "toolTip".
+ *   button also reports "checked" and "toolTip". A table reports "rowCount",
+ *   its visible column "headers", "selectedRow" and "currentRow" (-1 for none).
  */
 export async function getRect(page, selector) {
   const encoded = await callBridge(page, '_sketcher_get_rect', selector);

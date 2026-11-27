@@ -9,18 +9,45 @@ namespace schrodinger
 namespace sketcher
 {
 
+/// The background color of a checked tool button or a selected table row
+const QString CHECKED_BACKGROUND_COLOR{"#d4e6f1"};
+
+/// The background color of a hovered tool button
+const QString HOVER_BACKGROUND_COLOR{"#edf7fc"};
+
+/// The background color of the current table row when it isn't selected. The
+/// current row is only relevant when the monomer database table is in mutation
+/// mode (i.e. there's a selection in the Sketcher canvas). In that case, we
+/// don't select rows since we can't switch the scene tool, but we use the
+/// current row to give visual feedback in response to a click or keyboard
+/// navigation. This is a very faded (i.e. lowered saturation) version of
+/// HOVER_BACKGROUND_COLOR.
+const QString CURRENT_TABLE_ROW_COLOR{"#f1f6f8"};
+
+/// The text color for informational or status text
+const QString INFO_TEXT_COLOR{"#666666"};
+
+/// The background color of a popup's title bar, which is also the popup's
+/// outline color
+const QString POPUP_TITLE_BAR_COLOR{"#666666"};
+
 const QString SKETCHER_WIDGET_STYLE{
     "schrodinger--sketcher--SketcherWidget { background-color: white; }"
     "schrodinger--sketcher--View { background: transparent; }"
     "schrodinger--sketcher--ModularPopup { background-color: white; }"
     "QToolButton { border: none; }"
     "QToolButton:disabled { color: #E4E4E4; }"
-    "QToolButton:checked { background-color: #d4e6f1; }"
-    "QToolButton:hover:!checked { background-color: #edf7fc; }"};
+    "QToolButton:checked { background-color: " +
+    CHECKED_BACKGROUND_COLOR +
+    "; }"
+    "QToolButton:hover:!checked { background-color: " +
+    HOVER_BACKGROUND_COLOR + "; }"};
 
 const QString SELECTION_ACTIVE_STYLE{
     "QWidget { background-color: #f3f6f0; }"
-    "QToolButton:checked { background-color: #d4e6f1; }"
+    "QToolButton:checked { background-color: " +
+    CHECKED_BACKGROUND_COLOR +
+    "; }"
     "QToolButton:hover:!checked { background-color: #e3ebda; }"};
 
 const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
@@ -71,6 +98,17 @@ const QString ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE{
     "QToolButton { font-size: 10px; font-weight: bold; color: #333333; "
     "padding: 1px; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
+
+/**
+ * @return The style for a button labeled with an element or monomer symbol,
+ * which is compact for labels that are too long for the normal style
+ */
+inline const QString& get_atom_element_or_monomer_style(const qsizetype length)
+{
+    return length >= COMPACT_STYLE_MIN_LENGTH
+               ? ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE
+               : ATOM_ELEMENT_OR_MONOMER_STYLE;
+}
 
 /// style for an unknown monomer (e.g. amino acid X or nucleotide N)
 const QString UNKNOWN_MONOMER_STYLE{
@@ -135,6 +173,20 @@ const QString AMINO_OR_NUCLEIC_TOGGLE_STYLE{
 
 const QString CUSTOM_MONOMER_DIALOG_STYLE{
     "#sketcher_widget_holder { background-color: white; }"};
+
+/// style for the Monomer Database popup. Its title bar is a CustomTitleBar,
+/// which styles itself.
+const QString MONOMER_DATABASE_POPUP_STYLE{
+    "#monomer_db_popup { background-color: white; "
+    "    border: 1px solid " +
+    POPUP_TITLE_BAR_COLOR +
+    "; }"
+    "#monomer_db_match_count_lbl { font-size: 11px; font-style: italic; "
+    "    color: " +
+    INFO_TEXT_COLOR +
+    "; }"
+    "QTableView { selection-background-color: " +
+    CHECKED_BACKGROUND_COLOR + "; selection-color: #333333; }"};
 
 } // namespace sketcher
 } // namespace schrodinger

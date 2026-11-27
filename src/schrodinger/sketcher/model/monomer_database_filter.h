@@ -351,15 +351,20 @@ SKETCHER_API std::string
 get_natural_analog_display_text(const rdkit_extensions::MonomerInfo& info);
 
 /**
- * Build the source list for the Monomer Database table: every custom monomer,
- * plus every core monomer with no natural analog (see has_no_natural_analog)
- * unless a custom monomer has the same symbol and polymer type.
+ * Build the source list for the Monomer Database table: every core monomer
+ * with no natural analog (see has_no_natural_analog), plus every custom
+ * monomer except those that shadow a core monomer with a natural analog. A
+ * custom monomer shadows a core monomer if it has the same symbol and polymer
+ * type, in which case only the custom monomer is included. In other words, a
+ * custom monomer that shadows a core monomer with a natural analog is excluded
+ * regardless of the custom monomer's own natural analog, and a custom monomer
+ * that shadows a core monomer with no natural analog replaces it.
  * @param custom_monomers The custom monomers, e.g. from
  * MonomerDatabase::getCustomMonomers()
  * @param core_monomers The core monomers, e.g. from
  * MonomerDatabase::getCoreMonomers()
- * @return the custom monomers in their original order, followed by the
- * included core monomers in their original order
+ * @return the included custom monomers in their original order, followed by
+ * the included core monomers in their original order
  */
 SKETCHER_API std::vector<rdkit_extensions::MonomerInfo>
 get_monomer_database_table_monomers(

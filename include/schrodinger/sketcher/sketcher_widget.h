@@ -166,9 +166,10 @@ class SKETCHER_API SketcherWidget : public QWidget
     void setRenderOptions(const RenderOptions& options);
 
     /**
-     * Set whether the "Load Monomer Database..." menu item is visible. This
-     * should be hidden when the monomer database is supplied by the host
-     * application (e.g. from a monomer service).
+     * Set whether the "Load Monomer Database..." menu item and the Monomer
+     * Database popup's "Load Database..." (or "Update Database...") link are
+     * visible. These should be hidden when the monomer database is supplied by
+     * the host application (e.g. from a monomer service).
      */
     void setLoadMonomerDatabaseVisible(const bool visible);
 
